@@ -12,3 +12,12 @@ out/
 # machine-local
 .claude/settings.local.json
 .DS_Store
+*.pem
+
+# testing
+/coverage
+
+# vercel
+.vercel
+
+/lib/generated/prisma
