@@ -1,0 +1,27 @@
+schema: spec-driven
+
+context: |
+  Ngaji: member & activity management for a hierarchical organization
+  (pusat -> daerah -> desa -> kelompok). Single organization per deployment.
+  Tech stack: Next.js 15 App Router (Server Actions, Server Components), TypeScript,
+  pnpm, Prisma 6 + PostgreSQL 16, Auth.js v5 Credentials, Tailwind + shadcn/ui,
+  react-hook-form + zod, Recharts, Vitest.
+  Conventions: UI text in Bahasa Indonesia; code, filenames, comments, commits in English.
+  Domain enum values use Indonesian terms (HADIR, IZIN, AKTIF, KELUAR, PELAJAR_SMP, ...).
+  DESIGN.md is the source of truth for schema, permission matrix, activity logic, security
+  and pages; CLAUDE.md lists server-side invariants. Member data is sensitive PII:
+  security and an append-only audit log are requirements, not features.
+  Key invariants: every list query is scope-filtered (group.path startsWith user.groupPath);
+  every client-supplied ID is resolved server-side and checked via authorize(); no hard
+  delete (soft delete + deletedAt: null on every query); every mutation writes AuditLog in
+  the same transaction; dates are YYYY-MM-DD strings in code, @db.Date in DB, one timezone
+  Asia/Jakarta, week starts on Sunday.
+
+rules:
+  proposal:
+    - Keep under 600 words; reference DESIGN.md sections instead of restating them
+  specs:
+    - One capability per spec directory; requirements use SHALL; every requirement has at least one scenario
+    - Include negative (denied / rejected) scenarios for every authorization rule
+  tasks:
+    - Follow the order in DESIGN.md section 8; pure logic before UI; each task verifiable
