@@ -1,0 +1,14 @@
+# dependencies / build
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# env
+.env
+.env.*
+!.env.example
+
+# machine-local
+.claude/settings.local.json
+.DS_Store
