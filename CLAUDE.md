@@ -5,15 +5,14 @@ Manajemen anggota & kegiatan untuk organisasi berjenjang (pusat → daerah → d
 
 ## Stack
 - Next.js 15 (App Router, Server Actions, Server Components) + TypeScript, pnpm
-- Prisma 6 + PostgreSQL 16 (docker-compose lokal)
+- Prisma 6 + SQLite (file lokal, juga dipakai di production — lihat DESIGN.md §8)
 - Auth.js v5 Credentials (username + password, tanpa email)
 - Tailwind + shadcn/ui, react-hook-form + zod, Recharts, Vitest
 
 ## Perintah
 ```bash
-docker compose up -d          # Postgres
 pnpm install
-pnpm prisma migrate dev       # migrasi
+pnpm prisma migrate dev       # migrasi, membuat file SQLite jika belum ada
 pnpm prisma db seed           # org + 4 level + contoh pohon + owner admin/admin (wajib ganti password)
 pnpm dev
 pnpm test                     # vitest: fungsi murni + server action lintas-scope
@@ -32,7 +31,8 @@ pnpm lint && pnpm tsc --noEmit
 - `ActivityOccurrence` dibuat lazy (upsert saat absensi / override). Tidak ada job generator. `date` = tanggal kunci aturan; tanggal efektif = `overrideDate ?? date`.
 - Absen = anggota *expected* (`lib/stats.ts`) tanpa baris `Attendance`. Jangan simpan baris "tidak hadir".
 - Hapus grup hanya jika kosong (tanpa anak, anggota, kegiatan, user yang belum dihapus).
-- Tanggal: `@db.Date` di DB, string `YYYY-MM-DD` di seluruh kode; konversi hanya di `lib/dates.ts`. Jam: string `HH:mm`. Satu timezone `Asia/Jakarta`. Minggu dimulai hari Minggu.
+- Tanggal: kolom `String` (`YYYY-MM-DD`) di DB (SQLite tidak punya tipe DATE native) maupun di seluruh kode — tidak ada konversi Date↔string untuk tanggal murni; `lib/dates.ts` hanya berisi kalkulasi (tambah hari, cari Minggu, dst.) di atas string tersebut. Jam: string `HH:mm`. Satu timezone `Asia/Jakarta`. Minggu dimulai hari Minggu.
+- Enum domain (`Role`, `Sex`, `MemberStatus`, dll.) adalah kolom `String` di Prisma (SQLite tidak mendukung `enum`); nilai valid ditegakkan oleh TS union + zod di `lib/validation/enums.ts`, bukan oleh DB. `Activity.weekdays` adalah kolom `Json` (SQLite tidak punya scalar list `Int[]`).
 
 ## Konvensi
 - UI dalam **Bahasa Indonesia**; kode, nama file, komentar, dan commit dalam **English**.

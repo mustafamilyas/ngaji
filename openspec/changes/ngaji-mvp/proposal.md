@@ -4,7 +4,7 @@ The organization currently tracks members and recurring activities across four h
 
 ## What Changes
 
-- New Next.js 15 + Prisma + PostgreSQL application, single organization per deployment.
+- New Next.js 15 + Prisma + SQLite application, single organization per deployment.
 - Fixed, renameable group levels; groups form a tree with a materialized path (`"1/5/12/"`) used for scope filtering.
 - Members live only in leaf groups; leaving is a status change; deletion is soft everywhere (no hard delete for any domain entity).
 - Username/password auth (Auth.js v5 Credentials) with per-request revalidation of `isActive` and `role`, login rate limiting, forced password change after seed/reset, security headers.
@@ -34,6 +34,6 @@ The organization currently tracks members and recurring activities across four h
 ## Impact
 
 - Greenfield repo: everything under `app/`, `lib/`, `prisma/`, `tests/` is new.
-- External dependencies: Next.js 15, Prisma 6, PostgreSQL 16, Auth.js v5, bcrypt, zod, react-hook-form, shadcn/ui, Recharts, Vitest.
+- External dependencies: Next.js 15, Prisma 6, SQLite (file-based, no separate DB server), Auth.js v5, bcrypt, zod, react-hook-form, shadcn/ui, Recharts, Vitest.
 - `DESIGN.md` remains the source of truth for schema and rules; `CLAUDE.md` lists the invariants agents must keep. This change's specs are derived from those documents and must be kept in sync with them.
 - Security posture: member PII is stored; audit log stores before/after snapshots of PII and is restricted to OWNER within scope.

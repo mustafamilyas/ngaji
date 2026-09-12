@@ -21,3 +21,9 @@ out/
 .vercel
 
 /lib/generated/prisma
+
+# SQLite (contains PII; never commit)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

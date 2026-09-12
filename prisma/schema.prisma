@@ -10,6 +10,215 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
+}
+
+// SQLite has no native `enum` type, so domain enums below are plain String
+// columns. Valid values are TS unions + zod schemas in lib/validation/*,
+// not enforced by the database. See DESIGN.md §2.
+//   Role             = "OWNER" | "ADMIN" | "USER"
+//   Sex              = "L" | "P"
+//   MaritalStatus    = "BELUM_MENIKAH" | "MENIKAH" | "CERAI_HIDUP" | "CERAI_MATI"
+//   WorkStatus       = "BEKERJA" | "TIDAK_BEKERJA" | "PELAJAR_SD" | "PELAJAR_SMP"
+//                    | "PELAJAR_SMA" | "MAHASISWA" | "IBU_RUMAH_TANGGA" | "PENSIUN"
+//   MemberStatus     = "AKTIF" | "KELUAR" | "PINDAH" | "MENINGGAL"
+//   Freq             = "ONCE" | "DAILY" | "WEEKLY" | "MONTHLY"
+//   OccurrenceStatus = "SCHEDULED" | "CANCELLED"
+//   AttendanceStatus = "HADIR" | "IZIN"
+
+model Organization {
+  id        Int      @id @default(autoincrement())
+  name      String
+  timezone  String   @default("Asia/Jakarta")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  levels    Level[]
+  groups    Group[]
+}
+
+/// Level name, depth 0 = root. Renaming a level is a single-row update.
+model Level {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  depth          Int
+  name           String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, depth])
+}
+
+model Group {
+  id             Int       @id @default(autoincrement())
+  organizationId Int
+  parentId       Int?
+  depth          Int // must equal parent.depth + 1
+  name           String // unique among non-deleted siblings (checked in app)
+  path           String // materialized path incl. own id, trailing slash: "1/5/12/"
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  parent       Group?          @relation("tree", fields: [parentId], references: [id])
+  children     Group[]         @relation("tree")
+  members      Member[]
+  activities   Activity[]
+  userRoles    UserGroupRole[]
+
+  @@index([path])
+  @@index([parentId])
+}
+
+model User {
+  id                 Int      @id @default(autoincrement())
+  username           String   @unique
+  passwordHash       String
+  name               String
+  isActive           Boolean  @default(true)
+  mustChangePassword Boolean  @default(false) // true after seed & after reset by admin/owner
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  role               UserGroupRole?
+  createdMembers     Member[]     @relation("memberCreatedBy")
+  createdActivities  Activity[]   @relation("activityCreatedBy")
+  recordedAttendance Attendance[] @relation("attendanceRecordedBy")
+  auditLogs          AuditLog[]
+}
+
+/// MVP: @@unique([userId]). Non-MVP multi-role = drop this unique constraint only.
+model UserGroupRole {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  groupId   Int
+  role      String // Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+  group     Group    @relation(fields: [groupId], references: [id])
+
+  @@index([groupId])
+}
+
+model Member {
+  id            Int       @id @default(autoincrement())
+  groupId       Int // must be a leaf group
+  name          String
+  birthPlace    String
+  birthDate     String // YYYY-MM-DD
+  sex           String // Sex
+  address       String
+  phone         String // NOT unique (one phone can serve a whole family)
+  maritalStatus String // MaritalStatus
+  workStatus    String // WorkStatus
+  email         String?
+  status        String    @default("AKTIF") // MemberStatus
+  joinedAt      String // YYYY-MM-DD; defaults to today on input, used in statistics
+  exitedAt      String? // YYYY-MM-DD; required when status != AKTIF
+  deletedAt     DateTime? // soft delete (data entry mistake); distinct from status KELUAR
+  createdById   Int
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  group       Group        @relation(fields: [groupId], references: [id])
+  createdBy   User         @relation("memberCreatedBy", fields: [createdById], references: [id])
+  attendances Attendance[]
+
+  @@index([groupId, status])
+  @@index([name])
+}
+
+/// Activity template. Owned by one group; automatically applies to all its descendants.
+model Activity {
+  id              Int       @id @default(autoincrement())
+  groupId         Int
+  name            String
+  location        String
+  notes           String?
+  startTime       String // "HH:mm" organization-local time
+  durationMinutes Int // startTime + duration <= 24:00 (never crosses midnight)
+  freq            String // Freq
+  interval        Int       @default(1) // every N days/weeks/months
+  weekdays        Json // number[] (WEEKLY: 0=Sunday..6=Saturday, at least 1); SQLite has no scalar list, stored as a JSON array
+  monthDay        Int? // MONTHLY: day 1..31
+  startsOn        String // YYYY-MM-DD
+  endsOn          String? // YYYY-MM-DD; null = no end; ONCE: = startsOn; >= startsOn
+  continuesFromId Int? // set when this activity resulted from "move this and following" (§5.5)
+  createdById     Int
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  group         Group                @relation(fields: [groupId], references: [id])
+  createdBy     User                 @relation("activityCreatedBy", fields: [createdById], references: [id])
+  continuesFrom Activity?            @relation("split", fields: [continuesFromId], references: [id])
+  continuedBy   Activity[]           @relation("split")
+  occurrences   ActivityOccurrence[]
+
+  @@index([groupId])
+}
+
+/// Created lazily: only when attendance is recorded or an override (cancel / move / change time / location) is made.
+/// `date` = the rule's canonical date (key). Effective date = overrideDate ?? date.
+model ActivityOccurrence {
+  id                      Int       @id @default(autoincrement())
+  activityId              Int
+  date                    String // YYYY-MM-DD
+  status                  String    @default("SCHEDULED") // OccurrenceStatus
+  overrideDate            String? // YYYY-MM-DD; "move once" to another date
+  overrideStartTime       String?
+  overrideDurationMinutes Int?
+  overrideLocation        String?
+  overrideNotes           String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  activity    Activity     @relation(fields: [activityId], references: [id])
+  attendances Attendance[]
+
+  @@unique([activityId, date])
+  @@index([activityId, overrideDate])
+}
+
+model Attendance {
+  id           Int      @id @default(autoincrement())
+  occurrenceId Int
+  memberId     Int
+  status       String // AttendanceStatus
+  recordedById Int
+  recordedAt   DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  occurrence ActivityOccurrence @relation(fields: [occurrenceId], references: [id])
+  member     Member             @relation(fields: [memberId], references: [id])
+  recordedBy User               @relation("attendanceRecordedBy", fields: [recordedById], references: [id])
+
+  @@unique([occurrenceId, memberId])
+  @@index([memberId])
+}
+
+/// Audit trail. Written in the same transaction as its mutation. Append-only (no update/delete).
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  actorId   Int? // null for a failed login with an unknown username
+  action    String // "member.create", "attendance.save", "auth.login_failed", ...
+  entity    String? // "Member", "Activity", ...
+  entityId  Int?
+  groupId   Int? // related group; used to scope-filter the audit viewer
+  before    Json? // snapshot before (sensitive fields redacted, see §4.4)
+  after     Json? // snapshot after
+  meta      Json? // e.g. { username } on failed login, { memberIds } on attendance
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([actorId, createdAt])
+  @@index([groupId, createdAt])
+  @@index([action, createdAt])
 }

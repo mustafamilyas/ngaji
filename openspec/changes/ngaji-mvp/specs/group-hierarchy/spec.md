@@ -17,7 +17,7 @@ The organization SHALL have a fixed list of levels identified by `depth` (0 = ro
 
 #### Scenario: Non-root OWNER cannot rename levels
 - **WHEN** an OWNER whose group has depth 1 attempts to rename a level
-- **THEN** the system responds 404
+- **THEN** the system responds 403 (a role/position check, not a specific out-of-scope entity — DESIGN.md §4.2's reason for 404 doesn't apply here)
 
 ### Requirement: Materialized path
 Every group SHALL store `path` = parent path + own id + `/` (e.g. `"1/5/12/"`), written in the same transaction as the insert. A group's descendants SHALL be all groups whose `path` starts with the group's `path`.

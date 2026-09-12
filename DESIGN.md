@@ -3,7 +3,7 @@
 Aplikasi manajemen anggota & kegiatan untuk organisasi berjenjang
 (pusat → daerah → desa → kelompok).
 
-Stack: **Next.js (App Router, Server Actions) + Prisma + PostgreSQL**, UI Bahasa Indonesia, mobile-first.
+Stack: **Next.js (App Router, Server Actions) + Prisma + SQLite**, UI Bahasa Indonesia, mobile-first.
 
 Data anggota bersifat **sensitif** (PII). Keamanan dan jejak audit adalah syarat, bukan fitur tambahan — lihat §4.
 
@@ -31,15 +31,21 @@ Data anggota bersifat **sensitif** (PII). Keamanan dan jejak audit adalah syarat
 
 ## 2. Model data (Prisma)
 
+SQLite has no native `enum` type in Prisma, so the domain enums below are **not** Prisma `enum` blocks — they are plain `String` columns on the models. The value sets still live in one place, as TS union types + zod schemas in `lib/validation/*`, which is what actually enforces them (the DB no longer rejects an invalid string at the column level):
+
+```ts
+// lib/validation/enums.ts (single source of truth, reused by zod schemas)
+type Role             = 'OWNER' | 'ADMIN' | 'USER'
+type Sex              = 'L' | 'P'
+type MaritalStatus    = 'BELUM_MENIKAH' | 'MENIKAH' | 'CERAI_HIDUP' | 'CERAI_MATI'
+type WorkStatus        = 'BEKERJA' | 'TIDAK_BEKERJA' | 'PELAJAR_SD' | 'PELAJAR_SMP' | 'PELAJAR_SMA' | 'MAHASISWA' | 'IBU_RUMAH_TANGGA' | 'PENSIUN'
+type MemberStatus     = 'AKTIF' | 'KELUAR' | 'PINDAH' | 'MENINGGAL'
+type Freq             = 'ONCE' | 'DAILY' | 'WEEKLY' | 'MONTHLY'
+type OccurrenceStatus = 'SCHEDULED' | 'CANCELLED'
+type AttendanceStatus = 'HADIR' | 'IZIN'
+```
+
 ```prisma
-enum Role             { OWNER ADMIN USER }
-enum Sex              { L P }
-enum MaritalStatus    { BELUM_MENIKAH MENIKAH CERAI_HIDUP CERAI_MATI }
-enum WorkStatus       { BEKERJA TIDAK_BEKERJA PELAJAR_SD PELAJAR_SMP PELAJAR_SMA MAHASISWA IBU_RUMAH_TANGGA PENSIUN }
-enum MemberStatus     { AKTIF KELUAR PINDAH MENINGGAL }
-enum Freq             { ONCE DAILY WEEKLY MONTHLY }
-enum OccurrenceStatus { SCHEDULED CANCELLED }
-enum AttendanceStatus { HADIR IZIN }
 
 model Organization {
   id        Int      @id @default(autoincrement())
@@ -107,7 +113,7 @@ model UserGroupRole {
   id        Int      @id @default(autoincrement())
   userId    Int      @unique
   groupId   Int
-  role      Role
+  role      String                       // Role (lib/validation/enums.ts)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id])
@@ -120,16 +126,16 @@ model Member {
   groupId       Int                          // wajib grup daun
   name          String
   birthPlace    String
-  birthDate     DateTime      @db.Date
-  sex           Sex
+  birthDate     String                       // YYYY-MM-DD
+  sex           String                       // Sex (lib/validation/enums.ts)
   address       String
   phone         String                       // TIDAK unique (satu HP bisa dipakai sekeluarga)
-  maritalStatus MaritalStatus
-  workStatus    WorkStatus
+  maritalStatus String                       // MaritalStatus
+  workStatus    String                       // WorkStatus
   email         String?
-  status        MemberStatus  @default(AKTIF)
-  joinedAt      DateTime      @db.Date       // tanggal bergabung; default hari ini saat input. Dipakai statistik.
-  exitedAt      DateTime?     @db.Date       // wajib diisi saat status != AKTIF
+  status        String        @default("AKTIF") // MemberStatus
+  joinedAt      String                       // YYYY-MM-DD; tanggal bergabung, default hari ini saat input. Dipakai statistik.
+  exitedAt      String?                      // YYYY-MM-DD; wajib diisi saat status != AKTIF
   deletedAt     DateTime?                    // soft delete (salah input); beda dengan status KELUAR
   createdById   Int
   createdAt     DateTime      @default(now())
@@ -152,12 +158,12 @@ model Activity {
   notes           String?
   startTime       String                    // "HH:mm" waktu lokal organisasi
   durationMinutes Int                       // startTime + duration <= 24:00 (tidak lewat tengah malam)
-  freq            Freq
+  freq            String                    // Freq (lib/validation/enums.ts)
   interval        Int       @default(1)     // tiap N hari/minggu/bulan
-  weekdays        Int[]                     // WEEKLY: 0=Minggu..6=Sabtu, minimal 1
+  weekdays        Json                      // number[] (WEEKLY: 0=Minggu..6=Sabtu, minimal 1); SQLite tidak punya scalar list, disimpan sebagai JSON array
   monthDay        Int?                      // MONTHLY: tanggal 1..31
-  startsOn        DateTime  @db.Date
-  endsOn          DateTime? @db.Date        // null = tanpa akhir; ONCE: = startsOn; >= startsOn
+  startsOn        String                    // YYYY-MM-DD
+  endsOn          String?                   // YYYY-MM-DD; null = tanpa akhir; ONCE: = startsOn; >= startsOn
   continuesFromId Int?                      // diisi jika kegiatan ini hasil "geser ini & seterusnya" (§5.5)
   createdById     Int
   deletedAt       DateTime?
@@ -178,9 +184,9 @@ model Activity {
 model ActivityOccurrence {
   id                      Int              @id @default(autoincrement())
   activityId              Int
-  date                    DateTime         @db.Date
-  status                  OccurrenceStatus @default(SCHEDULED)
-  overrideDate            DateTime?        @db.Date   // "geser satu kali" ke tanggal lain
+  date                    String                            // YYYY-MM-DD
+  status                  String           @default("SCHEDULED") // OccurrenceStatus
+  overrideDate            String?                           // YYYY-MM-DD; "geser satu kali" ke tanggal lain
   overrideStartTime       String?
   overrideDurationMinutes Int?
   overrideLocation        String?
@@ -199,7 +205,7 @@ model Attendance {
   id           Int              @id @default(autoincrement())
   occurrenceId Int
   memberId     Int
-  status       AttendanceStatus
+  status       String                       // AttendanceStatus
   recordedById Int
   recordedAt   DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
@@ -243,7 +249,9 @@ model AuditLog {
 - `PINDAH` tanpa riwayat mutasi: anggota yang pindah grup dibuat ulang sebagai baris baru di grup tujuan (identitas terpisah). Ini disengaja untuk MVP (§9.9); jangan "diperbaiki" tanpa desain riwayat.
 - Absen = anggota yang *expected* (§6) di scope occurrence yang **tidak punya** baris Attendance.
 - `createdById` / `recordedById` punya relasi ke `User` (FK), bukan integer lepas.
-- Semua **tanggal** di kode aplikasi berbentuk string `YYYY-MM-DD` (zod, URL, perbandingan). Konversi ke/dari `Date` hanya terjadi di `lib/dates.ts` di perbatasan Prisma, untuk menghindari bug UTC-midnight dari `@db.Date`.
+- Semua **tanggal** — di kode aplikasi maupun kolom Prisma — berbentuk string `YYYY-MM-DD` (SQLite tidak punya tipe DATE native, jadi kolom tanggal didefinisikan `String`, bukan `DateTime`). Tidak ada konversi Date↔string di perbatasan Prisma untuk tanggal murni; `lib/dates.ts` hanya berisi util kalkulasi (tambah hari, cari Minggu terdekat, dst.) yang beroperasi langsung di atas string `YYYY-MM-DD` dan `Intl`/`Date` sesekali secara internal untuk itu. Perbandingan/urutan tanggal tetap valid karena string ISO `YYYY-MM-DD` terurut secara leksikografis sama dengan urutan kronologisnya. Kolom non-tanggal (`createdAt`, `updatedAt`, `recordedAt`) tetap `DateTime` biasa.
+- `weekdays` pada `Activity` disimpan sebagai kolom `Json` (array angka), karena SQLite tidak mendukung scalar list (`Int[]`) di Prisma. Validasi bentuk & isi array tetap di zod (`lib/validation/activity.ts`).
+- Enum domain (`Role`, `Sex`, `MaritalStatus`, `WorkStatus`, `MemberStatus`, `Freq`, `OccurrenceStatus`, `AttendanceStatus`) bukan Prisma `enum` (tidak didukung SQLite) — kolomnya `String`, nilai valid ditegakkan oleh TS union + zod di `lib/validation/enums.ts`, bukan oleh database.
 
 ---
 
@@ -496,16 +504,16 @@ Kelompok umur: 0–5 balita, 6–12 anak, 13–18 remaja, 19–59 dewasa, ≥60 
 ## 8. Stack & praktik
 
 - **Next.js 15 App Router**, Server Actions untuk mutasi, Server Components untuk list.
-- **Prisma 6 + PostgreSQL 16** (docker-compose lokal). `prisma db seed` membuat org, 4 level, contoh pohon, owner `admin/admin` (`mustChangePassword`).
+- **Prisma 6 + SQLite** (file lokal, tanpa server DB terpisah — juga dipakai di production). `prisma db seed` membuat org, 4 level, contoh pohon, owner `admin/admin` (`mustChangePassword`).
 - **Auth**: Auth.js v5 Credentials + bcrypt; sesi JWT + validasi ulang per request (§4.1).
 - **UI**: Tailwind + shadcn/ui, react-hook-form + zod (skema zod dipakai ulang di Server Action), Recharts untuk grafik.
 - **Tes**: Vitest untuk fungsi murni (`expandDates`, konflik, `expected`, `authorize`) dan Server Action lintas-scope (harus gagal-tertutup). `pnpm test` masuk ke CI bersama `pnpm lint && pnpm tsc --noEmit && pnpm audit`.
-- **Tanggal**: `@db.Date` untuk tanggal & string `HH:mm` untuk jam; satu timezone organisasi (`Asia/Jakarta`); string `YYYY-MM-DD` di seluruh kode aplikasi, konversi hanya di `lib/dates.ts`.
+- **Tanggal**: kolom `String` (`YYYY-MM-DD`) di DB (SQLite tanpa tipe DATE native) & string `HH:mm` untuk jam; satu timezone organisasi (`Asia/Jakarta`); string `YYYY-MM-DD` di seluruh kode aplikasi maupun DB, tanpa konversi Date↔string untuk tanggal murni.
 - **Validasi server-side wajib** untuk: depth grup = parent+1, anggota hanya di grup daun, scope & aturan §3 untuk semua mutasi, tanggal absensi sah.
 - Setiap tabel punya `createdAt/updatedAt`; `createdById`/`recordedById` ber-FK; `AuditLog` untuk jejak perubahan.
 
 ### Urutan pengerjaan (target 2 hari; rincian, spesifikasi & skenario uji di `openspec/changes/ngaji-mvp/`)
-1. Scaffold Next + Prisma + Postgres + shadcn + Vitest — 1 jam
+1. Scaffold Next + Prisma + SQLite + shadcn + Vitest — 1 jam
 2. Schema, migrasi, seed, `lib/dates.ts`, `lib/constants.ts` — 1 jam
 3. Logika murni (TDD, tanpa UI): `expandDates`, `occurrencesFor`, konflik, `expected` — 1.5 jam
 4. Auth: login + rate limit + validasi ulang sesi + `mustChangePassword` + `/akun/password` + header keamanan — 1.5 jam

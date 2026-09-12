@@ -18,6 +18,12 @@ export const metadata: Metadata = {
   description: "Manajemen anggota & kegiatan organisasi berjenjang",
 };
 
+// A nonce-based CSP (middleware.ts) needs a fresh nonce per request, which
+// only exists for dynamically rendered pages (Next.js CSP guide) — every
+// page here is session-gated already, so this reflects reality rather than
+// giving up real static optimization.
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({
   children,
 }: Readonly<{
