@@ -4,6 +4,8 @@ Manajemen anggota & kegiatan untuk organisasi berjenjang (pusat → daerah → d
 
 Baca [DESIGN.md](DESIGN.md) untuk skema, matriks izin, dan logika kegiatan sebelum mengubah model atau alur.
 
+Untuk deployment production (bukan setup lokal), lihat [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ## Stack
 
 - Next.js 15 (App Router, Server Actions) + TypeScript, pnpm
@@ -48,7 +50,7 @@ Baca [DESIGN.md](DESIGN.md) untuk skema, matriks izin, dan logika kegiatan sebel
 
 4. **Seed data**
 
-   Membuat 1 organisasi, 4 level (pusat/daerah/desa/kelompok), contoh pohon grup, ~30 anggota, dan 3 user contoh:
+   Membuat 1 organisasi, 4 level (pusat/daerah/desa/kelompok), contoh pohon grup, ~31 anggota (termasuk kasus tepi: baru gabung, baru keluar, MENINGGAL/PINDAH, satu soft-deleted), 4 user contoh, dan 7 kegiatan contoh (termasuk sepasang yang saling konflik, riwayat absensi, kegiatan yang sudah diakhiri/dipecah/dihapus) untuk mencoba semua alur:
 
    ```bash
    pnpm prisma db seed
@@ -64,11 +66,12 @@ Baca [DESIGN.md](DESIGN.md) untuk skema, matriks izin, dan logika kegiatan sebel
 
    Akun contoh hasil seed (**wajib ganti password** setelah login pertama — seed menandai semuanya `mustChangePassword`):
 
-   | Username        | Password  | Role  | Scope                      |
-   | --------------- | --------- | ----- | --------------------------- |
-   | `admin`          | `admin`    | OWNER | Pusat (seluruh organisasi) |
-   | `admin_daerah`   | `admin123` | ADMIN | Daerah Jakarta             |
-   | `user_kelompok`  | `user123`  | USER  | Kelompok A (Desa Menteng)  |
+   | Username        | Password      | Role  | Scope                      |
+   | --------------- | ------------- | ----- | -------------------------- |
+   | `admin`          | `admin`       | OWNER | Pusat (seluruh organisasi) |
+   | `admin_daerah`   | `admin123`    | ADMIN | Daerah Jakarta             |
+   | `user_kelompok`  | `user123`     | USER  | Kelompok A (Desa Menteng)  |
+   | `user_nonaktif`  | `nonaktif123` | USER  | Kelompok B (Desa Menteng) — akun nonaktif (`isActive = false`), untuk mencoba alur login ditolak |
 
 5. **Jalankan dev server**
 

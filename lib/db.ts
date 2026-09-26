@@ -1,25 +1,8 @@
-import path from "node:path";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { resolveDatabaseUrl } from "./database-url";
 import { PrismaClient } from "./generated/prisma/client";
 
-/**
- * Next.js bundles each route/Server Action into its own `.next/server/...`
- * directory, and a relative `file:` datasource URL gets resolved against
- * that bundle's location instead of the project root — silently opening (or
- * creating) an empty, table-less SQLite file per route. Resolving to an
- * absolute path here, matching where `prisma migrate`/`db seed` write
- * (relative to `prisma/`, per `DATABASE_URL="file:./dev.db"`), sidesteps it.
- */
-export function resolveDatabaseUrl(): string {
-  const raw = process.env.DATABASE_URL ?? "file:./dev.db";
-  const FILE_PREFIX = "file:";
-  if (!raw.startsWith(FILE_PREFIX)) return raw;
-
-  const relativePath = raw.slice(FILE_PREFIX.length);
-  if (path.isAbsolute(relativePath)) return raw;
-
-  return `${FILE_PREFIX}${path.join(process.cwd(), "prisma", relativePath)}`;
-}
+export { resolveDatabaseUrl };
 
 /**
  * Every Group/Member/Activity read goes through this extension so a missing
