@@ -75,7 +75,7 @@ export default async function ActivityListPage({
     db.group.findMany({
       where: visibleGroupsWhere(session.user),
       orderBy: [{ depth: "asc" }, { name: "asc" }],
-      select: { id: true, name: true, path: true },
+      select: { id: true, parentId: true, name: true, path: true },
     }),
   ]);
 
