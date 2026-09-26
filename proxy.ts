@@ -70,8 +70,6 @@ export default auth((req) => {
   return next();
 });
 
-export const runtime = "nodejs";
-
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };

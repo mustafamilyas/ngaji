@@ -4,8 +4,8 @@ Manajemen anggota & kegiatan untuk organisasi berjenjang (pusat → daerah → d
 **`DESIGN.md` adalah sumber kebenaran** untuk skema, matriks izin, logika kegiatan, keamanan, dan halaman. Baca dulu sebelum mengubah model atau alur. Data anggota sensitif (PII): keamanan & audit adalah syarat.
 
 ## Stack
-- Next.js 15 (App Router, Server Actions, Server Components) + TypeScript, pnpm
-- Prisma 6 + SQLite (file lokal, juga dipakai di production — lihat DESIGN.md §8)
+- Next.js 16 (App Router, Server Actions, Server Components, Turbopack) + TypeScript, pnpm
+- Prisma 7 + SQLite via `@prisma/adapter-better-sqlite3` (file lokal, juga dipakai di production — lihat DESIGN.md §8)
 - Auth.js v5 Credentials (username + password, tanpa email)
 - Tailwind + shadcn/ui, react-hook-form + zod, Recharts, Vitest
 

@@ -13,7 +13,7 @@ export default function setup() {
     if (existsSync(file)) rmSync(file);
   }
 
-  execSync("pnpm prisma db push --skip-generate --accept-data-loss", {
+  execSync("pnpm prisma db push --accept-data-loss", {
     env: { ...process.env, DATABASE_URL: databaseUrl },
     stdio: "inherit",
   });

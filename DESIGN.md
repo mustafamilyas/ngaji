@@ -503,8 +503,8 @@ Kelompok umur: 0–5 balita, 6–12 anak, 13–18 remaja, 19–59 dewasa, ≥60 
 
 ## 8. Stack & praktik
 
-- **Next.js 15 App Router**, Server Actions untuk mutasi, Server Components untuk list.
-- **Prisma 6 + SQLite** (file lokal, tanpa server DB terpisah — juga dipakai di production). `prisma db seed` membuat org, 4 level, contoh pohon, owner `admin/admin` (`mustChangePassword`).
+- **Next.js 16 App Router** (Turbopack), Server Actions untuk mutasi, Server Components untuk list.
+- **Prisma 7 + SQLite** via driver adapter `@prisma/adapter-better-sqlite3` (file lokal, tanpa server DB terpisah — juga dipakai di production). `prisma db seed` membuat org, 4 level, contoh pohon, owner `admin/admin` (`mustChangePassword`).
 - **Auth**: Auth.js v5 Credentials + bcrypt; sesi JWT + validasi ulang per request (§4.1).
 - **UI**: Tailwind + shadcn/ui, react-hook-form + zod (skema zod dipakai ulang di Server Action), Recharts untuk grafik.
 - **Tes**: Vitest untuk fungsi murni (`expandDates`, konflik, `expected`, `authorize`) dan Server Action lintas-scope (harus gagal-tertutup). `pnpm test` masuk ke CI bersama `pnpm lint && pnpm tsc --noEmit && pnpm audit`.
