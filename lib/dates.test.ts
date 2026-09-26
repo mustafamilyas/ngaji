@@ -5,7 +5,10 @@ import {
   ageInYears,
   daysBetween,
   fromDbDate,
+  monthEndOf,
+  monthStartOf,
   monthsBetween,
+  rangeForMode,
   sundayOf,
   toDbDate,
   today,
@@ -160,5 +163,49 @@ describe("addMonthsOnDay", () => {
 
   it("carries over a year boundary", () => {
     expect(addMonthsOnDay("2026-11-15", 3, 15)).toBe("2027-02-15");
+  });
+});
+
+describe("monthStartOf", () => {
+  it("returns the first day of a 31-day month", () => {
+    expect(monthStartOf("2026-01-17")).toBe("2026-01-01");
+  });
+
+  it("returns the first day of February", () => {
+    expect(monthStartOf("2026-02-28")).toBe("2026-02-01");
+  });
+
+  it("returns the first day of a leap-year February", () => {
+    expect(monthStartOf("2024-02-29")).toBe("2024-02-01");
+  });
+});
+
+describe("monthEndOf", () => {
+  it("returns the last day of a 31-day month", () => {
+    expect(monthEndOf("2026-01-17")).toBe("2026-01-31");
+  });
+
+  it("returns the last day of a non-leap-year February", () => {
+    expect(monthEndOf("2026-02-01")).toBe("2026-02-28");
+  });
+
+  it("returns the last day of a leap-year February", () => {
+    expect(monthEndOf("2024-02-01")).toBe("2024-02-29");
+  });
+});
+
+describe("rangeForMode", () => {
+  const fixedToday = "2026-09-26"; // Saturday
+
+  it("returns the same day for 'hari'", () => {
+    expect(rangeForMode("hari", fixedToday)).toEqual({ from: "2026-09-26", to: "2026-09-26" });
+  });
+
+  it("returns the Sunday-start week for 'minggu'", () => {
+    expect(rangeForMode("minggu", fixedToday)).toEqual({ from: "2026-09-20", to: "2026-09-26" });
+  });
+
+  it("returns the calendar month bounds for 'bulan'", () => {
+    expect(rangeForMode("bulan", fixedToday)).toEqual({ from: "2026-09-01", to: "2026-09-30" });
   });
 });

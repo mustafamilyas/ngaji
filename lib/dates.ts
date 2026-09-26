@@ -104,3 +104,35 @@ export function addMonthsOnDay(date: string, months: number, day: number): strin
   }
   return formatUtc(new Date(Date.UTC(year, month, day)));
 }
+
+/** The first day (`YYYY-MM-01`) of the calendar month containing `date`. */
+export function monthStartOf(date: string): string {
+  const d = parseUtc(date);
+  return formatUtc(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)));
+}
+
+/** The last day of the calendar month containing `date`. */
+export function monthEndOf(date: string): string {
+  const d = parseUtc(date);
+  return formatUtc(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)));
+}
+
+export type RangeMode = "hari" | "minggu" | "bulan";
+
+/**
+ * The effective `{ from, to }` range for a range mode, anchored at
+ * `referenceDate` (typically `today()`, or a shifted date for prev/next
+ * navigation): today, its Sunday-start week, or its calendar month.
+ */
+export function rangeForMode(mode: RangeMode, referenceDate: string): { from: string; to: string } {
+  switch (mode) {
+    case "hari":
+      return { from: referenceDate, to: referenceDate };
+    case "minggu": {
+      const from = sundayOf(referenceDate);
+      return { from, to: addDays(from, 6) };
+    }
+    case "bulan":
+      return { from: monthStartOf(referenceDate), to: monthEndOf(referenceDate) };
+  }
+}

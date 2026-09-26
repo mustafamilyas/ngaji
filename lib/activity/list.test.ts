@@ -97,7 +97,7 @@ describe("lib/activity/list listActivityOccurrences", () => {
     const { entries } = await listActivityOccurrences(rootOwner, {
       from: "2026-06-05",
       to: "2026-06-05",
-      groupId: leaf.id,
+      groupIds: [leaf.id],
     });
 
     expect(entries).toHaveLength(1);
@@ -135,5 +135,136 @@ describe("lib/activity/list listActivityOccurrences", () => {
     const { entries } = await listActivityOccurrences(leafAdmin, { from: "2026-07-01", to: "2026-07-01" });
     expect(entries).toHaveLength(2);
     expect(entries.every((e) => e.hasConflict)).toBe(true);
+  });
+
+  describe("multi-group union", () => {
+    let siblingLeaf: { id: number; path: string };
+    let foreignLeaf: { id: number; path: string };
+
+    beforeAll(async () => {
+      const branchRow = await db.group.findUniqueOrThrow({ where: { id: branch.id } });
+
+      const siblingLeafRow = await db.group.create({
+        data: {
+          organizationId: branchRow.organizationId,
+          parentId: branch.id,
+          depth: 2,
+          name: "Sibling Leaf",
+          path: "",
+        },
+      });
+      siblingLeaf = await db.group.update({
+        where: { id: siblingLeafRow.id },
+        data: { path: `${branch.path}${siblingLeafRow.id}/` },
+      });
+
+      const foreignOrg = await db.organization.create({ data: { name: "Foreign Org" } });
+      for (const [depth, name] of ["Root", "Leaf"].entries()) {
+        await db.level.create({ data: { organizationId: foreignOrg.id, depth, name } });
+      }
+      const foreignRootRow = await db.group.create({
+        data: { organizationId: foreignOrg.id, depth: 0, name: "Foreign Root", path: "" },
+      });
+      const foreignRoot = await db.group.update({
+        where: { id: foreignRootRow.id },
+        data: { path: `${foreignRootRow.id}/` },
+      });
+      const foreignLeafRow = await db.group.create({
+        data: { organizationId: foreignOrg.id, parentId: foreignRoot.id, depth: 1, name: "Foreign Leaf", path: "" },
+      });
+      foreignLeaf = await db.group.update({
+        where: { id: foreignLeafRow.id },
+        data: { path: `${foreignRoot.path}${foreignLeafRow.id}/` },
+      });
+    });
+
+    it("unions two unrelated groups' results with no cross-visibility", async () => {
+      const leafAdmin = sessionAt("ADMIN", leaf.id, leaf.path);
+      await createActivity(leafAdmin, {
+        groupId: leaf.id,
+        name: "Kelompok A",
+        location: "A",
+        startTime: "19:00",
+        durationMinutes: 60,
+        freq: "ONCE",
+        interval: 1,
+        weekdays: [],
+        startsOn: "2026-08-01",
+        endsOn: "2026-08-01",
+      });
+      const siblingAdmin = sessionAt("ADMIN", siblingLeaf.id, siblingLeaf.path);
+      await createActivity(siblingAdmin, {
+        groupId: siblingLeaf.id,
+        name: "Kelompok B",
+        location: "B",
+        startTime: "19:00",
+        durationMinutes: 60,
+        freq: "ONCE",
+        interval: 1,
+        weekdays: [],
+        startsOn: "2026-08-01",
+        endsOn: "2026-08-01",
+      });
+
+      const branchAdmin = sessionAt("ADMIN", branch.id, branch.path);
+      const { entries } = await listActivityOccurrences(branchAdmin, {
+        from: "2026-08-01",
+        to: "2026-08-01",
+        groupIds: [leaf.id, siblingLeaf.id],
+      });
+
+      expect(entries.map((e) => e.activityName).sort()).toEqual(["Kelompok A", "Kelompok B"]);
+    });
+
+    it("shows an activity owned by a shared ancestor exactly once", async () => {
+      const branchAdmin = sessionAt("ADMIN", branch.id, branch.path);
+      await createActivity(branchAdmin, {
+        groupId: branch.id,
+        name: "Kajian Daerah Bersama",
+        location: "Aula Daerah",
+        startTime: "19:00",
+        durationMinutes: 60,
+        freq: "ONCE",
+        interval: 1,
+        weekdays: [],
+        startsOn: "2026-08-03",
+        endsOn: "2026-08-03",
+      });
+
+      const { entries } = await listActivityOccurrences(branchAdmin, {
+        from: "2026-08-03",
+        to: "2026-08-03",
+        groupIds: [leaf.id, siblingLeaf.id],
+      });
+
+      expect(entries).toHaveLength(1);
+      expect(entries[0]).toMatchObject({ activityName: "Kajian Daerah Bersama", inherited: true });
+    });
+
+    it("drops an out-of-scope id and returns only the valid id's results", async () => {
+      const leafAdmin = sessionAt("ADMIN", leaf.id, leaf.path);
+      await createActivity(leafAdmin, {
+        groupId: leaf.id,
+        name: "Kelompok Saja",
+        location: "C",
+        startTime: "19:00",
+        durationMinutes: 60,
+        freq: "ONCE",
+        interval: 1,
+        weekdays: [],
+        startsOn: "2026-08-04",
+        endsOn: "2026-08-04",
+      });
+
+      const { entries, groups } = await listActivityOccurrences(leafAdmin, {
+        from: "2026-08-04",
+        to: "2026-08-04",
+        groupIds: [leaf.id, foreignLeaf.id],
+      });
+
+      expect(entries).toHaveLength(1);
+      expect(entries[0].activityName).toBe("Kelompok Saja");
+      expect(groups.map((g) => g.id)).toEqual([leaf.id]);
+    });
   });
 });

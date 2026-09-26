@@ -439,6 +439,8 @@ Tanggal absensi yang dikirim client **sah** hanya jika ada di `keys` untuk `[dat
 2. `occurrencesFor` tiap activity → `(activity, key, effectiveDate, inherited, canEdit, canRecord)`.
 3. Tandai konflik (5.4).
 
+Untuk satu atau lebih grup terpilih `{Y1, …, Yn}` (mis. `/kegiatan?grup=...`): jalankan langkah 1–2 di atas per `Yi` (masing-masing di-resolve & scope-check sendiri; `Yi` di luar scope pemanggil di-drop dari union, bukan menggagalkan seluruh request), gabungkan hasilnya, dedup per occurrence (`activityId` + tanggal kunci) — jika sebuah occurrence muncul lewat lebih dari satu `Yi`, `inherited`-nya `false` bila ia bukan-warisan (milik salah satu `Yi` sendiri/descendant-nya) untuk *setidaknya satu* `Yi` — baru jalankan deteksi konflik (5.4) sekali atas kumpulan gabungan tsb, supaya konflik lintas-grup-terpilih tetap terdeteksi. Kasus `n = 1` berperilaku identik dengan sebelumnya, termasuk default ke grup pemanggil bila tidak ada grup dipilih.
+
 ### 5.4 Deteksi konflik (peringatan saja)
 Dua occurrence **konflik** jika `effectiveDate` sama, jendela `[effectiveStart, effectiveStart+effectiveDuration)` beririsan, keduanya `SCHEDULED`, dan keduanya berlaku untuk minimal satu grup yang sama (salah satu milik ancestor/self/descendant yang lain).
 Dihitung saat simpan kegiatan / override (horizon 90 hari ke depan) dan saat render daftar/kalender.
@@ -491,7 +493,7 @@ Kelompok umur: 0–5 balita, 6–12 anak, 13–18 remaja, 19–59 dewasa, ≥60 
 | `/grup/[id]` | Detail: anak, anggota, kegiatan, user; tombol tambah sub-grup |
 | `/anggota` | Daftar (paginasi `?page=`, 50/hal) + cari nama + filter grup/status |
 | `/anggota/baru`, `/anggota/[id]` | Form; detail + riwayat kehadiran; hapus (soft) |
-| `/kegiatan` | Daftar per rentang tanggal (default minggu ini), badge *warisan*, *konflik*, *dipindah*, *batal* |
+| `/kegiatan` | Daftar **atau** kalender (toggle) per rentang tanggal — mode Hari ini/Minggu ini/Bulan ini/Custom (default Minggu ini), badge *warisan*, *konflik*, *dipindah*, *batal*; filter grup multi-select (dengan pintasan "pilih dengan turunannya") atas union §5.3; semua state (grup, rentang, tampilan) di URL |
 | `/kegiatan/baru`, `/kegiatan/[id]` | Form template; daftar occurrence; aksi geser/akhiri (hanya `canEdit`) |
 | `/kegiatan/[id]/[tanggal]` | Absensi occurrence (+ batalkan / override / geser satu kali) |
 | `/statistik` | Tab: anggota, kegiatan, partisipasi |
