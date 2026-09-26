@@ -242,6 +242,33 @@ export async function activityStatistics(
   return { occurrences: occurrenceStats, trend, byDirectSubGroup };
 }
 
+export type RecentMember = {
+  id: number;
+  name: string;
+  groupName: string;
+  joinedAt: string;
+};
+
+/** Most recently joined AKTIF members in scope, newest first — dashboard "Anggota terbaru" widget. */
+export async function recentMembers(session: SessionUser, limit: number): Promise<RecentMember[]> {
+  const scope = await resolveScopeGroup(session);
+  const members = await db.member.findMany({
+    where: { status: "AKTIF", group: { path: { startsWith: scope.path } } },
+    orderBy: { joinedAt: "desc" },
+    take: limit,
+    include: { group: { select: { name: true } } },
+  });
+  return members.map((m) => ({ id: m.id, name: m.name, groupName: m.group.name, joinedAt: m.joinedAt }));
+}
+
+/** Count of AKTIF members in scope who joined on or after `since` — dashboard stat-card hint. */
+export async function newMembersCount(session: SessionUser, since: string): Promise<number> {
+  const scope = await resolveScopeGroup(session);
+  return db.member.count({
+    where: { status: "AKTIF", joinedAt: { gte: since }, group: { path: { startsWith: scope.path } } },
+  });
+}
+
 export type ParticipationRow = {
   memberId: number;
   memberName: string;

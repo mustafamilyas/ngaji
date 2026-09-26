@@ -4,12 +4,21 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import { DashboardSidebar } from "@/components/dashboard-sidebar";
 import { NAV_ITEMS } from "@/lib/nav";
 import { cn } from "@/lib/utils";
+import type { SessionUser } from "@/lib/auth/session-user";
 
-export function NavShell({ children }: { children: React.ReactNode }) {
+export function NavShell({
+  children,
+  user,
+}: {
+  children: React.ReactNode;
+  user?: Pick<SessionUser, "name" | "role">;
+}) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const isDashboard = pathname === "/";
 
   return (
     <div className="min-h-screen bg-background">
@@ -53,7 +62,7 @@ export function NavShell({ children }: { children: React.ReactNode }) {
         </nav>
       )}
 
-      <div className="hidden border-b bg-background px-4 sm:block">
+      <div className={cn("hidden border-b bg-background px-4 sm:block", isDashboard && "lg:hidden")}>
         <ul className="flex h-12 items-center gap-1">
           {NAV_ITEMS.map((item) => {
             const active =
@@ -75,7 +84,14 @@ export function NavShell({ children }: { children: React.ReactNode }) {
         </ul>
       </div>
 
-      <main className="mx-auto max-w-3xl px-4 py-6">{children}</main>
+      {isDashboard ? (
+        <div className="flex">
+          <DashboardSidebar userName={user?.name ?? ""} userRole={user?.role ?? ""} />
+          <main className="min-w-0 flex-1 px-4 py-6 lg:px-8 lg:py-8">{children}</main>
+        </div>
+      ) : (
+        <main className="mx-auto max-w-3xl px-4 py-6">{children}</main>
+      )}
     </div>
   );
 }
