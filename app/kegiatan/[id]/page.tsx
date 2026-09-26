@@ -47,16 +47,19 @@ export default async function ActivityDetailPage({
   const canEdit = canEditActivity(session.user, activity.groupId);
   const canRecord = isInScope(session.user.groupPath, activity.group.path);
 
-  const from = today();
-  const to = addDays(from, CONFLICT_HORIZON_DAYS);
-  const rows = await loadOccurrenceRows(activity.id, from, to);
-  const occurrences = occurrencesFor(toActivityTemplate(activity), from, to, rows);
+  const scheduleFrom = today();
+  const scheduleTo = addDays(scheduleFrom, CONFLICT_HORIZON_DAYS);
+  const rows = await loadOccurrenceRows(activity.id, scheduleFrom, scheduleTo);
+  const occurrences = occurrencesFor(toActivityTemplate(activity), scheduleFrom, scheduleTo, rows);
+
+  const statsTo = typeof query.to === "string" ? query.to : today();
+  const statsFrom = typeof query.from === "string" ? query.from : addDays(statsTo, -DEFAULT_STATS_RANGE_DAYS);
 
   const attendanceSummary = await activityAttendanceSummary(
     activity.id,
     toActivityTemplate(activity),
     activity.group.path,
-    { from: addDays(today(), -DEFAULT_STATS_RANGE_DAYS), to: today() },
+    { from: statsFrom, to: statsTo },
   );
 
   const defaultValues = {
@@ -120,10 +123,42 @@ export default async function ActivityDetailPage({
       )}
 
       <section className="flex flex-col gap-3 rounded-md border p-3">
-        <h2 className="text-sm font-medium">Absensi</h2>
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <h2 className="text-sm font-medium">Absensi</h2>
+          <form className="flex flex-wrap items-end gap-2" method="get">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="from" className="text-xs text-muted-foreground">
+                Dari
+              </label>
+              <input
+                id="from"
+                type="date"
+                name="from"
+                defaultValue={statsFrom}
+                className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="to" className="text-xs text-muted-foreground">
+                Sampai
+              </label>
+              <input
+                id="to"
+                type="date"
+                name="to"
+                defaultValue={statsTo}
+                className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              />
+            </div>
+            <button type="submit" className="h-9 rounded-md border px-3 text-sm hover:bg-muted">
+              Tampilkan
+            </button>
+          </form>
+        </div>
         <ActivityAttendanceChart
           summary={attendanceSummary}
-          rangeDays={DEFAULT_STATS_RANGE_DAYS}
+          from={statsFrom}
+          to={statsTo}
           activityId={activity.id}
           canRecord={canRecord}
         />

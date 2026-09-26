@@ -259,6 +259,8 @@ export type ActivityAttendanceSummary = {
   totalHadir: number;
   totalIzin: number;
   percentHadir: number;
+  /** Per-member breakdown for the same range — "who is actually attending" drill-down. */
+  participation: ParticipationRow[];
 };
 
 /**
@@ -298,21 +300,30 @@ export async function activityAttendanceSummary(
 
   const todayStr = today();
   const occurrences: ActivityOccurrenceAttendance[] = [];
+  const memberTally = new Map(membersTyped.map((m) => [m.id, { occurrenceCount: 0, hadir: 0, izin: 0 }]));
 
   for (const occurrence of occurrencesFor(template, from, to, rowsForExpand)) {
     if (occurrence.status === "CANCELLED") continue;
     if (occurrence.effectiveDate > todayStr) continue;
 
     const expectedMembers = expected({ effectiveDate: occurrence.effectiveDate }, membersTyped);
-    const expectedIds = new Set(expectedMembers.map((m) => m.id));
-    const attendances = rowsByDate.get(occurrence.key)?.attendances ?? [];
+    const attendanceByMember = new Map(
+      (rowsByDate.get(occurrence.key)?.attendances ?? []).map((a) => [a.memberId, a.status]),
+    );
 
     let hadir = 0;
     let izin = 0;
-    for (const attendance of attendances) {
-      if (!expectedIds.has(attendance.memberId)) continue;
-      if (attendance.status === "HADIR") hadir++;
-      else if (attendance.status === "IZIN") izin++;
+    for (const member of expectedMembers) {
+      const tally = memberTally.get(member.id)!;
+      tally.occurrenceCount++;
+      const status = attendanceByMember.get(member.id);
+      if (status === "HADIR") {
+        hadir++;
+        tally.hadir++;
+      } else if (status === "IZIN") {
+        izin++;
+        tally.izin++;
+      }
     }
 
     occurrences.push({
@@ -332,12 +343,25 @@ export async function activityAttendanceSummary(
   const totalHadir = occurrences.reduce((sum, o) => sum + o.hadir, 0);
   const totalIzin = occurrences.reduce((sum, o) => sum + o.izin, 0);
 
+  const participation: ParticipationRow[] = membersTyped.map((member) => {
+    const tally = memberTally.get(member.id)!;
+    return {
+      memberId: member.id,
+      memberName: member.name,
+      occurrenceCount: tally.occurrenceCount,
+      hadir: tally.hadir,
+      izin: tally.izin,
+      percentHadir: percent(tally.hadir, tally.occurrenceCount),
+    };
+  });
+
   return {
     occurrences,
     totalExpected,
     totalHadir,
     totalIzin,
     percentHadir: percent(totalHadir, totalExpected),
+    participation,
   };
 }
 

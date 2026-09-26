@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ParticipationTable } from "@/app/statistik/participation-table";
 import type { ActivityAttendanceSummary } from "@/lib/stats";
 
 const tooltipStyle = { fontSize: 12, background: "var(--popover, white)", border: "1px solid var(--border)" };
@@ -30,18 +31,22 @@ function StatTile({
 }
 
 /**
- * Attendance for one activity's own detail page, split in two per DESIGN.md
- * (§6 narrowed to one activity): the whole-activity aggregate (metric tiles
- * + % hadir trend line chart) and the single-occurrence breakdown (table).
+ * Attendance for one activity's own detail page, split in three per
+ * DESIGN.md §6 narrowed to one activity: the whole-activity aggregate
+ * (metric tiles + % hadir trend line chart), the single-occurrence
+ * breakdown (table, with a link into each occurrence to record/adjust it),
+ * and the per-member "who is actually attending" drill-down.
  */
 export function ActivityAttendanceChart({
   summary,
-  rangeDays,
+  from,
+  to,
   activityId,
   canRecord,
 }: {
   summary: ActivityAttendanceSummary;
-  rangeDays: number;
+  from: string;
+  to: string;
   activityId: number;
   canRecord: boolean;
 }) {
@@ -53,7 +58,9 @@ export function ActivityAttendanceChart({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h3 className="mb-2 text-sm font-medium">Ringkasan ({rangeDays} hari terakhir)</h3>
+        <h3 className="mb-2 text-sm font-medium">
+          Ringkasan ({from} – {to})
+        </h3>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <StatTile label="Occurrence" value={summary.occurrences.length} />
           <StatTile label="Hadir" value={summary.totalHadir} tone="good" />
@@ -115,7 +122,7 @@ export function ActivityAttendanceChart({
                   {canRecord && (
                     <td className="py-2 pl-2 text-right">
                       <Link href={`/kegiatan/${activityId}/${o.key}`} className="text-xs text-primary hover:underline">
-                        Lihat
+                        {o.hadir + o.izin > 0 ? "Ubah absensi" : "Isi absensi"}
                       </Link>
                     </td>
                   )}
@@ -124,7 +131,7 @@ export function ActivityAttendanceChart({
               {summary.occurrences.length === 0 && (
                 <tr>
                   <td colSpan={canRecord ? 7 : 6} className="py-4 text-center text-muted-foreground">
-                    Belum ada riwayat absensi dalam {rangeDays} hari terakhir.
+                    Belum ada riwayat absensi pada rentang ini.
                   </td>
                 </tr>
               )}
@@ -132,6 +139,13 @@ export function ActivityAttendanceChart({
           </table>
         </div>
       </div>
+
+      {canRecord && (
+        <div>
+          <h3 className="mb-2 text-sm font-medium">Siapa yang hadir</h3>
+          <ParticipationTable rows={summary.participation} />
+        </div>
+      )}
     </div>
   );
 }
