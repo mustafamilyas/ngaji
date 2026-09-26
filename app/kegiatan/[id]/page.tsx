@@ -5,11 +5,12 @@ import { toActivityTemplate } from "@/lib/activity/template";
 import { occurrencesFor } from "@/lib/activity/occurrences";
 import { loadOccurrenceRows } from "@/lib/activity/rows";
 import { canEditActivity } from "@/lib/authz";
-import { CONFLICT_HORIZON_DAYS } from "@/lib/constants";
+import { CONFLICT_HORIZON_DAYS, DEFAULT_STATS_RANGE_DAYS } from "@/lib/constants";
 import { addDays, today } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
 import { resolveActivity } from "@/lib/resolve";
 import { isInScope } from "@/lib/scope";
+import { activityAttendanceSummary } from "@/lib/stats";
 import { ActivityForm } from "../activity-form";
 import { DeleteActivityForm } from "./delete-activity-form";
 import { EndActivityForm } from "./end-activity-form";
@@ -49,6 +50,13 @@ export default async function ActivityDetailPage({
   const to = addDays(from, CONFLICT_HORIZON_DAYS);
   const rows = await loadOccurrenceRows(activity.id, from, to);
   const occurrences = occurrencesFor(toActivityTemplate(activity), from, to, rows);
+
+  const attendanceSummary = await activityAttendanceSummary(
+    activity.id,
+    toActivityTemplate(activity),
+    activity.group.path,
+    { from: addDays(today(), -DEFAULT_STATS_RANGE_DAYS), to: today() },
+  );
 
   const defaultValues = {
     name: activity.name,
@@ -109,6 +117,54 @@ export default async function ActivityDetailPage({
           <DeleteActivityForm activityId={activity.id} />
         </section>
       )}
+
+      <section className="flex flex-col gap-3 rounded-md border p-3">
+        <h2 className="text-sm font-medium">Absensi ({DEFAULT_STATS_RANGE_DAYS} hari terakhir)</h2>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="rounded-md border p-2 text-center">
+            <p className="text-lg font-semibold">{attendanceSummary.totalExpected}</p>
+            <p className="text-xs text-muted-foreground">Ekspektasi</p>
+          </div>
+          <div className="rounded-md border p-2 text-center">
+            <p className="text-lg font-semibold">{attendanceSummary.totalHadir}</p>
+            <p className="text-xs text-muted-foreground">Hadir</p>
+          </div>
+          <div className="rounded-md border p-2 text-center">
+            <p className="text-lg font-semibold">{attendanceSummary.totalIzin}</p>
+            <p className="text-xs text-muted-foreground">Izin</p>
+          </div>
+          <div className="rounded-md border p-2 text-center">
+            <p className="text-lg font-semibold">{attendanceSummary.percentHadir}%</p>
+            <p className="text-xs text-muted-foreground">% Hadir</p>
+          </div>
+        </div>
+
+        {attendanceSummary.occurrences.length > 0 ? (
+          <ul className="flex flex-col divide-y">
+            {attendanceSummary.occurrences.map((occurrence) => (
+              <li key={occurrence.key} className="flex items-center justify-between gap-2 py-2 text-sm">
+                <span>{occurrence.effectiveDate}</span>
+                <span className="text-xs text-muted-foreground">
+                  Hadir {occurrence.hadir} · Izin {occurrence.izin} · Tidak hadir {occurrence.absent} ·{" "}
+                  {occurrence.percentHadir}%
+                </span>
+                {canRecord && (
+                  <Link
+                    href={`/kegiatan/${activity.id}/${occurrence.key}`}
+                    className="shrink-0 text-xs text-primary hover:underline"
+                  >
+                    Lihat
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Belum ada riwayat absensi dalam {DEFAULT_STATS_RANGE_DAYS} hari terakhir.
+          </p>
+        )}
+      </section>
 
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-medium">Jadwal ({occurrences.length})</h2>

@@ -1,4 +1,4 @@
-import { occurrencesFor, type OccurrenceRow } from "@/lib/activity/occurrences";
+import { occurrencesFor, type ActivityTemplate, type OccurrenceRow } from "@/lib/activity/occurrences";
 import { toActivityTemplate } from "@/lib/activity/template";
 import type { SessionUser } from "@/lib/auth/session-user";
 import { AGE_BRACKETS } from "@/lib/constants";
@@ -240,6 +240,105 @@ export async function activityStatistics(
   });
 
   return { occurrences: occurrenceStats, trend, byDirectSubGroup };
+}
+
+export type ActivityOccurrenceAttendance = {
+  key: string;
+  effectiveDate: string;
+  expected: number;
+  hadir: number;
+  izin: number;
+  absent: number;
+  percentHadir: number;
+};
+
+export type ActivityAttendanceSummary = {
+  /** Past, non-cancelled occurrences in the range, most recent first. */
+  occurrences: ActivityOccurrenceAttendance[];
+  totalExpected: number;
+  totalHadir: number;
+  totalIzin: number;
+  percentHadir: number;
+};
+
+/**
+ * Attendance history for a single activity, for its own detail page
+ * (DESIGN.md §6 "Kegiatan" narrowed to one activity). Expected members are
+ * drawn from the activity's own group subtree — not the viewer's session
+ * scope — since visibility of an inherited activity is already decided by
+ * `resolveActivity`.
+ */
+export async function activityAttendanceSummary(
+  activityId: number,
+  template: ActivityTemplate,
+  groupPath: string,
+  { from, to }: { from: string; to: string },
+): Promise<ActivityAttendanceSummary> {
+  const occurrenceRows = await db.activityOccurrence.findMany({
+    where: {
+      activityId,
+      OR: [{ date: { gte: from, lte: to } }, { overrideDate: { gte: from, lte: to } }],
+    },
+    include: { attendances: true },
+  });
+  const rowsByDate = new Map(occurrenceRows.map((r) => [r.date, r]));
+  const rowsForExpand: OccurrenceRow[] = occurrenceRows.map((r) => ({
+    date: r.date,
+    status: r.status as OccurrenceStatus,
+    overrideDate: r.overrideDate,
+    overrideStartTime: r.overrideStartTime,
+    overrideDurationMinutes: r.overrideDurationMinutes,
+    overrideLocation: r.overrideLocation,
+    overrideNotes: r.overrideNotes,
+    hasAttendance: r.attendances.length > 0,
+  }));
+
+  const members = await db.member.findMany({ where: { group: { path: { startsWith: groupPath } } } });
+  const membersTyped = members.map((m) => ({ ...m, status: m.status as MemberStatus }));
+
+  const todayStr = today();
+  const occurrences: ActivityOccurrenceAttendance[] = [];
+
+  for (const occurrence of occurrencesFor(template, from, to, rowsForExpand)) {
+    if (occurrence.status === "CANCELLED") continue;
+    if (occurrence.effectiveDate > todayStr) continue;
+
+    const expectedMembers = expected({ effectiveDate: occurrence.effectiveDate }, membersTyped);
+    const expectedIds = new Set(expectedMembers.map((m) => m.id));
+    const attendances = rowsByDate.get(occurrence.key)?.attendances ?? [];
+
+    let hadir = 0;
+    let izin = 0;
+    for (const attendance of attendances) {
+      if (!expectedIds.has(attendance.memberId)) continue;
+      if (attendance.status === "HADIR") hadir++;
+      else if (attendance.status === "IZIN") izin++;
+    }
+
+    occurrences.push({
+      key: occurrence.key,
+      effectiveDate: occurrence.effectiveDate,
+      expected: expectedMembers.length,
+      hadir,
+      izin,
+      absent: expectedMembers.length - hadir - izin,
+      percentHadir: percent(hadir, expectedMembers.length),
+    });
+  }
+
+  occurrences.sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate));
+
+  const totalExpected = occurrences.reduce((sum, o) => sum + o.expected, 0);
+  const totalHadir = occurrences.reduce((sum, o) => sum + o.hadir, 0);
+  const totalIzin = occurrences.reduce((sum, o) => sum + o.izin, 0);
+
+  return {
+    occurrences,
+    totalExpected,
+    totalHadir,
+    totalIzin,
+    percentHadir: percent(totalHadir, totalExpected),
+  };
 }
 
 export type RecentMember = {

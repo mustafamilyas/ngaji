@@ -32,6 +32,28 @@ describe("AttendancePage", () => {
         searchParams: Promise.resolve({}),
       }),
     );
+    expect(html).toContain("Cari nama anggota");
+    expect(html).toContain("Belum ada yang ditandai");
+  });
+
+  it("shows a member with existing attendance in the marked list without searching", async () => {
+    const fixture = await buildPageFixture("kegiatan-absensi-existing");
+    const session = sessionFor(fixture.actorId, "OWNER", fixture.leaf);
+    mockAuthSession(auth, { user: session });
+
+    const occurrence = await db.activityOccurrence.create({
+      data: { activityId: fixture.activityId, date: today() },
+    });
+    await db.attendance.create({
+      data: { occurrenceId: occurrence.id, memberId: fixture.memberId, status: "HADIR", recordedById: fixture.actorId },
+    });
+
+    const html = renderToStaticMarkup(
+      await AttendancePage({
+        params: Promise.resolve({ id: String(fixture.activityId), tanggal: today() }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
     expect(html).toContain("Anggota Uji");
   });
 
