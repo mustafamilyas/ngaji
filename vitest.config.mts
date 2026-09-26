@@ -4,6 +4,12 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
+  // The project's tsconfig sets `jsx: "preserve"` (Next's own SWC compiler does the
+  // real transform at build time); Vite would otherwise inherit that and leave JSX
+  // untransformed when a test imports a page/component module directly.
+  oxc: {
+    jsx: "automatic",
+  },
   test: {
     environment: "node",
     include: ["**/*.test.ts"],

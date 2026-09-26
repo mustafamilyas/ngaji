@@ -29,18 +29,31 @@ const ICONS: Record<string, LucideIcon> = {
   "/audit": ScrollText,
 };
 
-export function DashboardSidebar({ userName, userRole }: { userName: string; userRole: string }) {
+export function BrandMark({ withLabel = true }: { withLabel?: boolean }) {
+  return (
+    <Link href="/" className="flex items-center gap-2 px-2">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary font-heading text-sm font-bold text-primary-foreground">
+        N
+      </span>
+      {withLabel && <span className="font-heading text-lg font-semibold">Ngaji</span>}
+    </Link>
+  );
+}
+
+/** Nav links, general section, and user card shared by the docked sidebar and the mobile drawer. */
+export function SidebarNav({
+  userName,
+  userRole,
+  onNavigate,
+}: {
+  userName: string;
+  userRole: string;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden w-60 shrink-0 flex-col gap-6 border-r bg-card px-3 py-5 lg:flex">
-      <Link href="/" className="flex items-center gap-2 px-2">
-        <span className="flex size-8 items-center justify-center rounded-lg bg-primary font-heading text-sm font-bold text-primary-foreground">
-          N
-        </span>
-        <span className="font-heading text-lg font-semibold">Ngaji</span>
-      </Link>
-
+    <>
       <nav className="flex flex-col gap-1">
         <p className="px-2.5 text-xs font-medium text-muted-foreground">MENU</p>
         <ul className="flex flex-col gap-0.5">
@@ -51,6 +64,7 @@ export function DashboardSidebar({ userName, userRole }: { userName: string; use
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  onClick={onNavigate}
                   className={cn(
                     "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
                     active
@@ -73,6 +87,7 @@ export function DashboardSidebar({ userName, userRole }: { userName: string; use
           <li>
             <Link
               href="/akun/password"
+              onClick={onNavigate}
               className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <Settings className="size-4" />
@@ -102,6 +117,16 @@ export function DashboardSidebar({ userName, userRole }: { userName: string; use
           <p className="truncate text-xs text-muted-foreground">{userRole}</p>
         </div>
       </div>
+    </>
+  );
+}
+
+/** Docked left sidebar, visible on every page at `lg` and up. */
+export function AppSidebar({ userName, userRole }: { userName: string; userRole: string }) {
+  return (
+    <aside className="hidden w-60 shrink-0 flex-col gap-6 border-r bg-card px-3 py-5 lg:flex">
+      <BrandMark />
+      <SidebarNav userName={userName} userRole={userRole} />
     </aside>
   );
 }
