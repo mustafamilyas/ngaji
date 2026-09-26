@@ -107,7 +107,7 @@ export function ActivityAttendanceChart({
                 <th className="py-2 pr-2 text-right">Tidak hadir</th>
                 <th className="py-2 pr-2 text-right">Expected</th>
                 <th className="py-2 pr-2 text-right">% Hadir</th>
-                {canRecord && <th className="py-2 pl-2 text-right">Aksi</th>}
+                <th className="py-2 pl-2 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -119,18 +119,16 @@ export function ActivityAttendanceChart({
                   <td className="py-2 pr-2 text-right">{o.absent}</td>
                   <td className="py-2 pr-2 text-right">{o.expected}</td>
                   <td className="py-2 pr-2 text-right">{o.percentHadir}%</td>
-                  {canRecord && (
-                    <td className="py-2 pl-2 text-right">
-                      <Link href={`/kegiatan/${activityId}/${o.key}`} className="text-xs text-primary hover:underline">
-                        {o.hadir + o.izin > 0 ? "Ubah absensi" : "Isi absensi"}
-                      </Link>
-                    </td>
-                  )}
+                  <td className="py-2 pl-2 text-right">
+                    <Link href={`/kegiatan/${activityId}/${o.key}`} className="text-xs text-primary hover:underline">
+                      {canRecord ? (o.hadir + o.izin > 0 ? "Ubah absensi" : "Isi absensi") : "Lihat"}
+                    </Link>
+                  </td>
                 </tr>
               ))}
               {summary.occurrences.length === 0 && (
                 <tr>
-                  <td colSpan={canRecord ? 7 : 6} className="py-4 text-center text-muted-foreground">
+                  <td colSpan={7} className="py-4 text-center text-muted-foreground">
                     Belum ada riwayat absensi pada rentang ini.
                   </td>
                 </tr>
@@ -140,12 +138,10 @@ export function ActivityAttendanceChart({
         </div>
       </div>
 
-      {canRecord && (
-        <div>
-          <h3 className="mb-2 text-sm font-medium">Siapa yang hadir</h3>
-          <ParticipationTable rows={summary.participation} />
-        </div>
-      )}
+      <div>
+        <h3 className="mb-2 text-sm font-medium">Siapa yang hadir</h3>
+        <ParticipationTable rows={summary.participation} />
+      </div>
     </div>
   );
 }

@@ -180,14 +180,12 @@ export default async function ActivityDetailPage({
                       <span className="ml-1 text-xs text-destructive">batal</span>
                     )}
                   </span>
-                  {canRecord && (
-                    <Link
-                      href={`/kegiatan/${activity.id}/${occurrence.key}`}
-                      className="text-xs text-primary hover:underline"
-                    >
-                      Isi absensi
-                    </Link>
-                  )}
+                  <Link
+                    href={`/kegiatan/${activity.id}/${occurrence.key}`}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    {canRecord ? "Isi absensi" : "Lihat"}
+                  </Link>
                 </div>
                 {canEdit && (
                   <OccurrenceOverrideForm

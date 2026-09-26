@@ -57,10 +57,17 @@ describe("AttendancePage", () => {
     expect(html).toContain("Anggota Uji");
   });
 
-  it("renders the read-only notice for a session outside the recording scope", async () => {
+  it("shows a read-only, cross-subtree view (including attendee names) for a session outside the recording scope", async () => {
     const fixture = await buildPageFixture("kegiatan-absensi-out-of-scope");
     const session = sessionFor(fixture.actorId, "OWNER", fixture.root);
     mockAuthSession(auth, { user: session });
+
+    const occurrence = await db.activityOccurrence.create({
+      data: { activityId: fixture.activityId, date: today() },
+    });
+    await db.attendance.create({
+      data: { occurrenceId: occurrence.id, memberId: fixture.memberId, status: "HADIR", recordedById: fixture.actorId },
+    });
 
     const html = renderToStaticMarkup(
       await AttendancePage({
@@ -69,6 +76,8 @@ describe("AttendancePage", () => {
       }),
     );
     expect(html).toContain("tidak bisa mengisi absensi");
+    expect(html).toContain("Anggota Uji");
+    expect(html).not.toContain("Cari nama anggota");
   });
 
   it("404s for a malformed date", async () => {

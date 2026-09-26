@@ -207,7 +207,9 @@ export function AttendanceForm({
           <li className="py-2.5 text-sm text-muted-foreground">
             {members.length === 0
               ? "Tidak ada anggota yang diharapkan hadir."
-              : "Belum ada yang ditandai hadir/izin. Cari nama di atas untuk menandai."}
+              : readOnly
+                ? "Belum ada yang ditandai hadir/izin."
+                : "Belum ada yang ditandai hadir/izin. Cari nama di atas untuk menandai."}
           </li>
         )}
       </ul>
