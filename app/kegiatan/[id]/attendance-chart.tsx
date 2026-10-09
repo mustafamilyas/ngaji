@@ -112,7 +112,7 @@ export function ActivityAttendanceChart({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-left text-xs text-muted-foreground">
+              <tr className="border-b text-left text-xs whitespace-nowrap text-muted-foreground">
                 <th className="py-2 pr-2">Tanggal</th>
                 <th className="py-2 pr-2 text-right">Hadir</th>
                 <th className="py-2 pr-2 text-right">Izin</th>
@@ -125,7 +125,7 @@ export function ActivityAttendanceChart({
             <tbody>
               {visibleOccurrences.items.map((o) => (
                 <tr key={o.key} className="border-b last:border-0">
-                  <td className="py-2 pr-2">{o.effectiveDate}</td>
+                  <td className="py-2 pr-2 whitespace-nowrap">{o.effectiveDate}</td>
                   <td className="py-2 pr-2 text-right">{o.hadir}</td>
                   <td className="py-2 pr-2 text-right">{o.izin}</td>
                   <td className="py-2 pr-2 text-right">{o.absent}</td>

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatDate,
   formatDateRange,
   isDateString,
   parseGroupIds,
@@ -175,6 +176,12 @@ describe("shiftDateRange", () => {
   it("cannot shift an open range", () => {
     expect(shiftDateRange({ mode: "semua", anchor: TODAY, from: undefined, to: undefined }, 1)).toBeNull();
     expect(shiftDateRange({ mode: "custom", anchor: TODAY, from: "2026-10-01", to: undefined }, 1)).toBeNull();
+  });
+});
+
+describe("formatDate", () => {
+  it("formats a single date", () => {
+    expect(formatDate("1990-03-12")).toBe("12 Mar 1990");
   });
 });
 

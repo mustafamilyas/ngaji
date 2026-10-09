@@ -150,6 +150,12 @@ function dateParts(date: string) {
   return { year, month: MONTHS[month - 1], day };
 }
 
+/** "12 Mar 1990" — same deterministic formatting as `formatDateRange`. */
+export function formatDate(date: string): string {
+  const { day, month, year } = dateParts(date);
+  return `${day} ${month} ${year}`;
+}
+
 /**
  * Short Indonesian label for a range ("4–10 Okt 2026"). Hand-rolled rather
  * than `Intl.DateTimeFormat#formatRange`, whose spacing differs between

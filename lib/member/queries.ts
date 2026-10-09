@@ -33,7 +33,7 @@ export async function listMembers(session: SessionUser, filter: ListMembersFilte
     orderBy: { name: "asc" as const },
     skip: (page - 1) * PAGE_SIZE,
     take: PAGE_SIZE,
-    include: { group: true },
+    include: { group: { include: { parent: { select: { name: true } } } } },
   });
 
   return { members, total, page, pageSize: PAGE_SIZE };

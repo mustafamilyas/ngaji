@@ -388,7 +388,7 @@ Helper `audit(tx, { action, entity, entityId, groupId, before, after, meta })` d
 | `occurrence.override` | batal/geser/jam/lokasi | snapshot baris occurrence |
 | `attendance.save` | simpan massal absensi | `meta: { date, groupId, set: [{memberId,status}], removed: [memberId] }` |
 
-Halaman `/audit` (OWNER): tabel terbaru dulu, filter aksi / aktor / rentang tanggal, paginasi.
+Halaman `/audit` (OWNER): terbaru dulu, filter grup (multi, termasuk turunan; memilih grup menyembunyikan entri `auth.*` tanpa grup) / rentang tanggal (default semua waktu) / aksi / aktor, paginasi (§7.1).
 
 ---
 
@@ -478,7 +478,9 @@ Fungsi `expected(occurrence, groupId)` terpusat di `lib/stats.ts` — juga dipak
 | Kegiatan | Per occurrence (tidak CANCELLED, `effectiveDate ≤ hari ini`): hadir / izin / tidak hadir / expected / % hadir. Tren % hadir per tanggal. Breakdown per sub-grup langsung. |
 | Partisipasi anggota | Per anggota: occurrence yang berlaku untuknya (kegiatan grupnya + ancestor, tidak CANCELLED) dengan `effectiveDate` di `[max(dari, joinedAt), min(sampai, exitedAt ?? hari ini)]`; hadir, izin, % hadir. Tabel bisa diurutkan. Detail di halaman anggota. |
 
-Kelompok umur: 0–5 balita, 6–12 anak, 13–18 remaja, 19–59 dewasa, ≥60 lansia. Dihitung dari `birthDate` saat query. Batas umur di `lib/constants.ts` (`AGE_BRACKETS`), bersama `DEFAULT_STATS_RANGE_DAYS = 30`, `CONFLICT_HORIZON_DAYS = 90`, `PAGE_SIZE = 50`.
+Kelompok umur: 0–5 balita, 6–12 anak, 13–18 remaja, 19–59 dewasa, ≥60 lansia. Dihitung dari `birthDate` saat query. Batas umur di `lib/constants.ts` (`AGE_BRACKETS`), bersama `DEFAULT_STATS_RANGE_DAYS = 30`, `CONFLICT_HORIZON_DAYS = 90`, `PAGE_SIZE = 50`, `EMBEDDED_PAGE_SIZE = 10`, dan preset rentang tanggal per halaman (`*_DATE_RANGE`).
+
+Rentang default "30 hari terakhir" = 30 hari inklusif (today−29 .. today). Statistik dihitung untuk **satu** grup scope (default grup user) karena breakdown-nya per sub-grup langsung; filter grup di `/statistik` karena itu single-select.
 
 ---
 
@@ -490,16 +492,25 @@ Kelompok umur: 0–5 balita, 6–12 anak, 13–18 remaja, 19–59 dewasa, ≥60 
 | `/akun/password` | Ganti password sendiri (wajib jika `mustChangePassword`) |
 | `/` | Dashboard: ringkasan statistik scope + kegiatan 7 hari ke depan |
 | `/grup` | Pohon grup dalam scope |
-| `/grup/[id]` | Detail: anak, anggota, kegiatan, user; tombol tambah sub-grup |
-| `/anggota` | Daftar (paginasi `?page=`, 50/hal) + cari nama + filter grup/status |
-| `/anggota/baru`, `/anggota/[id]` | Form; detail + riwayat kehadiran; hapus (soft) |
-| `/kegiatan` | Daftar **atau** kalender (toggle) per rentang tanggal — mode Hari ini/Minggu ini/Bulan ini/Custom (default Minggu ini), badge *warisan*, *konflik*, *dipindah*, *batal*; filter grup multi-select (dengan pintasan "pilih dengan turunannya") atas union §5.3; semua state (grup, rentang, tampilan) di URL |
-| `/kegiatan/baru`, `/kegiatan/[id]` | Form template; daftar occurrence; aksi geser/akhiri (hanya `canEdit`) |
-| `/kegiatan/[id]/[tanggal]` | Absensi occurrence (+ batalkan / override / geser satu kali) |
-| `/statistik` | Tab: anggota, kegiatan, partisipasi |
-| `/pengguna` | OWNER & ADMIN: buat user; OWNER: ubah peran, pindah grup, nonaktifkan; reset password sesuai §3.4 |
+| `/grup/[id]` | Detail: anak, anggota, kegiatan, user — masing-masing dipaginasi sendiri (`?subgrup=`, `?anggota=`, `?kegiatan=`, `?pengguna=`, 10/hal); tombol tambah sub-grup |
+| `/anggota` | Tabel (paginasi `?page=`, 50/hal) + cari nama + filter grup (multi, termasuk turunan) / status; kolom bisa dipilih (§7.1); tombol WhatsApp per anggota |
+| `/anggota/baru`, `/anggota/[id]` | Form; detail + tombol WhatsApp + riwayat kehadiran (paginasi `?riwayat=`, 10/hal); hapus (soft) |
+| `/kegiatan` | Daftar **atau** kalender (toggle) per rentang tanggal — preset Hari ini/Minggu ini/Bulan ini/pilih tanggal (default Minggu ini) dengan tombol ‹ › per rentang, badge *warisan*, *konflik*, *dipindah*, *batal*; cari nama kegiatan (badge konflik tetap dihitung dari semua kegiatan); filter grup multi-select (dengan pintasan "pilih dengan turunannya") atas union §5.3; daftar dipaginasi 50/hal; semua state (grup, rentang, tampilan, cari) di URL |
+| `/kegiatan/baru`, `/kegiatan/[id]` | Form template; absensi per rentang (preset 7/30/90 hari, bulan ini, pilih tanggal; default 30 hari) dengan tabel per-occurrence & per-anggota (10/hal); jadwal 90 hari ke depan (`?jadwal=`, 10/hal); aksi geser/akhiri (hanya `canEdit`) |
+| `/kegiatan/[id]/[tanggal]` | Absensi occurrence (+ batalkan / override / geser satu kali) — **tidak** dipaginasi (semua anggota perlu terlihat saat mengisi; ada pencarian) |
+| `/statistik` | Tab: anggota, kegiatan, partisipasi; filter satu grup + rentang tanggal (tidak di tab anggota); tab partisipasi bisa cari nama dan dipaginasi 50/hal |
+| `/pengguna` | OWNER & ADMIN: buat user; OWNER: ubah peran, pindah grup, nonaktifkan; reset password sesuai §3.4; cari nama/username + filter grup (multi, termasuk turunan); paginasi 50/hal |
 | `/pengaturan/jenjang` | OWNER root: rename level |
-| `/audit` | OWNER: audit log dalam scope |
+| `/audit` | OWNER: audit log dalam scope (§4.5) |
+
+### 7.1 Konvensi tampilan daftar
+
+- **Tata letak**: bingkai aplikasi setinggi layar; hanya area konten yang scroll. Sidebar desktop bisa diperkecil jadi ikon (tombol atau Ctrl/⌘+B; disimpan di cookie `sidebar_collapsed`). Di HP menu berupa drawer di atas konten.
+- **Filter standar** (`components/filters/*`, parsing di `lib/filters.ts`): cari nama (`q`), grup (`grup`, id dipisah koma), rentang tanggal (`range` = preset atau `custom`, `anchor`, `from`, `to`). Hanya halaman dengan tanggal yang alami yang punya filter tanggal (kegiatan, statistik, detail kegiatan, audit); anggota/pengguna/grup tidak. Field kosong tidak masuk URL; mengubah filter selalu kembali ke halaman 1. Setiap id grup dari URL di-resolve & dicek scope di server (`resolveGroups`, di luar scope → 404), kecuali `/kegiatan` yang tetap membuang id di luar scope (§5.3).
+- **Arti filter grup**: di anggota, pengguna, audit = grup terpilih **beserta turunannya**; di kegiatan = kegiatan yang **berlaku untuk** grup terpilih (§5.3); di statistik = satu grup scope.
+- **Paginasi** (`lib/pagination.ts`, `components/pagination.tsx`): setiap daftar yang mungkin dipaginasi; halaman di luar jangkauan dijepit ke halaman terakhir. Daftar penuh `PAGE_SIZE`, daftar di dalam halaman detail `EMBEDDED_PAGE_SIZE` dengan parameter sendiri dan tanpa lompat ke atas. Tidak dipaginasi: form absensi, pohon grup, pratinjau dashboard. Tabel yang diurutkan di klien (partisipasi, per-occurrence) dipaginasi di klien.
+- **Kolom tabel anggota** (`lib/member/columns.ts`): Nama selalu tampil; default WhatsApp, Grup, Jenis kelamin, Tanggal lahir (+umur), Status; opsional No. HP, Tempat lahir, Alamat, Status nikah, Pekerjaan, Email, Tanggal masuk. Pilihan disimpan di cookie httpOnly `anggota_kolom` (preferensi UI, tidak diaudit) dan divalidasi ulang tiap request. Hanya kolom terpilih yang dirender di server, jadi PII kolom tersembunyi tidak dikirim ke browser.
+- **WhatsApp**: link `https://wa.me/<nomor>` (tab baru). `Member.phone` teks bebas dinormalisasi (`lib/member/whatsapp.ts`): `0…`, `62…`, `+62…`, `8…` → `62…`; nomor negara lain harus diawali `+`. Nomor yang tidak valid tidak menghasilkan tombol.
 
 ---
 

@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { Pagination } from "@/components/pagination";
+import { WhatsAppButton } from "@/components/whatsapp-button";
 import { attendanceHistoryForMember } from "@/lib/attendance/history";
 import { NotFoundError } from "@/lib/errors";
 import { parsePage } from "@/lib/filters";
@@ -52,9 +53,12 @@ export default async function MemberDetailPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <p className="text-xs text-muted-foreground">{member.group.name}</p>
-        <h1 className="text-lg font-semibold">{member.name}</h1>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs text-muted-foreground">{member.group.name}</p>
+          <h1 className="text-lg font-semibold">{member.name}</h1>
+        </div>
+        <WhatsAppButton phone={member.phone} name={member.name} />
       </div>
 
       <MemberForm mode="edit" memberId={member.id} defaultValues={defaultValues} />

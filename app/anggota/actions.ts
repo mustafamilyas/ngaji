@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import type { Member } from "@/lib/generated/prisma/client";
+import { MEMBER_COLUMNS, MEMBER_COLUMNS_COOKIE, serializeMemberColumns } from "@/lib/member/columns";
 import { createMember, deleteMember, updateMember } from "@/lib/member/mutations";
 import { type ActionResult, ValidationError, runAction } from "@/lib/errors";
 import {
@@ -71,5 +73,25 @@ export async function deleteMemberAction(
     revalidatePath("/anggota");
     revalidatePath(`/grup/${deleted.groupId}`);
     redirect("/anggota");
+  });
+}
+
+/**
+ * Saves which optional `/anggota` table columns the viewer wants. A UI
+ * preference, not domain data, so it lives in a cookie and is not audited;
+ * values are re-validated on every read (`parseMemberColumns`). Setting a
+ * cookie in a Server Action refreshes the current route, so the table
+ * re-renders with the new columns.
+ */
+export async function setMemberColumnsAction(formData: FormData): Promise<void> {
+  await requireSession();
+  const chosen = formData.getAll("kolom").filter((v): v is string => typeof v === "string");
+  const columns = MEMBER_COLUMNS.map((c) => c.key).filter((key) => chosen.includes(key));
+  (await cookies()).set(MEMBER_COLUMNS_COOKIE, serializeMemberColumns(columns), {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
   });
 }
