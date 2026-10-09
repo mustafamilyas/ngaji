@@ -19,6 +19,8 @@ export const AGE_BRACKETS: AgeBracket[] = [
 export const DEFAULT_STATS_RANGE_DAYS = 30;
 export const CONFLICT_HORIZON_DAYS = 90;
 export const PAGE_SIZE = 50;
+/** Page size for lists embedded in a detail page (group members, schedule, history, per-occurrence table). */
+export const EMBEDDED_PAGE_SIZE = 10;
 
 /** Date range presets per page for the shared filter (`lib/filters.ts`); first listed = shown first. */
 export const ACTIVITY_LIST_DATE_RANGE: DateRangeConfig = { modes: ["hari", "minggu", "bulan", "custom"], defaultMode: "minggu" };

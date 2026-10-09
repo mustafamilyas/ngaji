@@ -3,6 +3,7 @@ import { visibleGroupsWhere } from "@/lib/authz";
 import { PAGE_SIZE } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
+import { clampPage } from "@/lib/pagination";
 import { resolveGroups } from "@/lib/resolve";
 
 export type AuditLogFilter = {
@@ -43,8 +44,6 @@ function endOfDayJakarta(date: string): Date {
 export async function listAuditLog(session: SessionUser, filter: AuditLogFilter = {}) {
   if (session.role !== "OWNER") throw new NotFoundError();
 
-  const page = filter.page && filter.page > 0 ? Math.floor(filter.page) : 1;
-
   const selectedGroups =
     filter.groupIds && filter.groupIds.length > 0 ? await resolveGroups(session, filter.groupIds) : undefined;
 
@@ -72,16 +71,15 @@ export async function listAuditLog(session: SessionUser, filter: AuditLogFilter 
       : {}),
   };
 
-  const [entries, total] = await Promise.all([
-    db.auditLog.findMany({
-      where,
-      include: { actor: { select: { id: true, name: true, username: true } } },
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-    }),
-    db.auditLog.count({ where }),
-  ]);
+  const total = await db.auditLog.count({ where });
+  const page = clampPage(filter.page ?? 1, total, PAGE_SIZE);
+  const entries = await db.auditLog.findMany({
+    where,
+    include: { actor: { select: { id: true, name: true, username: true } } },
+    orderBy: { createdAt: "desc" },
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
+  });
 
   return { entries, total, page, pageSize: PAGE_SIZE };
 }

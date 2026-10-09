@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { Pagination } from "@/components/pagination";
 import { FilterBar, SearchFilter, SelectFilter } from "@/components/filters/filter-bar";
 import { GroupFilter } from "@/components/filters/group-filter";
 import { visibleGroupsWhere } from "@/lib/authz";
@@ -8,6 +9,7 @@ import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
 import { parseGroupIds, parsePage, parseSearch } from "@/lib/filters";
 import { MEMBER_STATUS_LABELS } from "@/lib/member/labels";
+import { pageHref } from "@/lib/pagination";
 import { listMembers } from "@/lib/member/queries";
 import { MEMBER_STATUSES, type MemberStatus } from "@/lib/validation/enums";
 
@@ -29,7 +31,7 @@ export default async function MembersPage({
   const status = typeof params.status === "string" && isMemberStatus(params.status) ? params.status : undefined;
   const page = parsePage(params.page);
 
-  const [{ members, total, pageSize }, groups] = await Promise.all([
+  const [{ members, total, page: currentPage, pageSize }, groups] = await Promise.all([
     (async () => {
       try {
         return await listMembers(session.user, { search: q, groupIds, status, page });
@@ -45,17 +47,7 @@ export default async function MembersPage({
     }),
   ]);
 
-  const currentPage = page;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  function pageHref(target: number) {
-    const next = new URLSearchParams();
-    if (q) next.set("q", q);
-    if (groupIds) next.set("grup", groupIds.join(","));
-    if (status) next.set("status", status);
-    next.set("page", String(target));
-    return `/anggota?${next.toString()}`;
-  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -97,27 +89,13 @@ export default async function MembersPage({
         <p className="text-sm text-muted-foreground">Tidak ada anggota yang cocok.</p>
       )}
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm">
-          {currentPage > 1 ? (
-            <Link href={pageHref(currentPage - 1)} className="text-primary hover:underline">
-              Sebelumnya
-            </Link>
-          ) : (
-            <span />
-          )}
-          <span className="text-muted-foreground">
-            Halaman {currentPage} dari {totalPages}
-          </span>
-          {currentPage < totalPages ? (
-            <Link href={pageHref(currentPage + 1)} className="text-primary hover:underline">
-              Berikutnya
-            </Link>
-          ) : (
-            <span />
-          )}
-        </div>
-      )}
+      <Pagination
+        page={currentPage}
+        pageSize={pageSize}
+        total={total}
+        hrefFor={(target) => pageHref("/anggota", params, target)}
+      />
+
     </div>
   );
 }

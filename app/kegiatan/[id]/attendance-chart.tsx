@@ -1,8 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ParticipationTable } from "@/app/statistik/participation-table";
+import { Pagination } from "@/components/pagination";
+import { EMBEDDED_PAGE_SIZE } from "@/lib/constants";
+import { paginate } from "@/lib/pagination";
 import type { ActivityAttendanceSummary } from "@/lib/stats";
 
 const tooltipStyle = { fontSize: 12, background: "var(--popover, white)", border: "1px solid var(--border)" };
@@ -50,6 +54,14 @@ export function ActivityAttendanceChart({
   activityId: number;
   canRecord: boolean;
 }) {
+  const [occurrencePage, setOccurrencePage] = useState(1);
+  const [prevSummary, setPrevSummary] = useState(summary);
+  if (summary !== prevSummary) {
+    setPrevSummary(summary);
+    setOccurrencePage(1);
+  }
+  const visibleOccurrences = paginate(summary.occurrences, occurrencePage, EMBEDDED_PAGE_SIZE);
+
   const totalAbsent = summary.totalExpected - summary.totalHadir - summary.totalIzin;
   const trend = [...summary.occurrences]
     .reverse()
@@ -111,7 +123,7 @@ export function ActivityAttendanceChart({
               </tr>
             </thead>
             <tbody>
-              {summary.occurrences.map((o) => (
+              {visibleOccurrences.items.map((o) => (
                 <tr key={o.key} className="border-b last:border-0">
                   <td className="py-2 pr-2">{o.effectiveDate}</td>
                   <td className="py-2 pr-2 text-right">{o.hadir}</td>
@@ -136,11 +148,12 @@ export function ActivityAttendanceChart({
             </tbody>
           </table>
         </div>
+        <Pagination {...visibleOccurrences} onPageChange={setOccurrencePage} className="mt-3" />
       </div>
 
       <div>
         <h3 className="mb-2 text-sm font-medium">Siapa yang hadir</h3>
-        <ParticipationTable rows={summary.participation} />
+        <ParticipationTable rows={summary.participation} pageSize={EMBEDDED_PAGE_SIZE} />
       </div>
     </div>
   );

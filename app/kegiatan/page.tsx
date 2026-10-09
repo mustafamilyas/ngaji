@@ -1,17 +1,19 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { Pagination } from "@/components/pagination";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { FilterBar, SearchFilter } from "@/components/filters/filter-bar";
 import { GroupFilter } from "@/components/filters/group-filter";
 import { ActivityCalendar } from "./activity-calendar";
 import { listActivityOccurrences } from "@/lib/activity/list";
 import { visibleGroupsWhere } from "@/lib/authz";
-import { ACTIVITY_LIST_DATE_RANGE } from "@/lib/constants";
+import { ACTIVITY_LIST_DATE_RANGE, PAGE_SIZE } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { today } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
-import { parseGroupIds, parseSearch, resolveDateRange } from "@/lib/filters";
+import { parseGroupIds, parsePage, parseSearch, resolveDateRange } from "@/lib/filters";
+import { pageHref, paginate } from "@/lib/pagination";
 import { cn } from "@/lib/utils";
 
 export default async function ActivityListPage({
@@ -35,6 +37,7 @@ export default async function ActivityListPage({
 
   const groupIds = parseGroupIds(params.grup);
   const q = parseSearch(params.q);
+  const page = parsePage(params.page);
 
   const [{ entries, groups }, visibleGroups] = await Promise.all([
     (async () => {
@@ -74,6 +77,8 @@ export default async function ActivityListPage({
   function dayHref(date: string): string {
     return hrefWith({ view: "list", range: "custom", from: date, to: date, anchor: undefined });
   }
+
+  const listPage = paginate(entries, page, PAGE_SIZE);
 
   const groupsLabel = groups.length === 1 ? groups[0].name : `${groups.length} grup`;
 
@@ -135,7 +140,7 @@ export default async function ActivityListPage({
         <ActivityCalendar entries={entries} month={from} dayHref={dayHref} />
       ) : entries.length > 0 ? (
         <ul className="flex flex-col divide-y">
-          {entries.map((entry) => (
+          {listPage.items.map((entry) => (
             <li key={`${entry.activityId}:${entry.key}`} className="flex flex-col gap-1 py-3">
               <Link
                 href={`/kegiatan/${entry.activityId}`}
@@ -178,6 +183,10 @@ export default async function ActivityListPage({
         <p className="text-sm text-muted-foreground">
           {q ? "Tidak ada kegiatan yang cocok." : "Tidak ada kegiatan pada rentang ini."}
         </p>
+      )}
+
+      {view === "list" && (
+        <Pagination {...listPage} hrefFor={(target) => pageHref("/kegiatan", params, target)} />
       )}
     </div>
   );

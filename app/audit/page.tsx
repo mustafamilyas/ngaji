@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { Pagination } from "@/components/pagination";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { FilterBar, SelectFilter } from "@/components/filters/filter-bar";
 import { GroupFilter } from "@/components/filters/group-filter";
@@ -11,6 +12,7 @@ import { today } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
 import { parseGroupIds, parsePage, resolveDateRange } from "@/lib/filters";
 import { listAuditLog } from "@/lib/audit-log/queries";
+import { pageHref } from "@/lib/pagination";
 import { listUsersInScope } from "@/lib/user/queries";
 
 function formatDateTime(date: Date): string {
@@ -61,23 +63,7 @@ export default async function AuditPage({
   }
 
   const { entries, total, page: currentPage, pageSize } = result;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  function pageHref(target: number) {
-    const next = new URLSearchParams();
-    if (action) next.set("action", action);
-    if (actorId) next.set("aktor", String(actorId));
-    if (groupIds) next.set("grup", groupIds.join(","));
-    next.set("range", dateRange.mode);
-    if (dateRange.mode === "custom") {
-      if (from) next.set("from", from);
-      if (to) next.set("to", to);
-    } else if (dateRange.anchor !== now) {
-      next.set("anchor", dateRange.anchor);
-    }
-    next.set("page", String(target));
-    return `/audit?${next.toString()}`;
-  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -139,27 +125,13 @@ export default async function AuditPage({
         <p className="text-sm text-muted-foreground">Tidak ada entri yang cocok.</p>
       )}
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm">
-          {currentPage > 1 ? (
-            <Link href={pageHref(currentPage - 1)} className="text-primary hover:underline">
-              Sebelumnya
-            </Link>
-          ) : (
-            <span />
-          )}
-          <span className="text-muted-foreground">
-            Halaman {currentPage} dari {totalPages}
-          </span>
-          {currentPage < totalPages ? (
-            <Link href={pageHref(currentPage + 1)} className="text-primary hover:underline">
-              Berikutnya
-            </Link>
-          ) : (
-            <span />
-          )}
-        </div>
-      )}
+      <Pagination
+        page={currentPage}
+        pageSize={pageSize}
+        total={total}
+        hrefFor={(target) => pageHref("/audit", params, target)}
+      />
+
     </div>
   );
 }

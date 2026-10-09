@@ -1,6 +1,7 @@
 import type { SessionUser } from "@/lib/auth/session-user";
 import { PAGE_SIZE } from "@/lib/constants";
 import { db } from "@/lib/db";
+import { clampPage } from "@/lib/pagination";
 import { resolveGroups } from "@/lib/resolve";
 import type { MemberStatus } from "@/lib/validation/enums";
 
@@ -14,8 +15,6 @@ export type ListMembersFilter = {
 
 /** Scope-filtered, searchable, paginated member list (member-management spec "List, search, filter, pagination"). */
 export async function listMembers(session: SessionUser, filter: ListMembersFilter = {}) {
-  const page = filter.page && filter.page > 0 ? Math.floor(filter.page) : 1;
-
   const groupPaths =
     filter.groupIds && filter.groupIds.length > 0
       ? (await resolveGroups(session, filter.groupIds)).map((g) => g.path)
@@ -27,16 +26,15 @@ export async function listMembers(session: SessionUser, filter: ListMembersFilte
     ...(filter.search ? { name: { contains: filter.search } } : {}),
   };
 
-  const [members, total] = await Promise.all([
-    db.member.findMany({
-      where,
-      orderBy: { name: "asc" as const },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-      include: { group: true },
-    }),
-    db.member.count({ where }),
-  ]);
+  const total = await db.member.count({ where });
+  const page = clampPage(filter.page ?? 1, total, PAGE_SIZE);
+  const members = await db.member.findMany({
+    where,
+    orderBy: { name: "asc" as const },
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
+    include: { group: true },
+  });
 
   return { members, total, page, pageSize: PAGE_SIZE };
 }

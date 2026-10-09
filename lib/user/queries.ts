@@ -1,5 +1,7 @@
 import type { SessionUser } from "@/lib/auth/session-user";
+import { PAGE_SIZE } from "@/lib/constants";
 import { db } from "@/lib/db";
+import { clampPage } from "@/lib/pagination";
 import { resolveGroups } from "@/lib/resolve";
 
 /**
@@ -22,23 +24,32 @@ export type ListUsersFilter = {
   search?: string;
   /** Users placed in any of these groups or their descendants; default the caller's whole scope. */
   groupIds?: number[];
+  page?: number;
 };
 
-/** Filtered `/pengguna` list; same scope and soft-delete rules as `listUsersInScope`. */
+/** Filtered, paginated `/pengguna` list; same scope and soft-delete rules as `listUsersInScope`. */
 export async function listUsers(session: SessionUser, filter: ListUsersFilter = {}) {
   const groupPaths =
     filter.groupIds && filter.groupIds.length > 0
       ? (await resolveGroups(session, filter.groupIds)).map((g) => g.path)
       : [session.groupPath];
 
-  return db.userGroupRole.findMany({
-    where: {
-      OR: groupPaths.map((path) => ({ group: { path: { startsWith: path }, deletedAt: null } })),
-      ...(filter.search
-        ? { user: { OR: [{ name: { contains: filter.search } }, { username: { contains: filter.search } }] } }
-        : {}),
-    },
+  const where = {
+    OR: groupPaths.map((path) => ({ group: { path: { startsWith: path }, deletedAt: null } })),
+    ...(filter.search
+      ? { user: { OR: [{ name: { contains: filter.search } }, { username: { contains: filter.search } }] } }
+      : {}),
+  };
+
+  const total = await db.userGroupRole.count({ where });
+  const page = clampPage(filter.page ?? 1, total, PAGE_SIZE);
+  const roles = await db.userGroupRole.findMany({
+    where,
     include: { user: true, group: true },
     orderBy: [{ user: { name: "asc" } }],
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
   });
+
+  return { roles, total, page, pageSize: PAGE_SIZE };
 }

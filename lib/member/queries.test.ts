@@ -162,5 +162,10 @@ describe("lib/member/queries listMembers", () => {
     expect(members).toHaveLength(20);
     expect(members[0].name).toBe("Pg 101");
     expect(members[19].name).toBe("Pg 120");
+
+    // A page past the end (e.g. a stale link after filtering) shows the last page instead of nothing.
+    const pastEnd = await listMembers(session, { page: 9, search: "Pg " });
+    expect(pastEnd.page).toBe(3);
+    expect(pastEnd.members[0].name).toBe("Pg 101");
   });
 });

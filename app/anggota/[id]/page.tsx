@@ -1,14 +1,24 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { Pagination } from "@/components/pagination";
 import { attendanceHistoryForMember } from "@/lib/attendance/history";
 import { NotFoundError } from "@/lib/errors";
+import { parsePage } from "@/lib/filters";
+import { pageHref } from "@/lib/pagination";
 import { resolveMember } from "@/lib/resolve";
 import type { MemberFormValues } from "@/lib/validation/member";
 import { DeleteMemberForm } from "./delete-member-form";
 import { MemberForm } from "../member-form";
 
-export default async function MemberDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function MemberDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { id } = await params;
+  const query = await searchParams;
   const memberId = Number(id);
   if (!Number.isInteger(memberId)) notFound();
 
@@ -23,7 +33,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
     throw error;
   }
 
-  const history = await attendanceHistoryForMember(member.id);
+  const history = await attendanceHistoryForMember(member.id, parsePage(query.riwayat));
 
   const defaultValues: MemberFormValues = {
     name: member.name,
@@ -51,9 +61,9 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
 
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-medium">Riwayat kehadiran</h2>
-        {history.length > 0 ? (
+        {history.entries.length > 0 ? (
           <ul className="flex flex-col divide-y text-sm">
-            {history.map((entry) => (
+            {history.entries.map((entry) => (
               <li key={entry.id} className="flex items-center justify-between py-2">
                 <span>{entry.activityName}</span>
                 <span className="text-xs text-muted-foreground">
@@ -65,6 +75,13 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
         ) : (
           <p className="text-sm text-muted-foreground">Belum ada riwayat kehadiran.</p>
         )}
+        <Pagination
+          page={history.page}
+          pageSize={history.pageSize}
+          total={history.total}
+          scroll={false}
+          hrefFor={(target) => pageHref(`/anggota/${member.id}`, query, target, "riwayat")}
+        />
       </section>
 
       <section className="flex flex-col gap-2 rounded-md border p-3">

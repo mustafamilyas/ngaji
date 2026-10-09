@@ -3,14 +3,16 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { FilterBar } from "@/components/filters/filter-bar";
+import { Pagination } from "@/components/pagination";
 import { toActivityTemplate } from "@/lib/activity/template";
 import { occurrencesFor } from "@/lib/activity/occurrences";
 import { loadOccurrenceRows } from "@/lib/activity/rows";
 import { canEditActivity } from "@/lib/authz";
-import { CONFLICT_HORIZON_DAYS, STATS_DATE_RANGE } from "@/lib/constants";
+import { CONFLICT_HORIZON_DAYS, EMBEDDED_PAGE_SIZE, STATS_DATE_RANGE } from "@/lib/constants";
 import { addDays, today } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
-import { resolveDateRange } from "@/lib/filters";
+import { parsePage, resolveDateRange } from "@/lib/filters";
+import { pageHref, paginate } from "@/lib/pagination";
 import { resolveActivity } from "@/lib/resolve";
 import { isInScope } from "@/lib/scope";
 import { activityAttendanceSummary } from "@/lib/stats";
@@ -54,6 +56,7 @@ export default async function ActivityDetailPage({
   const scheduleTo = addDays(scheduleFrom, CONFLICT_HORIZON_DAYS);
   const rows = await loadOccurrenceRows(activity.id, scheduleFrom, scheduleTo);
   const occurrences = occurrencesFor(toActivityTemplate(activity), scheduleFrom, scheduleTo, rows);
+  const schedulePage = paginate(occurrences, parsePage(query.jadwal), EMBEDDED_PAGE_SIZE);
 
   const now = today();
   const statsRange = resolveDateRange(query, STATS_DATE_RANGE, now);
@@ -152,7 +155,7 @@ export default async function ActivityDetailPage({
         <h2 className="text-sm font-medium">Jadwal ({occurrences.length})</h2>
         {occurrences.length > 0 ? (
           <ul className="flex flex-col gap-2">
-            {occurrences.map((occurrence) => (
+            {schedulePage.items.map((occurrence) => (
               <li key={occurrence.key} className="flex flex-col gap-2 rounded-md border p-2 text-sm">
                 <div className="flex items-center justify-between gap-2">
                   <span>
@@ -189,6 +192,11 @@ export default async function ActivityDetailPage({
         ) : (
           <p className="text-sm text-muted-foreground">Tidak ada jadwal dalam 90 hari ke depan.</p>
         )}
+        <Pagination
+          {...schedulePage}
+          scroll={false}
+          hrefFor={(target) => pageHref(`/kegiatan/${activity.id}`, query, target, "jadwal")}
+        />
       </section>
     </div>
   );

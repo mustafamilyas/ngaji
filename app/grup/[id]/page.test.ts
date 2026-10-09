@@ -19,7 +19,7 @@ describe("GroupDetailPage", () => {
     mockAuthSession(auth, { user: session });
 
     const html = renderToStaticMarkup(
-      await GroupDetailPage({ params: Promise.resolve({ id: String(fixture.leaf.id) }) }),
+      await GroupDetailPage({ params: Promise.resolve({ id: String(fixture.leaf.id) }), searchParams: Promise.resolve({}) }),
     );
     expect(html).toContain("Leaf");
     expect(html).toContain("Anggota Uji");
@@ -32,7 +32,7 @@ describe("GroupDetailPage", () => {
     mockAuthSession(auth, { user: session });
 
     const html = renderToStaticMarkup(
-      await GroupDetailPage({ params: Promise.resolve({ id: String(fixture.branch.id) }) }),
+      await GroupDetailPage({ params: Promise.resolve({ id: String(fixture.branch.id) }), searchParams: Promise.resolve({}) }),
     );
     expect(html).toContain("Branch");
   });
@@ -42,7 +42,7 @@ describe("GroupDetailPage", () => {
     const session = sessionFor(fixture.actorId, "OWNER", fixture.root);
     mockAuthSession(auth, { user: session });
 
-    await expect(GroupDetailPage({ params: Promise.resolve({ id: "abc" }) })).rejects.toMatchObject({
+    await expect(GroupDetailPage({ params: Promise.resolve({ id: "abc" }), searchParams: Promise.resolve({}) })).rejects.toMatchObject({
       digest: expect.stringContaining("NEXT_HTTP_ERROR_FALLBACK"),
     });
   });
@@ -53,13 +53,13 @@ describe("GroupDetailPage", () => {
     mockAuthSession(auth, { user: outsider });
 
     await expect(
-      GroupDetailPage({ params: Promise.resolve({ id: String(fixture.leaf.id) }) }),
+      GroupDetailPage({ params: Promise.resolve({ id: String(fixture.leaf.id) }), searchParams: Promise.resolve({}) }),
     ).rejects.toMatchObject({ digest: expect.stringContaining("NEXT_HTTP_ERROR_FALLBACK") });
   });
 
   it("redirects to /login when there is no session", async () => {
     mockAuthSession(auth, null);
-    await expect(GroupDetailPage({ params: Promise.resolve({ id: "1" }) })).rejects.toMatchObject({
+    await expect(GroupDetailPage({ params: Promise.resolve({ id: "1" }), searchParams: Promise.resolve({}) })).rejects.toMatchObject({
       digest: expect.stringContaining("NEXT_REDIRECT"),
     });
   });

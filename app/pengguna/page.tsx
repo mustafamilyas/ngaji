@@ -1,11 +1,13 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { Pagination } from "@/components/pagination";
 import { FilterBar, SearchFilter } from "@/components/filters/filter-bar";
 import { GroupFilter } from "@/components/filters/group-filter";
 import { visibleGroupsWhere } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
-import { parseGroupIds, parseSearch } from "@/lib/filters";
+import { parseGroupIds, parsePage, parseSearch } from "@/lib/filters";
+import { pageHref } from "@/lib/pagination";
 import { listUsers } from "@/lib/user/queries";
 import { ROLES } from "@/lib/validation/enums";
 import { CreateUserForm } from "./create-user-form";
@@ -22,13 +24,14 @@ export default async function UsersPage({
   const params = await searchParams;
   const q = parseSearch(params.q);
   const groupIds = parseGroupIds(params.grup);
+  const page = parsePage(params.page);
 
   const canCreate = session.user.role === "OWNER" || session.user.role === "ADMIN";
 
-  const [roles, groups] = await Promise.all([
+  const [{ roles, total, page: currentPage, pageSize }, groups] = await Promise.all([
     (async () => {
       try {
-        return await listUsers(session.user, { search: q, groupIds });
+        return await listUsers(session.user, { search: q, groupIds, page });
       } catch (error) {
         if (error instanceof NotFoundError) notFound();
         throw error;
@@ -89,6 +92,13 @@ export default async function UsersPage({
           {q || groupIds ? "Tidak ada pengguna yang cocok." : "Belum ada pengguna."}
         </p>
       )}
+
+      <Pagination
+        page={currentPage}
+        pageSize={pageSize}
+        total={total}
+        hrefFor={(target) => pageHref("/pengguna", params, target)}
+      />
     </div>
   );
 }

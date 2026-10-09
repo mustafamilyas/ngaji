@@ -26,7 +26,7 @@ describe("MemberDetailPage", () => {
     mockAuthSession(auth, { user: session });
 
     const html = renderToStaticMarkup(
-      await MemberDetailPage({ params: Promise.resolve({ id: String(fixture.memberId) }) }),
+      await MemberDetailPage({ params: Promise.resolve({ id: String(fixture.memberId) }), searchParams: Promise.resolve({}) }),
     );
     expect(html).toContain("Anggota Uji");
   });
@@ -36,7 +36,7 @@ describe("MemberDetailPage", () => {
     const session = sessionFor(fixture.actorId, "OWNER", fixture.root);
     mockAuthSession(auth, { user: session });
 
-    await expect(MemberDetailPage({ params: Promise.resolve({ id: "abc" }) })).rejects.toMatchObject({
+    await expect(MemberDetailPage({ params: Promise.resolve({ id: "abc" }), searchParams: Promise.resolve({}) })).rejects.toMatchObject({
       digest: expect.stringContaining("NEXT_HTTP_ERROR_FALLBACK"),
     });
   });
@@ -47,13 +47,13 @@ describe("MemberDetailPage", () => {
     mockAuthSession(auth, { user: outsider });
 
     await expect(
-      MemberDetailPage({ params: Promise.resolve({ id: String(fixture.memberId) }) }),
+      MemberDetailPage({ params: Promise.resolve({ id: String(fixture.memberId) }), searchParams: Promise.resolve({}) }),
     ).rejects.toMatchObject({ digest: expect.stringContaining("NEXT_HTTP_ERROR_FALLBACK") });
   });
 
   it("redirects to /login when there is no session", async () => {
     mockAuthSession(auth, null);
-    await expect(MemberDetailPage({ params: Promise.resolve({ id: "1" }) })).rejects.toMatchObject({
+    await expect(MemberDetailPage({ params: Promise.resolve({ id: "1" }), searchParams: Promise.resolve({}) })).rejects.toMatchObject({
       digest: expect.stringContaining("NEXT_REDIRECT"),
     });
   });
