@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Roboto } from "next/font/google";
 import { auth } from "@/auth";
+import { cookies } from "next/headers";
 import { NavShell } from "@/components/nav-shell";
+import { SIDEBAR_COLLAPSED_COOKIE } from "@/lib/nav";
 import "./globals.css";
 
 const roboto = Roboto({
@@ -31,14 +33,17 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth();
+  const [session, cookieStore] = await Promise.all([auth(), cookies()]);
+  const sidebarCollapsed = cookieStore.get(SIDEBAR_COLLAPSED_COOKIE)?.value === "1";
 
   return (
     <html lang="id">
       <body
         className={`${roboto.variable} ${geistMono.variable} antialiased`}
       >
-        <NavShell user={session?.user}>{children}</NavShell>
+        <NavShell user={session?.user} initialCollapsed={sidebarCollapsed}>
+          {children}
+        </NavShell>
       </body>
     </html>
   );

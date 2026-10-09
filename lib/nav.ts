@@ -1,3 +1,6 @@
+/** Cookie holding the desktop sidebar's collapsed state ("1" = collapsed), read server-side to avoid a flash on load. */
+export const SIDEBAR_COLLAPSED_COOKIE = "sidebar_collapsed";
+
 export type NavItem = {
   href: string;
   label: string;
