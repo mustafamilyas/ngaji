@@ -1,13 +1,14 @@
 import type { SessionUser } from "@/lib/auth/session-user";
 import { PAGE_SIZE } from "@/lib/constants";
 import { db } from "@/lib/db";
-import { resolveGroup } from "@/lib/resolve";
+import { resolveGroups } from "@/lib/resolve";
 import type { MemberStatus } from "@/lib/validation/enums";
 
 export type ListMembersFilter = {
   page?: number;
   search?: string;
-  groupId?: number;
+  /** Members in any of these groups or their descendants; default the caller's whole scope. */
+  groupIds?: number[];
   status?: MemberStatus;
 };
 
@@ -15,14 +16,13 @@ export type ListMembersFilter = {
 export async function listMembers(session: SessionUser, filter: ListMembersFilter = {}) {
   const page = filter.page && filter.page > 0 ? Math.floor(filter.page) : 1;
 
-  let groupPathFilter = session.groupPath;
-  if (filter.groupId !== undefined) {
-    const group = await resolveGroup(session, filter.groupId);
-    groupPathFilter = group.path;
-  }
+  const groupPaths =
+    filter.groupIds && filter.groupIds.length > 0
+      ? (await resolveGroups(session, filter.groupIds)).map((g) => g.path)
+      : [session.groupPath];
 
   const where = {
-    group: { path: { startsWith: groupPathFilter } },
+    OR: groupPaths.map((path) => ({ group: { path: { startsWith: path } } })),
     ...(filter.status ? { status: filter.status } : {}),
     ...(filter.search ? { name: { contains: filter.search } } : {}),
   };

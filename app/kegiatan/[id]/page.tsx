@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { DateRangeFilter } from "@/components/filters/date-range-filter";
+import { FilterBar } from "@/components/filters/filter-bar";
 import { toActivityTemplate } from "@/lib/activity/template";
 import { occurrencesFor } from "@/lib/activity/occurrences";
 import { loadOccurrenceRows } from "@/lib/activity/rows";
 import { canEditActivity } from "@/lib/authz";
-import { CONFLICT_HORIZON_DAYS, DEFAULT_STATS_RANGE_DAYS } from "@/lib/constants";
+import { CONFLICT_HORIZON_DAYS, STATS_DATE_RANGE } from "@/lib/constants";
 import { addDays, today } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
+import { resolveDateRange } from "@/lib/filters";
 import { resolveActivity } from "@/lib/resolve";
 import { isInScope } from "@/lib/scope";
 import { activityAttendanceSummary } from "@/lib/stats";
@@ -52,8 +55,11 @@ export default async function ActivityDetailPage({
   const rows = await loadOccurrenceRows(activity.id, scheduleFrom, scheduleTo);
   const occurrences = occurrencesFor(toActivityTemplate(activity), scheduleFrom, scheduleTo, rows);
 
-  const statsTo = typeof query.to === "string" ? query.to : today();
-  const statsFrom = typeof query.from === "string" ? query.from : addDays(statsTo, -DEFAULT_STATS_RANGE_DAYS);
+  const now = today();
+  const statsRange = resolveDateRange(query, STATS_DATE_RANGE, now);
+  // STATS_DATE_RANGE has no open-ended mode, so both bounds are always set.
+  const statsFrom = statsRange.from!;
+  const statsTo = statsRange.to!;
 
   const attendanceSummary = await activityAttendanceSummary(
     activity.id,
@@ -123,37 +129,15 @@ export default async function ActivityDetailPage({
       )}
 
       <section className="flex flex-col gap-3 rounded-md border p-3">
-        <div className="flex flex-wrap items-end justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-medium">Absensi</h2>
-          <form className="flex flex-wrap items-end gap-2" method="get">
-            <div className="flex flex-col gap-1">
-              <label htmlFor="from" className="text-xs text-muted-foreground">
-                Dari
-              </label>
-              <input
-                id="from"
-                type="date"
-                name="from"
-                defaultValue={statsFrom}
-                className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label htmlFor="to" className="text-xs text-muted-foreground">
-                Sampai
-              </label>
-              <input
-                id="to"
-                type="date"
-                name="to"
-                defaultValue={statsTo}
-                className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              />
-            </div>
-            <button type="submit" className="h-9 rounded-md border px-3 text-sm hover:bg-muted">
-              Tampilkan
-            </button>
-          </form>
+          <FilterBar
+            action={`/kegiatan/${activity.id}`}
+            isFiltered={statsRange.mode !== STATS_DATE_RANGE.defaultMode || statsRange.anchor !== now}
+            resetHref={`/kegiatan/${activity.id}`}
+          >
+            <DateRangeFilter range={statsRange} {...STATS_DATE_RANGE} today={now} />
+          </FilterBar>
         </div>
         <ActivityAttendanceChart
           summary={attendanceSummary}

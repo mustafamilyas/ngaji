@@ -1,36 +1,18 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { DateRangeFilter } from "@/components/filters/date-range-filter";
+import { FilterBar, SearchFilter } from "@/components/filters/filter-bar";
+import { GroupFilter } from "@/components/filters/group-filter";
 import { ActivityCalendar } from "./activity-calendar";
-import { FilterForm } from "./filter-form";
 import { listActivityOccurrences } from "@/lib/activity/list";
 import { visibleGroupsWhere } from "@/lib/authz";
+import { ACTIVITY_LIST_DATE_RANGE } from "@/lib/constants";
 import { db } from "@/lib/db";
-import { addDays, addMonthsOnDay, monthStartOf, rangeForMode, sundayOf, today, type RangeMode } from "@/lib/dates";
+import { today } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
-
-const RANGE_MODES: RangeMode[] = ["hari", "minggu", "bulan"];
-
-function parseGroupIds(param: string | string[] | undefined): number[] | undefined {
-  const raw = typeof param === "string" ? param : Array.isArray(param) ? param[0] : undefined;
-  if (!raw) return undefined;
-  const ids = raw
-    .split(",")
-    .map((part) => Number(part))
-    .filter((n) => Number.isFinite(n));
-  return ids.length > 0 ? ids : undefined;
-}
-
-function shiftAnchor(mode: RangeMode, anchor: string, direction: 1 | -1): string {
-  switch (mode) {
-    case "hari":
-      return addDays(anchor, direction);
-    case "minggu":
-      return addDays(anchor, direction * 7);
-    case "bulan":
-      return addMonthsOnDay(monthStartOf(anchor), direction, 1)!;
-  }
-}
+import { parseGroupIds, parseSearch, resolveDateRange } from "@/lib/filters";
+import { cn } from "@/lib/utils";
 
 export default async function ActivityListPage({
   searchParams,
@@ -42,31 +24,22 @@ export default async function ActivityListPage({
 
   const params = await searchParams;
 
-  const rangeParam = typeof params.range === "string" ? params.range : "minggu";
-  const range: RangeMode | "custom" = [...RANGE_MODES, "custom"].includes(rangeParam)
-    ? (rangeParam as RangeMode | "custom")
-    : "minggu";
-
-  const anchor = typeof params.anchor === "string" ? params.anchor : today();
-
-  const defaultFrom = sundayOf(today());
-  const defaultTo = addDays(defaultFrom, 6);
-  const { from, to } =
-    range === "custom"
-      ? {
-          from: typeof params.from === "string" ? params.from : defaultFrom,
-          to: typeof params.to === "string" ? params.to : defaultTo,
-        }
-      : rangeForMode(range, anchor);
+  const now = today();
+  const dateRange = resolveDateRange(params, ACTIVITY_LIST_DATE_RANGE, now);
+  const { mode: range, anchor } = dateRange;
+  // ACTIVITY_LIST_DATE_RANGE has no open-ended mode, so both bounds are always set.
+  const from = dateRange.from!;
+  const to = dateRange.to!;
 
   const view = params.view === "calendar" ? "calendar" : "list";
 
   const groupIds = parseGroupIds(params.grup);
+  const q = parseSearch(params.q);
 
   const [{ entries, groups }, visibleGroups] = await Promise.all([
     (async () => {
       try {
-        return await listActivityOccurrences(session.user, { from, to, groupIds });
+        return await listActivityOccurrences(session.user, { from, to, groupIds, search: q });
       } catch (error) {
         if (error instanceof NotFoundError) notFound();
         throw error;
@@ -82,6 +55,7 @@ export default async function ActivityListPage({
   function hrefWith(overrides: Record<string, string | undefined>): string {
     const sp = new URLSearchParams();
     if (groupIds) sp.set("grup", groupIds.join(","));
+    if (q) sp.set("q", q);
     sp.set("range", range);
     if (range === "custom") {
       sp.set("from", from);
@@ -112,49 +86,49 @@ export default async function ActivityListPage({
         </Link>
       </div>
 
-      <FilterForm
-        groups={visibleGroups}
-        initialSelectedGroupIds={groupIds ?? [session.user.groupId]}
-        range={range}
-        anchor={anchor}
-        from={from}
-        to={to}
-        view={view}
-      />
+      <FilterBar
+        action="/kegiatan"
+        preserve={{ view: view === "calendar" ? "calendar" : undefined }}
+        isFiltered={Boolean(groupIds || q || range !== ACTIVITY_LIST_DATE_RANGE.defaultMode || anchor !== now)}
+        resetHref={view === "calendar" ? "/kegiatan?view=calendar" : "/kegiatan"}
+      >
+        <SearchFilter value={q} placeholder="Cari kegiatan…" />
+        <GroupFilter
+          groups={visibleGroups}
+          selected={groupIds ?? [session.user.groupId]}
+          active={Boolean(groupIds)}
+          withDescendantsAction
+          hint="Menampilkan kegiatan yang berlaku untuk grup terpilih, termasuk dari grup induknya."
+        />
+        <DateRangeFilter range={dateRange} {...ACTIVITY_LIST_DATE_RANGE} today={now} />
+      </FilterBar>
 
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        {range === "custom" ? (
-          <span />
-        ) : (
-          <Link href={hrefWith({ anchor: shiftAnchor(range, anchor, -1) })} className="text-primary hover:underline">
-            Sebelumnya
-          </Link>
-        )}
-        <span>
-          {from} – {to} · {groupsLabel}
+      <div className="flex items-center justify-between gap-2 text-sm">
+        <span className="text-muted-foreground">
+          {view === "list" ? `${entries.length} jadwal · ` : ""}
+          {groupsLabel}
         </span>
-        {range === "custom" ? (
-          <span />
-        ) : (
-          <Link href={hrefWith({ anchor: shiftAnchor(range, anchor, 1) })} className="text-primary hover:underline">
-            Berikutnya
-          </Link>
-        )}
-      </div>
-
-      <div className="flex gap-2 text-sm">
-        <Link
-          href={hrefWith({ view: "list" })}
-          className={view === "list" ? "font-medium text-primary" : "text-muted-foreground hover:underline"}
-        >
-          Daftar
-        </Link>
-        <Link
-          href={hrefWith({ view: "calendar" })}
-          className={view === "calendar" ? "font-medium text-primary" : "text-muted-foreground hover:underline"}
-        >
-          Kalender
-        </Link>
+        <div className="inline-flex rounded-lg border p-0.5" role="group" aria-label="Tampilan">
+          {(
+            [
+              ["list", "Daftar"],
+              ["calendar", "Kalender"],
+            ] as const
+          ).map(([key, label]) => (
+            <Link
+              key={key}
+              href={hrefWith({ view: key })}
+              scroll={false}
+              aria-current={view === key ? "page" : undefined}
+              className={cn(
+                "rounded-md px-3 py-1 text-sm",
+                view === key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
       </div>
 
       {view === "calendar" ? (
@@ -201,7 +175,9 @@ export default async function ActivityListPage({
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-muted-foreground">Tidak ada kegiatan pada rentang ini.</p>
+        <p className="text-sm text-muted-foreground">
+          {q ? "Tidak ada kegiatan yang cocok." : "Tidak ada kegiatan pada rentang ini."}
+        </p>
       )}
     </div>
   );

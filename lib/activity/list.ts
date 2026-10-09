@@ -35,6 +35,8 @@ export type ListActivitiesFilter = {
   from: string;
   to: string;
   groupIds?: number[];
+  /** Case-insensitive activity-name match, applied after conflict detection so badges stay accurate. */
+  search?: string;
 };
 
 type RawEntry = Omit<ActivityListEntry, "hasConflict">;
@@ -130,10 +132,13 @@ export async function listActivityOccurrences(session: SessionUser, filter: List
     conflictIds.add(conflict.b);
   }
 
-  const entries: ActivityListEntry[] = [...rawByKey.values()].map((raw) => ({
-    ...raw,
-    hasConflict: conflictIds.has(`${raw.activityId}:${raw.key}`),
-  }));
+  const needle = filter.search?.toLocaleLowerCase("id-ID");
+  const entries: ActivityListEntry[] = [...rawByKey.values()]
+    .filter((raw) => !needle || raw.activityName.toLocaleLowerCase("id-ID").includes(needle))
+    .map((raw) => ({
+      ...raw,
+      hasConflict: conflictIds.has(`${raw.activityId}:${raw.key}`),
+    }));
 
   entries.sort((a, b) =>
     a.effectiveDate === b.effectiveDate

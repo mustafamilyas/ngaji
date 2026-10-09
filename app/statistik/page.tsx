@@ -2,10 +2,14 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { visibleGroupsWhere } from "@/lib/authz";
-import { DEFAULT_STATS_RANGE_DAYS } from "@/lib/constants";
+import { DateRangeFilter } from "@/components/filters/date-range-filter";
+import { FilterBar, SearchFilter } from "@/components/filters/filter-bar";
+import { GroupFilter } from "@/components/filters/group-filter";
+import { STATS_DATE_RANGE } from "@/lib/constants";
 import { db } from "@/lib/db";
-import { addDays, today } from "@/lib/dates";
+import { today } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
+import { parseGroupIds, parseSearch, resolveDateRange } from "@/lib/filters";
 import { activityStatistics, memberStatistics, participationStatistics } from "@/lib/stats";
 import { ActivityCharts } from "./activity-charts";
 import { MemberCharts } from "./member-charts";
@@ -23,9 +27,6 @@ function isTabKey(value: string): value is TabKey {
   return TABS.some((t) => t.key === value);
 }
 
-const inputClass =
-  "h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
-
 export default async function StatisticsPage({
   searchParams,
 }: {
@@ -36,21 +37,37 @@ export default async function StatisticsPage({
 
   const params = await searchParams;
   const tab: TabKey = typeof params.tab === "string" && isTabKey(params.tab) ? params.tab : "anggota";
-  const to = typeof params.to === "string" ? params.to : today();
-  const from = typeof params.from === "string" ? params.from : addDays(to, -DEFAULT_STATS_RANGE_DAYS);
-  const grup = typeof params.grup === "string" ? Number(params.grup) : undefined;
+  const now = today();
+  const range = resolveDateRange(params, STATS_DATE_RANGE, now);
+  // STATS_DATE_RANGE has no open-ended mode, so both bounds are always set.
+  const from = range.from!;
+  const to = range.to!;
+  // Statistics are computed for one scope group (breakdowns are per direct sub-group), so only the first id counts.
+  const grup = parseGroupIds(params.grup)?.[0];
+  const q = tab === "partisipasi" ? parseSearch(params.q) : undefined;
 
   const groups = await db.group.findMany({
     where: visibleGroupsWhere(session.user),
     orderBy: [{ depth: "asc" }, { name: "asc" }],
-    select: { id: true, name: true },
+    select: { id: true, parentId: true, name: true, path: true },
   });
+  const ownGroupName = groups.find((g) => g.id === session.user.groupId)?.name ?? "Grup saya";
+
+  const rangeParams: Record<string, string | undefined> = {
+    range: range.mode,
+    anchor: range.mode !== "custom" && range.anchor !== now ? range.anchor : undefined,
+    from: range.mode === "custom" ? from : undefined,
+    to: range.mode === "custom" ? to : undefined,
+  };
 
   function tabHref(key: string) {
-    const next = new URLSearchParams({ tab: key, from, to });
+    const next = new URLSearchParams({ tab: key });
+    for (const [name, value] of Object.entries(rangeParams)) if (value) next.set(name, value);
     if (grup) next.set("grup", String(grup));
     return `/statistik?${next.toString()}`;
   }
+
+  const rangeFiltered = range.mode !== STATS_DATE_RANGE.defaultMode || range.anchor !== now;
 
   let data:
     | { tab: "anggota"; stats: Awaited<ReturnType<typeof memberStatistics>> }
@@ -62,7 +79,9 @@ export default async function StatisticsPage({
     } else if (tab === "kegiatan") {
       data = { tab, stats: await activityStatistics(session.user, { from, to, groupId: grup }) };
     } else {
-      data = { tab, rows: await participationStatistics(session.user, { from, to, groupId: grup }) };
+      const rows = await participationStatistics(session.user, { from, to, groupId: grup });
+      const needle = q?.toLocaleLowerCase("id-ID");
+      data = { tab, rows: needle ? rows.filter((r) => r.memberName.toLocaleLowerCase("id-ID").includes(needle)) : rows };
     }
   } catch (error) {
     if (error instanceof NotFoundError) notFound();
@@ -82,32 +101,26 @@ export default async function StatisticsPage({
     <div className="flex flex-col gap-4">
       <h1 className="text-lg font-semibold">Statistik</h1>
 
-      <form className="flex flex-wrap items-end gap-2" method="get">
-        <input type="hidden" name="tab" value={tab} />
-        <div className="flex flex-col gap-1">
-          <label htmlFor="from" className="text-xs text-muted-foreground">
-            Dari
-          </label>
-          <input id="from" type="date" name="from" defaultValue={from} className={inputClass} />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="to" className="text-xs text-muted-foreground">
-            Sampai
-          </label>
-          <input id="to" type="date" name="to" defaultValue={to} className={inputClass} />
-        </div>
-        <select name="grup" defaultValue={grup ?? ""} className={inputClass}>
-          <option value="">Grup saya</option>
-          {groups.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.name}
-            </option>
-          ))}
-        </select>
-        <button type="submit" className="h-9 rounded-md border px-3 text-sm hover:bg-muted">
-          Tampilkan
-        </button>
-      </form>
+      <FilterBar
+        action="/statistik"
+        preserve={{
+          tab,
+          // The anggota tab has no date filter; keep the chosen range for the other tabs.
+          ...(tab === "anggota" ? rangeParams : {}),
+        }}
+        isFiltered={Boolean(grup || q || (tab !== "anggota" && rangeFiltered))}
+        resetHref={`/statistik?tab=${tab}`}
+      >
+        {tab === "partisipasi" && <SearchFilter value={q} placeholder="Cari nama anggota…" />}
+        <GroupFilter
+          groups={groups}
+          selected={grup ? [grup] : []}
+          mode="single"
+          emptyLabel={ownGroupName}
+          hint="Statistik dihitung untuk grup ini dan semua grup di bawahnya."
+        />
+        {tab !== "anggota" && <DateRangeFilter range={range} {...STATS_DATE_RANGE} today={now} />}
+      </FilterBar>
 
       <div className="flex gap-1 border-b">
         {TABS.map((t) => (

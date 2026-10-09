@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { createActivity } from "@/lib/activity/mutations";
 import { addDays, daysBetween, monthEndOf, monthStartOf, sundayOf, today, weekdayOf } from "@/lib/dates";
 import { db } from "@/lib/db";
+import { formatDateRange } from "@/lib/filters";
 import { buildPageFixture, mockAuthSession, sessionFor } from "@/lib/test/fixtures";
 import ActivityListPage from "./page";
 
@@ -110,7 +111,7 @@ describe("ActivityListPage", () => {
     const html = renderToStaticMarkup(
       await ActivityListPage({ searchParams: Promise.resolve({ range: "hari" }) }),
     );
-    expect(html).toContain(`${today()} – ${today()}`);
+    expect(html).toContain(formatDateRange(today(), today()));
   });
 
   it("computes the calendar month bounds for range=bulan", async () => {
@@ -121,7 +122,7 @@ describe("ActivityListPage", () => {
     const html = renderToStaticMarkup(
       await ActivityListPage({ searchParams: Promise.resolve({ range: "bulan" }) }),
     );
-    expect(html).toContain(`${monthStartOf(today())} – ${monthEndOf(today())}`);
+    expect(html).toContain(formatDateRange(monthStartOf(today()), monthEndOf(today())));
   });
 
   it("keeps the given from/to as-is for range=custom", async () => {
@@ -134,7 +135,7 @@ describe("ActivityListPage", () => {
         searchParams: Promise.resolve({ range: "custom", from: "2024-01-01", to: "2024-01-31" }),
       }),
     );
-    expect(html).toContain("2024-01-01 – 2024-01-31");
+    expect(html).toContain("1–31 Jan 2024");
   });
 
   it("renders the calendar view with the expected number of day cells and occurrence badges", async () => {

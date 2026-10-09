@@ -3,6 +3,7 @@ import { visibleGroupsWhere } from "@/lib/authz";
 import { PAGE_SIZE } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
+import { resolveGroups } from "@/lib/resolve";
 
 export type AuditLogFilter = {
   page?: number;
@@ -12,6 +13,8 @@ export type AuditLogFilter = {
   from?: string;
   /** YYYY-MM-DD, inclusive, interpreted in Asia/Jakarta. */
   to?: string;
+  /** Only entries scoped to these groups or their descendants (drops group-less `auth.*` entries). */
+  groupIds?: number[];
 };
 
 const JAKARTA_UTC_OFFSET = "+07:00";
@@ -42,14 +45,21 @@ export async function listAuditLog(session: SessionUser, filter: AuditLogFilter 
 
   const page = filter.page && filter.page > 0 ? Math.floor(filter.page) : 1;
 
+  const selectedGroups =
+    filter.groupIds && filter.groupIds.length > 0 ? await resolveGroups(session, filter.groupIds) : undefined;
+
   const scopedGroups = await db.group.findMany({
-    where: visibleGroupsWhere(session),
+    where: selectedGroups
+      ? { OR: selectedGroups.map((g) => ({ path: { startsWith: g.path } })) }
+      : visibleGroupsWhere(session),
     select: { id: true },
   });
   const groupIds = scopedGroups.map((g) => g.id);
 
   const where = {
-    OR: [{ groupId: { in: groupIds } }, { groupId: null, actorId: Number(session.id) }],
+    OR: selectedGroups
+      ? [{ groupId: { in: groupIds } }]
+      : [{ groupId: { in: groupIds } }, { groupId: null, actorId: Number(session.id) }],
     ...(filter.action ? { action: filter.action } : {}),
     ...(filter.actorId ? { actorId: filter.actorId } : {}),
     ...(filter.from || filter.to

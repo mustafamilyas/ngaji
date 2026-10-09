@@ -1,24 +1,43 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { FilterBar, SearchFilter } from "@/components/filters/filter-bar";
+import { GroupFilter } from "@/components/filters/group-filter";
 import { visibleGroupsWhere } from "@/lib/authz";
 import { db } from "@/lib/db";
-import { listUsersInScope } from "@/lib/user/queries";
+import { NotFoundError } from "@/lib/errors";
+import { parseGroupIds, parseSearch } from "@/lib/filters";
+import { listUsers } from "@/lib/user/queries";
 import { ROLES } from "@/lib/validation/enums";
 import { CreateUserForm } from "./create-user-form";
 import { UserRowControls } from "./user-row-controls";
 
-export default async function UsersPage() {
+export default async function UsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await auth();
   if (!session) redirect("/login");
+
+  const params = await searchParams;
+  const q = parseSearch(params.q);
+  const groupIds = parseGroupIds(params.grup);
 
   const canCreate = session.user.role === "OWNER" || session.user.role === "ADMIN";
 
   const [roles, groups] = await Promise.all([
-    listUsersInScope(session.user),
+    (async () => {
+      try {
+        return await listUsers(session.user, { search: q, groupIds });
+      } catch (error) {
+        if (error instanceof NotFoundError) notFound();
+        throw error;
+      }
+    })(),
     db.group.findMany({
       where: visibleGroupsWhere(session.user),
       orderBy: [{ depth: "asc" }, { name: "asc" }],
-      select: { id: true, name: true, depth: true },
+      select: { id: true, parentId: true, name: true, path: true, depth: true },
     }),
   ]);
 
@@ -29,6 +48,11 @@ export default async function UsersPage() {
       <h1 className="text-lg font-semibold">Pengguna</h1>
 
       {canCreate && <CreateUserForm groups={groups} allowedRoles={allowedCreateRoles} />}
+
+      <FilterBar action="/pengguna" isFiltered={Boolean(q || groupIds)} resetHref="/pengguna">
+        <SearchFilter value={q} placeholder="Cari nama atau username…" />
+        <GroupFilter groups={groups} selected={groupIds ?? []} hint="Termasuk semua grup di bawahnya." />
+      </FilterBar>
 
       <ul className="flex flex-col gap-3">
         {roles.map((userRole) => (
@@ -60,7 +84,11 @@ export default async function UsersPage() {
         ))}
       </ul>
 
-      {roles.length === 0 && <p className="text-sm text-muted-foreground">Belum ada pengguna.</p>}
+      {roles.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          {q || groupIds ? "Tidak ada pengguna yang cocok." : "Belum ada pengguna."}
+        </p>
+      )}
     </div>
   );
 }

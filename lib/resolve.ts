@@ -19,6 +19,19 @@ export async function resolveGroup(session: SessionUser, groupId: number) {
   return group;
 }
 
+/**
+ * Resolves every id of a multi-group filter; any id that is missing or out
+ * of scope fails the whole request with `NotFoundError` (404), like a single
+ * `resolveGroup`. Returns the groups in input order, de-duplicated.
+ */
+export async function resolveGroups(session: SessionUser, groupIds: number[]) {
+  const groups = [];
+  for (const id of new Set(groupIds)) {
+    groups.push(await resolveGroup(session, id));
+  }
+  return groups;
+}
+
 export async function resolveMember(session: SessionUser, memberId: number) {
   const member = await db.member.findUnique({
     where: { id: memberId },

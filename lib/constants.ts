@@ -1,3 +1,5 @@
+import type { DateRangeConfig } from "@/lib/filters";
+
 export type AgeBracket = {
   label: string;
   min: number;
@@ -17,6 +19,12 @@ export const AGE_BRACKETS: AgeBracket[] = [
 export const DEFAULT_STATS_RANGE_DAYS = 30;
 export const CONFLICT_HORIZON_DAYS = 90;
 export const PAGE_SIZE = 50;
+
+/** Date range presets per page for the shared filter (`lib/filters.ts`); first listed = shown first. */
+export const ACTIVITY_LIST_DATE_RANGE: DateRangeConfig = { modes: ["hari", "minggu", "bulan", "custom"], defaultMode: "minggu" };
+/** Statistics default to the last `DEFAULT_STATS_RANGE_DAYS` (30) days — keep `defaultMode` in step with it. */
+export const STATS_DATE_RANGE: DateRangeConfig = { modes: ["7h", "30h", "90h", "bulan", "custom"], defaultMode: "30h" };
+export const AUDIT_DATE_RANGE: DateRangeConfig = { modes: ["semua", "hari", "7h", "30h", "90h", "custom"], defaultMode: "semua" };
 
 /** bcrypt work factor for password hashing (DESIGN.md §4.1). */
 export const BCRYPT_COST = 12;

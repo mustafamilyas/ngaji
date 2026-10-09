@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { FilterBar, SearchFilter, SelectFilter } from "@/components/filters/filter-bar";
+import { GroupFilter } from "@/components/filters/group-filter";
 import { visibleGroupsWhere } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
-import { formatEnumLabel, MEMBER_STATUS_LABELS } from "@/lib/member/labels";
+import { parseGroupIds, parsePage, parseSearch } from "@/lib/filters";
+import { MEMBER_STATUS_LABELS } from "@/lib/member/labels";
 import { listMembers } from "@/lib/member/queries";
 import { MEMBER_STATUSES, type MemberStatus } from "@/lib/validation/enums";
-
-const inputClass =
-  "h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
 function isMemberStatus(value: string): value is MemberStatus {
   return (MEMBER_STATUSES as readonly string[]).includes(value);
@@ -24,15 +24,15 @@ export default async function MembersPage({
   if (!session) redirect("/login");
 
   const params = await searchParams;
-  const q = typeof params.q === "string" ? params.q : undefined;
-  const grup = typeof params.grup === "string" ? Number(params.grup) : undefined;
+  const q = parseSearch(params.q);
+  const groupIds = parseGroupIds(params.grup);
   const status = typeof params.status === "string" && isMemberStatus(params.status) ? params.status : undefined;
-  const page = typeof params.page === "string" ? Number(params.page) : undefined;
+  const page = parsePage(params.page);
 
   const [{ members, total, pageSize }, groups] = await Promise.all([
     (async () => {
       try {
-        return await listMembers(session.user, { search: q, groupId: grup, status, page });
+        return await listMembers(session.user, { search: q, groupIds, status, page });
       } catch (error) {
         if (error instanceof NotFoundError) notFound();
         throw error;
@@ -41,17 +41,17 @@ export default async function MembersPage({
     db.group.findMany({
       where: visibleGroupsWhere(session.user),
       orderBy: [{ depth: "asc" }, { name: "asc" }],
-      select: { id: true, name: true },
+      select: { id: true, parentId: true, name: true, path: true },
     }),
   ]);
 
-  const currentPage = page && page > 0 ? Math.floor(page) : 1;
+  const currentPage = page;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   function pageHref(target: number) {
     const next = new URLSearchParams();
     if (q) next.set("q", q);
-    if (grup) next.set("grup", String(grup));
+    if (groupIds) next.set("grup", groupIds.join(","));
     if (status) next.set("status", status);
     next.set("page", String(target));
     return `/anggota?${next.toString()}`;
@@ -66,28 +66,17 @@ export default async function MembersPage({
         </Link>
       </div>
 
-      <form className="flex flex-wrap gap-2" method="get">
-        <input type="search" name="q" placeholder="Cari nama" defaultValue={q} className={`${inputClass} flex-1`} />
-        <select name="grup" defaultValue={grup ?? ""} className={inputClass}>
-          <option value="">Semua grup</option>
-          {groups.map((group) => (
-            <option key={group.id} value={group.id}>
-              {group.name}
-            </option>
-          ))}
-        </select>
-        <select name="status" defaultValue={status ?? ""} className={inputClass}>
-          <option value="">Semua status</option>
-          {MEMBER_STATUSES.map((value) => (
-            <option key={value} value={value}>
-              {formatEnumLabel(value)}
-            </option>
-          ))}
-        </select>
-        <button type="submit" className="h-9 rounded-md border px-3 text-sm hover:bg-muted">
-          Cari
-        </button>
-      </form>
+      <FilterBar action="/anggota" isFiltered={Boolean(q || groupIds || status)} resetHref="/anggota">
+        <SearchFilter value={q} placeholder="Cari nama anggota…" />
+        <GroupFilter groups={groups} selected={groupIds ?? []} hint="Termasuk semua grup di bawahnya." />
+        <SelectFilter
+          name="status"
+          value={status}
+          label="Status"
+          allLabel="Semua status"
+          options={MEMBER_STATUSES.map((value) => ({ value, label: MEMBER_STATUS_LABELS[value] }))}
+        />
+      </FilterBar>
 
       <p className="text-sm text-muted-foreground">{total} anggota</p>
 

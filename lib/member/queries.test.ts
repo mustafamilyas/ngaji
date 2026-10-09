@@ -118,9 +118,21 @@ describe("lib/member/queries listMembers", () => {
     expect(members).toHaveLength(0);
   });
 
+  it("filters to the union of several selected groups", async () => {
+    await makeMember(leafA.id, { name: "Union A" });
+    await makeMember(leafB.id, { name: "Union B" });
+
+    const session = sessionAt(branch.id, branch.path);
+    const onlyA = await listMembers(session, { search: "Union", groupIds: [leafA.id] });
+    const both = await listMembers(session, { search: "Union", groupIds: [leafA.id, leafB.id] });
+
+    expect(onlyA.members.map((m) => m.name)).toEqual(["Union A"]);
+    expect(both.members.map((m) => m.name)).toEqual(["Union A", "Union B"]);
+  });
+
   it("throws NotFoundError when the group filter is outside scope", async () => {
     const session = sessionAt(leafA.id, leafA.path);
-    await expect(listMembers(session, { groupId: leafB.id })).rejects.toBeInstanceOf(NotFoundError);
+    await expect(listMembers(session, { groupIds: [leafB.id] })).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it("paginates: page 3 of 120 shows members 101-120 with the total count", async () => {

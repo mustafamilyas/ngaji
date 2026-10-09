@@ -26,7 +26,7 @@ describe("UsersPage", () => {
     });
     await db.userGroupRole.create({ data: { userId: other.id, groupId: fixture.leaf.id, role: "ADMIN" } });
 
-    const html = renderToStaticMarkup(await UsersPage());
+    const html = renderToStaticMarkup(await UsersPage({ searchParams: Promise.resolve({}) }));
     expect(html).toContain("Other User");
   });
 
@@ -35,13 +35,13 @@ describe("UsersPage", () => {
     const session = sessionFor(fixture.actorId, "OWNER", fixture.root);
     mockAuthSession(auth, { user: session });
 
-    const html = renderToStaticMarkup(await UsersPage());
+    const html = renderToStaticMarkup(await UsersPage({ searchParams: Promise.resolve({}) }));
     expect(html).toContain("Belum ada pengguna.");
   });
 
   it("redirects to /login when there is no session", async () => {
     mockAuthSession(auth, null);
-    await expect(UsersPage()).rejects.toMatchObject({
+    await expect(UsersPage({ searchParams: Promise.resolve({}) })).rejects.toMatchObject({
       digest: expect.stringContaining("NEXT_REDIRECT"),
     });
   });
