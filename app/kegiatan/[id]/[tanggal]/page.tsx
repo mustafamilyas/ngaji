@@ -1,12 +1,14 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { occurrencesFor } from "@/lib/activity/occurrences";
 import { loadOccurrenceRows } from "@/lib/activity/rows";
+import { checkInPath } from "@/lib/attendance/paths";
 import { toActivityTemplate } from "@/lib/activity/template";
 import { db } from "@/lib/db";
 import { today } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
-import { getMaxDepth, listLeafGroupsInScope } from "@/lib/group/levels";
+import { getMaxDepth } from "@/lib/group/levels";
 import { resolveActivity, resolveGroup } from "@/lib/resolve";
 import { isInScope } from "@/lib/scope";
 import { expected } from "@/lib/stats";
@@ -115,30 +117,8 @@ export default async function AttendancePage({
     if (own && own.depth === maxDepth) leafGroup = own;
   }
 
-  if (!leafGroup) {
-    const leafOptions = await listLeafGroupsInScope(session.user);
-    return (
-      <div className="flex flex-col gap-4">
-        <h1 className="text-lg font-semibold">{activity.name}</h1>
-        <p className="text-sm text-muted-foreground">Pilih grup daun untuk mengisi absensi tanggal {tanggal}.</p>
-        <form method="get" className="flex gap-2">
-          <select
-            name="grup"
-            className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
-          >
-            {leafOptions.map((group) => (
-              <option key={group.id} value={group.id}>
-                {group.name}
-              </option>
-            ))}
-          </select>
-          <button type="submit" className="h-9 rounded-md border px-3 text-sm hover:bg-muted">
-            Pilih
-          </button>
-        </form>
-      </div>
-    );
-  }
+  // No fixed group to record for: the check-in page lets the user pick one (and their name) in a single step.
+  if (!leafGroup) redirect(checkInPath(activity.id, tanggal));
 
   const isFutureOrCancelled = isCancelled || isFuture;
 
@@ -163,6 +143,9 @@ export default async function AttendancePage({
           {leafGroup.name} · {occurrence.effectiveDate} · {occurrence.effectiveStartTime}
         </p>
         <h1 className="text-lg font-semibold">{activity.name}</h1>
+        <Link href={checkInPath(activity.id, tanggal)} className="text-sm text-primary hover:underline">
+          Buka halaman check-in
+        </Link>
         {isCancelled && <p className="text-sm text-destructive">Kegiatan ini dibatalkan pada tanggal ini.</p>}
         {isFuture && !isCancelled && (
           <p className="text-sm text-muted-foreground">Tanggal ini belum terjadi; absensi belum bisa diisi.</p>

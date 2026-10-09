@@ -15,3 +15,15 @@ export const attendanceSaveSchema = z.object({
   ),
 });
 export type AttendanceSaveInput = z.infer<typeof attendanceSaveSchema>;
+
+/** Single self check-in: one member marked HADIR (the kiosk page at `/kegiatan/[id]/[tanggal]/absen`). */
+export const checkInSchema = z.object({
+  activityId: z.coerce.number().int().positive(),
+  groupId: z.coerce.number().int().positive(),
+  date: z.string().regex(ACTIVITY_DATE_RE, "Tanggal tidak valid"),
+  memberId: z.coerce.number().int().positive(),
+});
+export type CheckInInput = z.infer<typeof checkInSchema>;
+
+export const checkInMembersSchema = checkInSchema.omit({ memberId: true });
+export type CheckInMembersInput = z.infer<typeof checkInMembersSchema>;

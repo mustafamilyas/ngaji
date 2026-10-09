@@ -11,6 +11,7 @@ import {
   updateActivity,
 } from "@/lib/activity/mutations";
 import { overrideOccurrence } from "@/lib/activity/occurrence-mutations";
+import { checkInMember, listCheckInMembers } from "@/lib/attendance/check-in";
 import { saveAttendance } from "@/lib/attendance/save";
 import type { Activity, ActivityOccurrence } from "@/lib/generated/prisma/client";
 import { type ActionResult, ValidationError, runAction } from "@/lib/errors";
@@ -21,7 +22,7 @@ import {
   deleteActivitySchema,
   endActivitySchema,
 } from "@/lib/validation/activity";
-import { attendanceSaveSchema } from "@/lib/validation/attendance";
+import { attendanceSaveSchema, checkInMembersSchema, checkInSchema } from "@/lib/validation/attendance";
 import { occurrenceOverrideSchema } from "@/lib/validation/occurrence";
 
 async function requireSession() {
@@ -168,6 +169,37 @@ export async function saveAttendanceAction(
   });
   if (result.ok && parsedActivityId.success) {
     revalidatePath(`/kegiatan/${parsedActivityId.data}`);
+  }
+  return result;
+}
+
+export async function listCheckInMembersAction(
+  input: unknown,
+): Promise<ActionResult<Awaited<ReturnType<typeof listCheckInMembers>>>> {
+  const session = await requireSession();
+  return runAction(async () => {
+    const parsed = checkInMembersSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.issues[0]?.message ?? "Data tidak valid");
+    }
+    return listCheckInMembers(session, parsed.data);
+  });
+}
+
+export async function checkInAction(
+  input: unknown,
+): Promise<ActionResult<Awaited<ReturnType<typeof checkInMember>>>> {
+  const session = await requireSession();
+  const result = await runAction(async () => {
+    const parsed = checkInSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.issues[0]?.message ?? "Data tidak valid");
+    }
+    return checkInMember(session, parsed.data);
+  });
+  if (result.ok) {
+    const activityId = checkInSchema.shape.activityId.safeParse((input as { activityId?: unknown })?.activityId);
+    if (activityId.success) revalidatePath(`/kegiatan/${activityId.data}`);
   }
   return result;
 }

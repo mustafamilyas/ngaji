@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { AppSidebar, BrandMark, SidebarNav } from "@/components/app-sidebar";
+import { CHECK_IN_PATH_RE } from "@/lib/attendance/paths";
 import type { SessionUser } from "@/lib/auth/session-user";
 import { SIDEBAR_COLLAPSED_COOKIE } from "@/lib/nav";
 import { cn } from "@/lib/utils";
@@ -49,6 +50,9 @@ export function NavShell({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [toggleCollapsed]);
+
+  // The check-in page is a full-screen kiosk: no sidebar, no padding.
+  if (CHECK_IN_PATH_RE.test(pathname)) return <>{children}</>;
 
   if (!user) {
     return <div className="min-h-dvh bg-background px-4 py-6">{children}</div>;

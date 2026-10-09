@@ -14,12 +14,15 @@ import type { AttendanceSaveInput } from "@/lib/validation/attendance";
 import type { MemberStatus } from "@/lib/validation/enums";
 
 /**
- * Bulk attendance save (DESIGN.md §3.3 "Absensi", §5.6): all six
- * `canRecordAttendance` conditions, one transaction (upsert occurrence,
- * then upsert/delete `Attendance` per member), one `attendance.save` audit
- * entry. Any invalid `memberId` fails the entire save — nothing is written.
+ * Everything both attendance writers (bulk save, single check-in) must
+ * establish before touching `Attendance` — DESIGN.md §3.3 `canRecordAttendance`
+ * plus the occurrence rules (valid key, not future, not cancelled) — and the
+ * members expected on that date. Ids are resolved here, never trusted.
  */
-export async function saveAttendance(session: SessionUser, input: AttendanceSaveInput) {
+export async function loadRecordingContext(
+  session: SessionUser,
+  input: { activityId: number; groupId: number; date: string },
+) {
   const activity = await resolveActivity(session, input.activityId);
   const leafGroup = await resolveGroup(session, input.groupId);
   const maxDepth = await getMaxDepth(leafGroup.organizationId);
@@ -47,6 +50,24 @@ export async function saveAttendance(session: SessionUser, input: AttendanceSave
     throw new ValidationError("Kegiatan pada tanggal ini dibatalkan");
   }
 
+  const allMembers = await db.member.findMany({ where: { groupId: leafGroup.id } });
+  const expectedMembers = expected(
+    { effectiveDate: occurrence.effectiveDate },
+    allMembers.map((m) => ({ ...m, status: m.status as MemberStatus })),
+  );
+
+  return { activity, leafGroup, occurrence, expectedMembers };
+}
+
+/**
+ * Bulk attendance save (DESIGN.md §3.3 "Absensi", §5.6): all six
+ * `canRecordAttendance` conditions, one transaction (upsert occurrence,
+ * then upsert/delete `Attendance` per member), one `attendance.save` audit
+ * entry. Any invalid `memberId` fails the entire save — nothing is written.
+ */
+export async function saveAttendance(session: SessionUser, input: AttendanceSaveInput) {
+  const { activity, leafGroup, expectedMembers } = await loadRecordingContext(session, input);
+
   const submittedIds = input.entries.map((e) => e.memberId);
   const uniqueSubmittedIds = new Set(submittedIds);
   const candidateMembers = await db.member.findMany({ where: { groupId: leafGroup.id, id: { in: submittedIds } } });
@@ -54,11 +75,6 @@ export async function saveAttendance(session: SessionUser, input: AttendanceSave
     throw new ValidationError("Ada anggota yang tidak valid untuk grup ini");
   }
 
-  const allMembers = await db.member.findMany({ where: { groupId: leafGroup.id } });
-  const expectedMembers = expected(
-    { effectiveDate: occurrence.effectiveDate },
-    allMembers.map((m) => ({ ...m, status: m.status as MemberStatus })),
-  );
   const expectedIds = new Set(expectedMembers.map((m) => m.id));
   for (const id of uniqueSubmittedIds) {
     if (!expectedIds.has(id)) {
