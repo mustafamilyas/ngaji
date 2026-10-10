@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import type { User } from "@/lib/generated/prisma/client";
+import type { CreatedUserDto } from "@/lib/user/dto";
 import type { ActionResult } from "@/lib/errors";
 import type { Role } from "@/lib/validation/enums";
 import { createUserAction } from "./actions";
@@ -20,7 +20,7 @@ export function CreateUserForm({
   allowedRoles: readonly Role[];
 }) {
   const [state, formAction, pending] = useActionState<
-    ActionResult<{ user: User; temporaryPassword: string }> | null,
+    ActionResult<{ user: CreatedUserDto; temporaryPassword: string }> | null,
     FormData
   >(createUserAction, null);
   const formRef = useRef<HTMLFormElement>(null);

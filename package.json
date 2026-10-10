@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "bootstrap": "tsx prisma/bootstrap.ts"
+    "bootstrap": "tsx prisma/bootstrap.ts",
+    "reset-owner-password": "tsx scripts/reset-owner-password.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

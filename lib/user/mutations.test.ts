@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { SessionUser } from "@/lib/auth/session-user";
+import { revalidateSessionUser } from "@/lib/auth/revalidate";
 import { db } from "@/lib/db";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 import { createUser, moveUser, resetUserPassword, setUserActive, updateUserRole } from "./mutations";
@@ -19,6 +20,15 @@ function sessionAs(
     groupPath,
     mustChangePassword: false,
   };
+}
+
+/** Walks a serialized action result and fails on any key that starts with "password" (user-management spec: credential data never leaves the server). */
+function passwordKeysIn(value: unknown, path = "$"): string[] {
+  if (value === null || typeof value !== "object") return [];
+  return Object.entries(value as Record<string, unknown>).flatMap(([key, child]) => [
+    ...(key.startsWith("password") ? [`${path}.${key}`] : []),
+    ...passwordKeysIn(child, `${path}.${key}`),
+  ]);
 }
 
 describe("lib/user/mutations", () => {
@@ -123,6 +133,25 @@ describe("lib/user/mutations", () => {
       expect(JSON.stringify(entry)).not.toContain(temporaryPassword);
     });
 
+    it("returns a credential-free DTO with role and group", async () => {
+      const session = sessionAs(rootOwner.id, "OWNER", root.id, root.path);
+      const result = await createUser(session, {
+        groupId: leafA.id,
+        username: "dto-create-user",
+        name: "Dto Create",
+        role: "USER",
+      });
+      expect(result.user).toMatchObject({
+        username: "dto-create-user",
+        name: "Dto Create",
+        role: "USER",
+        groupId: leafA.id,
+        isActive: true,
+        mustChangePassword: true,
+      });
+      expect(passwordKeysIn(JSON.parse(JSON.stringify(result.user)))).toEqual([]);
+    });
+
     it("rejects a duplicate username", async () => {
       const session = sessionAs(rootOwner.id, "OWNER", root.id, root.path);
       await createUser(session, { groupId: branchA.id, username: "dup-username", name: "First", role: "USER" });
@@ -149,6 +178,18 @@ describe("lib/user/mutations", () => {
     it("rejects ADMIN resetting a USER in a child group", async () => {
       const session = sessionAs(branchAdmin.id, "ADMIN", branchA.id, branchA.path);
       await expect(resetUserPassword(session, { userId: leafUser.id })).rejects.toBeInstanceOf(ForbiddenError);
+    });
+
+    it("ends the target's sessions by bumping sessionVersion", async () => {
+      const session = sessionAs(rootOwner.id, "OWNER", root.id, root.path);
+      const before = await db.user.findUniqueOrThrow({ where: { id: leafUser.id } });
+      expect(await revalidateSessionUser(leafUser.id, before.sessionVersion)).not.toBeNull();
+
+      await resetUserPassword(session, { userId: leafUser.id });
+
+      const after = await db.user.findUniqueOrThrow({ where: { id: leafUser.id } });
+      expect(after.sessionVersion).toBe(before.sessionVersion + 1);
+      expect(await revalidateSessionUser(leafUser.id, before.sessionVersion)).toBeNull();
     });
 
     it("never writes the temporary password to the audit log", async () => {
@@ -207,6 +248,7 @@ describe("lib/user/mutations", () => {
       const session = sessionAs(rootOwner.id, "OWNER", root.id, root.path);
       const updated = await setUserActive(session, { userId: rootOwner2.id, isActive: false });
       expect(updated.isActive).toBe(false);
+      expect(passwordKeysIn(JSON.parse(JSON.stringify(updated)))).toEqual([]);
     });
 
     it("rejects deactivating the sole remaining active root OWNER", async () => {

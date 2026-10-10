@@ -2,7 +2,8 @@
 
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
-import type { User, UserGroupRole } from "@/lib/generated/prisma/client";
+import type { UserGroupRole } from "@/lib/generated/prisma/client";
+import type { UserDto } from "@/lib/user/dto";
 import type { ActionResult } from "@/lib/errors";
 import { ROLES, type Role } from "@/lib/validation/enums";
 import { moveUserAction, resetUserPasswordAction, setUserActiveAction, updateUserRoleAction } from "./actions";
@@ -72,7 +73,7 @@ function MoveForm({ userId, currentGroupId, groups }: { userId: number; currentG
 }
 
 function ActiveToggleForm({ userId, isActive }: { userId: number; isActive: boolean }) {
-  const [state, formAction, pending] = useActionState<ActionResult<User> | null, FormData>(
+  const [state, formAction, pending] = useActionState<ActionResult<UserDto> | null, FormData>(
     setUserActiveAction,
     null,
   );

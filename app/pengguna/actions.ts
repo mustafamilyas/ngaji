@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/auth/require-session";
-import type { User, UserGroupRole } from "@/lib/generated/prisma/client";
+import type { UserGroupRole } from "@/lib/generated/prisma/client";
 import { type ActionResult, ValidationError, runAction } from "@/lib/errors";
+import type { CreatedUserDto, UserDto } from "@/lib/user/dto";
 import {
   createUser,
   moveUser,
@@ -20,9 +21,9 @@ import {
 } from "@/lib/validation/user";
 
 export async function createUserAction(
-  _prevState: ActionResult<{ user: User; temporaryPassword: string }> | null,
+  _prevState: ActionResult<{ user: CreatedUserDto; temporaryPassword: string }> | null,
   formData: FormData,
-): Promise<ActionResult<{ user: User; temporaryPassword: string }>> {
+): Promise<ActionResult<{ user: CreatedUserDto; temporaryPassword: string }>> {
   const session = await requireSession();
   const result = await runAction(async () => {
     const parsed = createUserSchema.safeParse({
@@ -85,9 +86,9 @@ export async function moveUserAction(
 }
 
 export async function setUserActiveAction(
-  _prevState: ActionResult<User> | null,
+  _prevState: ActionResult<UserDto> | null,
   formData: FormData,
-): Promise<ActionResult<User>> {
+): Promise<ActionResult<UserDto>> {
   const session = await requireSession();
   const result = await runAction(async () => {
     const parsed = setUserActiveSchema.safeParse({

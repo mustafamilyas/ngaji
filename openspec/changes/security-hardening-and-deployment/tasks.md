@@ -27,10 +27,10 @@
 
 ## 5. User management & authorization
 
-- [ ] 5.1 `lib/user/dto.ts#toUserDto`; `createUser`/`setUserActive` return DTOs; verify test that serializes every user action result and finds no key starting with `password`
-- [ ] 5.2 Root-OWNER invariant checked after write inside the transaction for setActive/updateRole/move (self-move included); verify tests "last root owner self-move rejected", "two owners: one may move", "concurrent mutual deactivation: exactly one succeeds"
-- [ ] 5.3 `resetUserPassword` increments `sessionVersion`; verify existing reset tests + session-ended test
-- [ ] 5.4 `scripts/reset-owner-password.ts` (+ `pnpm reset-owner-password <username> [--activate]`): temp password printed once, `mustChangePassword`, `sessionVersion++`, audit `actorId=null, meta.via="cli"`; verify test against test DB and non-zero exit for unknown username
+- [x] 5.1 `lib/user/dto.ts#toUserDto`; `createUser`/`setUserActive` return DTOs; verify test that serializes every user action result and finds no key starting with `password`
+- [x] 5.2 Root-OWNER invariant checked after write inside the transaction for setActive/updateRole/move (self-move included); verify tests "last root owner self-move rejected", "two owners: one may move", "concurrent mutual deactivation: exactly one succeeds"
+- [x] 5.3 `resetUserPassword` increments `sessionVersion`; verify existing reset tests + session-ended test
+- [x] 5.4 `scripts/reset-owner-password.ts` (+ `pnpm reset-owner-password <username> [--activate]`): temp password printed once, `mustChangePassword`, `sessionVersion++`, audit `actorId=null, meta.via="cli"`; verify test against test DB and non-zero exit for unknown username
 
 ## 6. Input validation
 
