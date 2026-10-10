@@ -5,6 +5,7 @@
  * these only normalize shape — group ids must still be resolved and
  * scope-checked server-side by the caller.
  */
+import { MAX_GROUP_FILTER_IDS } from "@/lib/constants";
 import { addDays, addMonthsOnDay, daysBetween, isDateString, monthStartOf, rangeForMode, today as todayInJakarta } from "@/lib/dates";
 
 type Param = string | string[] | undefined;
@@ -22,7 +23,7 @@ export function parseGroupIds(param: Param): number[] | undefined {
     .split(",")
     .map((part) => Number(part))
     .filter((n) => Number.isInteger(n) && n > 0);
-  const unique = [...new Set(ids)];
+  const unique = [...new Set(ids)].slice(0, MAX_GROUP_FILTER_IDS);
   return unique.length > 0 ? unique : undefined;
 }
 

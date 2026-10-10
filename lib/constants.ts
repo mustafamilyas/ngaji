@@ -28,6 +28,14 @@ export const ACTIVITY_LIST_DATE_RANGE: DateRangeConfig = { modes: ["hari", "ming
 export const STATS_DATE_RANGE: DateRangeConfig = { modes: ["7h", "30h", "90h", "bulan", "custom"], defaultMode: "30h" };
 export const AUDIT_DATE_RANGE: DateRangeConfig = { modes: ["semua", "hari", "7h", "30h", "90h", "custom"], defaultMode: "semua" };
 
+/** Upper bounds on client-supplied text and lists (input-validation spec). Reject, never truncate. */
+export const MAX_NAME_LENGTH = 200;
+export const MAX_LOCATION_LENGTH = 200;
+export const MAX_NOTES_LENGTH = 1000;
+export const MAX_ATTENDANCE_ENTRIES = 1000;
+export const MAX_WEEKDAYS = 7;
+export const MAX_GROUP_FILTER_IDS = 50;
+
 /** bcrypt work factor for password hashing (DESIGN.md §4.1). */
 export const BCRYPT_COST = 12;
 

@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { MAX_LOCATION_LENGTH, MAX_NAME_LENGTH, MAX_NOTES_LENGTH, MAX_WEEKDAYS } from "@/lib/constants";
+import { dateSchema, optionalDateSchema } from "./common";
 import { FREQS } from "./enums";
 
-export const ACTIVITY_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 export const ACTIVITY_TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 function startMinutes(time: string): number {
@@ -12,26 +13,24 @@ function startMinutes(time: string): number {
 /** The recurrence-template fields, shared by `activitySchema` and `activitySplitSchema` (the split's "new template from X onward" carries the same shape, minus `groupId`). */
 export const activityFieldsSchema = z.object({
   groupId: z.coerce.number().int().positive(),
-  name: z.string().trim().min(1),
-  location: z.string().trim().min(1),
+  name: z.string().trim().min(1).max(MAX_NAME_LENGTH),
+  location: z.string().trim().min(1).max(MAX_LOCATION_LENGTH),
   notes: z
     .string()
     .trim()
+    .max(MAX_NOTES_LENGTH)
     .transform((value) => (value ? value : undefined))
     .optional(),
   startTime: z.string().regex(ACTIVITY_TIME_RE, "Format jam tidak valid"),
   durationMinutes: z.number().int().positive(),
   freq: z.enum(FREQS),
   interval: z.number().int().min(1),
-  weekdays: z.array(z.number().int().min(0).max(6)),
+  weekdays: z.array(z.number().int().min(0).max(6)).max(MAX_WEEKDAYS),
   // The form converts an empty <input type=number> to `undefined` itself
   // (`setValueAs`), so this only ever sees a real number or nothing.
   monthDay: z.number().int().min(1).max(31).optional(),
-  startsOn: z.string().regex(ACTIVITY_DATE_RE, "Tanggal tidak valid"),
-  endsOn: z
-    .union([z.literal(""), z.string().regex(ACTIVITY_DATE_RE, "Tanggal tidak valid")])
-    .transform((value) => (value ? value : undefined))
-    .optional(),
+  startsOn: dateSchema(),
+  endsOn: optionalDateSchema(),
 });
 
 /** Refinements shared by `activitySchema` and `activitySplitSchema`. See DESIGN.md §5.1. */
@@ -129,7 +128,7 @@ export type ActivitySplitInput = z.infer<typeof activitySplitSchema>;
 
 export const endActivitySchema = z.object({
   activityId: z.coerce.number().int().positive(),
-  fromDate: z.string().regex(ACTIVITY_DATE_RE, "Tanggal tidak valid"),
+  fromDate: dateSchema(),
 });
 export type EndActivityInput = z.infer<typeof endActivitySchema>;
 

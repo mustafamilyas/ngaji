@@ -29,6 +29,11 @@ describe("parseGroupIds", () => {
     expect(parseGroupIds("1,abc,-2,0,2.5,7")).toEqual([1, 7]);
   });
 
+  it("keeps at most 50 ids", () => {
+    const raw = Array.from({ length: 80 }, (_, i) => i + 1).join(",");
+    expect(parseGroupIds(raw)).toHaveLength(50);
+  });
+
   it("returns undefined when nothing usable is given", () => {
     expect(parseGroupIds(undefined)).toBeUndefined();
     expect(parseGroupIds("")).toBeUndefined();

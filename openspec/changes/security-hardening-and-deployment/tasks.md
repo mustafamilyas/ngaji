@@ -34,8 +34,8 @@
 
 ## 6. Input validation
 
-- [ ] 6.1 Apply `dateSchema` to member, activity, occurrence, attendance schemas; add max lengths (activity name/location 200, notes 1000, override location 200 / notes 1000); verify schema tests for each oversize/invalid case
-- [ ] 6.2 Bound arrays (attendance entries ≤ 1000, weekdays ≤ 7, `parseGroupIds` ≤ 50); validate `activityId` in `updateActivityAction` with zod; verify tests "5000 entries rejected", "activityId 'abc' rejected"
+- [x] 6.1 Apply `dateSchema` to member, activity, occurrence, attendance schemas; add max lengths (activity name/location 200, notes 1000, override location 200 / notes 1000); verify schema tests for each oversize/invalid case
+- [x] 6.2 Bound arrays (attendance entries ≤ 1000, weekdays ≤ 7, `parseGroupIds` ≤ 50); validate `activityId` in `updateActivityAction` with zod; verify tests "5000 entries rejected", "activityId 'abc' rejected"
 
 ## 7. Deployment files
 

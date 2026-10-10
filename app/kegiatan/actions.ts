@@ -23,6 +23,7 @@ import {
   endActivitySchema,
 } from "@/lib/validation/activity";
 import { attendanceSaveSchema, checkInMembersSchema, checkInSchema } from "@/lib/validation/attendance";
+import { idSchema } from "@/lib/validation/common";
 import { occurrenceOverrideSchema } from "@/lib/validation/occurrence";
 
 type CreateResult = ActionResult<{ activity: Activity; hasConflict: boolean }>;
@@ -48,18 +49,22 @@ export async function createActivityAction(input: unknown): Promise<CreateResult
   return result;
 }
 
-export async function updateActivityAction(activityId: number, input: unknown): Promise<CreateResult> {
+export async function updateActivityAction(activityId: unknown, input: unknown): Promise<CreateResult> {
   const session = await requireSession();
+  let validId: number | undefined;
   const result = await runAction(async () => {
+    const parsedId = idSchema.safeParse(activityId);
     const parsed = activityUpdateSchema.safeParse(input);
+    if (!parsedId.success) throw new ValidationError("Data tidak valid");
     if (!parsed.success) {
       throw new ValidationError(parsed.error.issues[0]?.message ?? "Data tidak valid");
     }
-    return updateActivity(session, activityId, parsed.data);
+    validId = parsedId.data;
+    return updateActivity(session, parsedId.data, parsed.data);
   });
   if (result.ok) {
     revalidatePath("/kegiatan");
-    revalidatePath(`/kegiatan/${activityId}`);
+    revalidatePath(`/kegiatan/${validId}`);
   }
   return result;
 }
