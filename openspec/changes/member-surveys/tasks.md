@@ -22,7 +22,7 @@
 
 ## 4. Survey CRUD & form builder
 
-- [ ] 4.1 `lib/survey/mutations.ts` create / update (applies `planFormUpdate`) / soft delete, each with `audit()` in the same transaction; verify DB tests (owner admin ok, USER/ancestor/descendant denied, audit rollback)
+- [x] 4.1 `lib/survey/mutations.ts` create / update (applies `planFormUpdate`) / soft delete, each with `audit()` in the same transaction; verify DB tests (owner admin ok, USER/ancestor/descendant denied, audit rollback)
 - [ ] 4.2 `lib/survey/list.ts` visible surveys with search, group filter, pagination, response count, inherited flag; verify DB tests incl. scope
 - [ ] 4.3 `/survei` list page + nav item "Survei" in `lib/nav.ts`; verify page test renders list and hides "Buat survei" for USER
 - [ ] 4.4 Form builder component + `/survei/baru` + "Formulir" tab on `/survei/[id]` (locked fields disabled with hint, read-only for non-owners); verify page tests and manually in the browser preview (create survey, add each type, reorder, archive)
