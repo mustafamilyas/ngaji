@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { Save } from "lucide-react";
 import { createMemberAction, updateMemberAction } from "@/app/anggota/actions";
 import { Button } from "@/components/ui/button";
@@ -77,14 +77,14 @@ export function MemberForm(props: MemberFormProps) {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     setError,
     formState: { errors },
   } = useForm<MemberFormValues>({
     resolver: zodResolver(memberFormSchema),
     defaultValues: props.mode === "edit" ? props.defaultValues : emptyDefaults,
   });
-  const status = watch("status");
+  const status = useWatch({ control, name: "status" });
 
   function onSubmit(values: MemberFormValues) {
     startTransition(async () => {

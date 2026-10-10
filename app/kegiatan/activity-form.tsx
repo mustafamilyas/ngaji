@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { Save } from "lucide-react";
 import { createActivityAction, splitActivityAction, updateActivityAction } from "@/app/kegiatan/actions";
 import { Button } from "@/components/ui/button";
@@ -80,7 +80,7 @@ export function ActivityForm(props: ActivityFormProps) {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     setValue,
     setError,
     formState: { errors },
@@ -88,8 +88,8 @@ export function ActivityForm(props: ActivityFormProps) {
     resolver: zodResolver(activityUpdateSchema),
     defaultValues: props.mode === "create" ? emptyDefaults : props.defaultValues,
   });
-  const freq = watch("freq");
-  const weekdays = watch("weekdays");
+  const freq = useWatch({ control, name: "freq" });
+  const weekdays = useWatch({ control, name: "weekdays" });
 
   function toggleWeekday(day: number) {
     const next = weekdays.includes(day) ? weekdays.filter((d) => d !== day) : [...weekdays, day].sort();

@@ -25,6 +25,13 @@ export function NavShell({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const pathname = usePathname();
+  const [prevPathname, setPrevPathname] = useState(pathname);
+
+  // Close the mobile drawer whenever the route changes (adjusted during render, not in an effect).
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
+    setDrawerOpen(false);
+  }
 
   const toggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
@@ -33,11 +40,6 @@ export function NavShell({
       return next;
     });
   }, []);
-
-  // Close the mobile drawer whenever the route changes.
-  useEffect(() => {
-    setDrawerOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {

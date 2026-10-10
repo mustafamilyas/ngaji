@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { filterTriggerClass, submitFilterForm } from "./filter-bar";
 
 type Fields = { range: string; anchor: string; from: string; to: string };
+const FIELD_NAMES = ["range", "anchor", "from", "to"] as const satisfies readonly (keyof Fields)[];
 
 /**
  * Date range filter (`range` / `anchor` / `from` / `to`, see
@@ -34,12 +35,6 @@ export function DateRangeFilter({
   today: string;
 }) {
   const formRef = useRef<HTMLSpanElement>(null);
-  const fieldRefs = {
-    range: useRef<HTMLInputElement>(null),
-    anchor: useRef<HTMLInputElement>(null),
-    from: useRef<HTMLInputElement>(null),
-    to: useRef<HTMLInputElement>(null),
-  };
 
   const [open, setOpen] = useState(false);
   const [customFrom, setCustomFrom] = useState(range.from ?? "");
@@ -55,9 +50,9 @@ export function DateRangeFilter({
 
   function submit(next: Partial<Fields>) {
     const fields = { ...current, ...next };
-    for (const key of Object.keys(fieldRefs) as (keyof Fields)[]) {
-      const input = fieldRefs[key].current;
-      if (input) input.value = fields[key];
+    for (const name of FIELD_NAMES) {
+      const input = formRef.current?.querySelector<HTMLInputElement>(`input[name="${name}"]`);
+      if (input) input.value = fields[name];
     }
     setOpen(false);
     submitFilterForm(formRef.current);
@@ -76,8 +71,8 @@ export function DateRangeFilter({
 
   return (
     <span ref={formRef} className="inline-flex max-w-full items-center">
-      {(Object.keys(fieldRefs) as (keyof Fields)[]).map((key) => (
-        <input key={`${key}:${stateKey}`} ref={fieldRefs[key]} type="hidden" name={key} defaultValue={current[key]} />
+      {FIELD_NAMES.map((name) => (
+        <input key={`${name}:${stateKey}`} type="hidden" name={name} defaultValue={current[name]} />
       ))}
 
       <span className="inline-flex max-w-full items-center rounded-lg">

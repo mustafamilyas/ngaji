@@ -98,13 +98,14 @@ export function SearchFilter({
 }) {
   const [text, setText] = useState(value ?? "");
   const [prevValue, setPrevValue] = useState(value);
+  const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Follow URL changes (e.g. Reset) without clobbering what the user is typing.
   if (value !== prevValue) {
     setPrevValue(value);
-    if (typeof document === "undefined" || document.activeElement !== inputRef.current) setText(value ?? "");
+    if (!focused) setText(value ?? "");
   }
 
   useEffect(() => () => clearTimeout(timer.current), []);
@@ -126,6 +127,8 @@ export function SearchFilter({
         name={name}
         value={text}
         onChange={(event) => schedule(event.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         onKeyDown={(event) => {
           if (event.key === "Enter") clearTimeout(timer.current);
         }}

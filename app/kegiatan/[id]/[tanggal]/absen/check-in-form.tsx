@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { ArrowLeft, Check, ChevronRight, UserPlus } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight } from "lucide-react";
 import { checkInAction, listCheckInMembersAction } from "@/app/kegiatan/actions";
 import { Button } from "@/components/ui/button";
 import { QuickRegisterDialog } from "./quick-register-dialog";
@@ -48,7 +48,6 @@ export function CheckInForm({
   );
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<number | undefined>();
-  const [highlight, setHighlight] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [welcome, setWelcome] = useState<Welcome | null>(null);
   const [pending, startTransition] = useTransition();
