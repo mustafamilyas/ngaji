@@ -1,0 +1,10 @@
+# Copy to ~ngaji/.config/rclone/rclone.conf (mode 600). Never commit the real file.
+# Use an access key scoped to the backup bucket only.
+# Take the endpoint/region from the IDCloudHost console (Object Storage).
+[idch]
+type = s3
+provider = Other
+access_key_id = CHANGE_ME
+secret_access_key = CHANGE_ME
+endpoint = https://CHANGE-ME-endpoint-from-console
+acl = private

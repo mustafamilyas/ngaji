@@ -39,11 +39,11 @@
 
 ## 7. Deployment files
 
-- [ ] 7.1 `deploy/nginx/ngaji.conf` (HTTP→HTTPS, `X-Forwarded-For $remote_addr`, `X-Real-IP`, `client_max_body_size 1m`); verify `nginx -t` in a container or on the VPS
-- [ ] 7.2 `deploy/systemd/ngaji.service` (`pnpm start -H 127.0.0.1 -p 3000`, hardening, `ReadWritePaths=/var/lib/ngaji /var/backups/ngaji`), `ngaji-backup.service`, `ngaji-backup.timer`; verify `systemd-analyze verify`
-- [ ] 7.3 `scripts/backup.sh` (`.backup` → integrity_check → gzip → age → rclone daily + monthly-if-missing → prune 30d/365d remote, keep 7 local → healthcheck ping, `set -euo pipefail` + `trap`); verify with `shellcheck` and a dry run against a local MinIO or a throwaway bucket
-- [ ] 7.4 `scripts/restore.sh <object|file> <identity>` (decrypt → integrity_check → stop → keep `.pre-restore-<ts>` → install 600 → start → curl `/login`; abort before touching prod on wrong key/corruption); verify with `shellcheck` and a restore of the 7.3 output onto a scratch DB path
-- [ ] 7.5 `deploy/env/backup.env.example` and `deploy/rclone.conf.example` (no secrets); verify `.gitignore` excludes real copies
+- [x] 7.1 `deploy/nginx/ngaji.conf` (HTTP→HTTPS, `X-Forwarded-For $remote_addr`, `X-Real-IP`, `client_max_body_size 1m`); verify `nginx -t` in a container or on the VPS
+- [x] 7.2 `deploy/systemd/ngaji.service` (`pnpm start -H 127.0.0.1 -p 3000`, hardening, `ReadWritePaths=/var/lib/ngaji /var/backups/ngaji`), `ngaji-backup.service`, `ngaji-backup.timer`; verify `systemd-analyze verify`
+- [x] 7.3 `scripts/backup.sh` (`.backup` → integrity_check → gzip → age → rclone daily + monthly-if-missing → prune 30d/365d remote, keep 7 local → healthcheck ping, `set -euo pipefail` + `trap`); verify with `shellcheck` and a dry run against a local MinIO or a throwaway bucket
+- [x] 7.4 `scripts/restore.sh <object|file> <identity>` (decrypt → integrity_check → stop → keep `.pre-restore-<ts>` → install 600 → start → curl `/login`; abort before touching prod on wrong key/corruption); verify with `shellcheck` and a restore of the 7.3 output onto a scratch DB path
+- [x] 7.5 `deploy/env/backup.env.example` and `deploy/rclone.conf.example` (no secrets); verify `.gitignore` excludes real copies
 
 ## 8. Documentation
 
