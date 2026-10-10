@@ -92,6 +92,7 @@ export default async function ActivityDetailPage({
   ];
   const requested = parseTab(query.tab, TABS, "absensi");
   const tab = tabs.some((t) => t.key === requested) ? requested : "absensi";
+  const attendance = tab === "absensi" ? await loadAttendance(activity, query, now) : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -157,7 +158,7 @@ export default async function ActivityDetailPage({
       <div className="flex flex-col gap-4">
         <TabNav path={path} tabs={tabs} current={tab} defaultTab="absensi" />
 
-        {tab === "absensi" && <AttendanceTab activity={activity} query={query} canRecord={canRecord} now={now} />}
+        {attendance && <AttendanceTab activityId={activity.id} attendance={attendance} canRecord={canRecord} now={now} />}
 
         {tab === "jadwal" && (
           <ScheduleTab
@@ -231,17 +232,12 @@ export default async function ActivityDetailPage({
   );
 }
 
-async function AttendanceTab({
-  activity,
-  query,
-  canRecord,
-  now,
-}: {
-  activity: Awaited<ReturnType<typeof resolveActivity>>;
-  query: Record<string, string | string[] | undefined>;
-  canRecord: boolean;
-  now: string;
-}) {
+/** Data for the "Absensi" tab; loaded by the page so the tab itself stays a sync component. */
+async function loadAttendance(
+  activity: Awaited<ReturnType<typeof resolveActivity>>,
+  query: Record<string, string | string[] | undefined>,
+  now: string,
+) {
   const statsRange = resolveDateRange(query, STATS_DATE_RANGE, now);
   // STATS_DATE_RANGE has no open-ended mode, so both bounds are always set.
   const statsFrom = statsRange.from!;
@@ -250,7 +246,21 @@ async function AttendanceTab({
     from: statsFrom,
     to: statsTo,
   });
-  const path = `/kegiatan/${activity.id}`;
+  return { statsRange, statsFrom, statsTo, summary };
+}
+
+function AttendanceTab({
+  activityId,
+  attendance: { statsRange, statsFrom, statsTo, summary },
+  canRecord,
+  now,
+}: {
+  activityId: number;
+  attendance: Awaited<ReturnType<typeof loadAttendance>>;
+  canRecord: boolean;
+  now: string;
+}) {
+  const path = `/kegiatan/${activityId}`;
 
   return (
     <Card>
@@ -270,7 +280,7 @@ async function AttendanceTab({
           summary={summary}
           from={statsFrom}
           to={statsTo}
-          activityId={activity.id}
+          activityId={activityId}
           canRecord={canRecord}
         />
       </CardContent>
