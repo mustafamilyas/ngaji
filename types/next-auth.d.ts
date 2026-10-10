@@ -22,6 +22,7 @@ declare module "@auth/core/types" {
     groupId: number;
     groupPath: string;
     mustChangePassword: boolean;
+    sessionVersion?: number;
   }
 
   interface Session {
@@ -38,5 +39,6 @@ declare module "@auth/core/jwt" {
     groupId: number;
     groupPath: string;
     mustChangePassword: boolean;
+    sessionVersion?: number;
   }
 }

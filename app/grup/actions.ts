@@ -2,17 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { requireSession } from "@/lib/auth/require-session";
 import type { Group } from "@/lib/generated/prisma/client";
 import { createGroup, deleteGroup, renameGroup } from "@/lib/group/mutations";
 import { type ActionResult, ValidationError, runAction } from "@/lib/errors";
 import { createGroupSchema, deleteGroupSchema, renameGroupSchema } from "@/lib/validation/group";
-
-async function requireSession() {
-  const session = await auth();
-  if (!session) redirect("/login");
-  return session.user;
-}
 
 export async function createGroupAction(
   _prevState: ActionResult<Group> | null,

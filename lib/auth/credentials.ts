@@ -1,4 +1,6 @@
 import bcrypt from "bcrypt";
+import { randomBytes } from "node:crypto";
+import { BCRYPT_COST } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { credentialsSchema } from "@/lib/validation/auth";
 import { toSessionUser, type SessionUser } from "./session-user";
@@ -15,24 +17,22 @@ export type CredentialsResult =
   | { ok: false; reason: CredentialsFailureReason; actorId: number | null; username: string | null };
 
 /**
- * Best-effort username for the rate-limit check, which must run before full
- * schema validation (an over-limit attempt is refused without even
- * comparing the password). Not a validity claim — just "is there a string
- * here worth counting failures against".
+ * Hash of a random string, computed once. Compared against whenever the
+ * user is unknown or inactive so those failures take as long as a wrong
+ * password and cannot be told apart by response time.
  */
-export function extractUsername(input: unknown): string | null {
-  if (input && typeof input === "object" && typeof (input as { username?: unknown }).username === "string") {
-    return (input as { username: string }).username;
-  }
-  return null;
+let dummyHash: Promise<string> | undefined;
+function getDummyHash(): Promise<string> {
+  dummyHash ??= bcrypt.hash(randomBytes(32).toString("hex"), BCRYPT_COST);
+  return dummyHash;
 }
 
 /**
  * Resolves login credentials to a session user, or a typed failure reason.
- * The caller (auth.ts) turns every failure into the same generic
- * "username atau password salah" message (DESIGN.md §4.1) but still needs
- * the reason and actorId to audit `auth.login_failed` correctly — `actorId`
- * is only null when the username itself is unknown (DESIGN.md §4.4).
+ * The caller turns every failure into the same generic "username atau
+ * password salah" message (DESIGN.md §4.1) but still needs the reason and
+ * actorId to audit `auth.login_failed` correctly — `actorId` is only null
+ * when the username itself is unknown (DESIGN.md §4.4).
  */
 export async function verifyCredentials(input: unknown): Promise<CredentialsResult> {
   const parsed = credentialsSchema.safeParse(input);
@@ -47,9 +47,11 @@ export async function verifyCredentials(input: unknown): Promise<CredentialsResu
   });
 
   if (!user) {
+    await bcrypt.compare(password, await getDummyHash());
     return { ok: false, reason: "unknown_user", actorId: null, username };
   }
   if (!user.isActive || !user.role) {
+    await bcrypt.compare(password, await getDummyHash());
     return { ok: false, reason: "inactive", actorId: user.id, username };
   }
 

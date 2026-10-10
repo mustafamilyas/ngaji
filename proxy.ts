@@ -1,28 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { buildCsp } from "@/lib/security/csp";
 
 const PASSWORD_CHANGE_PATH = "/akun/password";
 const LOGIN_PATH = "/login";
 
 const IS_DEV = process.env.NODE_ENV !== "production";
-
-/**
- * DESIGN.md §4.3 calls for `script-src 'self' 'nonce-…'`. Next.js's App
- * Router ships every page's content via inline `<script>` tags (its RSC
- * streaming payload) — with no nonce and no `'unsafe-inline'`, the browser
- * blocks those and every page renders blank, including `/login` itself.
- * `'unsafe-eval'` is dev-only: Next's dev-mode source maps rely on `eval`
- * (see the Next.js CSP guide); production needs neither.
- */
-function buildCsp(nonce: string): string {
-  return [
-    "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${IS_DEV ? " 'unsafe-eval'" : ""}`,
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data:",
-    "frame-ancestors 'none'",
-  ].join("; ");
-}
 
 /**
  * Runs on the Node.js runtime (not Edge) because `auth()` triggers our
@@ -31,7 +14,7 @@ function buildCsp(nonce: string): string {
  */
 export default auth((req) => {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-  const csp = buildCsp(nonce);
+  const csp = buildCsp(nonce, { dev: IS_DEV });
 
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-nonce", nonce);

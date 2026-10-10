@@ -18,12 +18,12 @@
 
 ## 4. Authentication
 
-- [ ] 4.1 Login: parse with `credentialsSchema` first, use normalized username for limiter/lookup/audit, dummy bcrypt compare for unknown/inactive; verify tests "whitespace variant is still limited" and "unknown user performs a compare"
-- [ ] 4.2 Rate limiter counts in SQL (`count` by ip, `json_extract` by username) under the keyed lock; verify tests "sixth attempt blocked", "window expires", "parallel burst of 20 compares ≤ 5", "forged XFF ignored"
-- [ ] 4.3 `sessionVersion` in JWT at sign-in, compared in `revalidateSessionUser`, never taken from `update` trigger, missing value = mismatch; verify tests "reset ends sessions", "update cannot adopt new version"
-- [ ] 4.4 `changePassword` increments `sessionVersion`, is rate limited, and the action signs out to `/login?pesan=password-diubah` with an Indonesian banner on the login page; verify tests and manual check of the banner
-- [ ] 4.5 `lib/auth/require-session.ts`; replace every local `requireSession` in `app/**/actions.ts`; only `changePasswordAction`/`signOutAction` opt in; verify test "create-member action refused while mustChangePassword" and a test that greps every `"use server"` file for direct `auth()` use
-- [ ] 4.6 CSP adds `base-uri 'none'; object-src 'none'; form-action 'self'`; HSTS production-only; verify `curl -I` on dev (no HSTS) and on `pnpm start` (HSTS present), and a forms/login still submits
+- [x] 4.1 Login: parse with `credentialsSchema` first, use normalized username for limiter/lookup/audit, dummy bcrypt compare for unknown/inactive; verify tests "whitespace variant is still limited" and "unknown user performs a compare"
+- [x] 4.2 Rate limiter counts in SQL (`count` by ip, `json_extract` by username) under the keyed lock; verify tests "sixth attempt blocked", "window expires", "parallel burst of 20 compares ≤ 5", "forged XFF ignored"
+- [x] 4.3 `sessionVersion` in JWT at sign-in, compared in `revalidateSessionUser`, never taken from `update` trigger, missing value = mismatch; verify tests "reset ends sessions", "update cannot adopt new version"
+- [x] 4.4 `changePassword` increments `sessionVersion`, is rate limited, and the action signs out to `/login?pesan=password-diubah` with an Indonesian banner on the login page; verify tests and manual check of the banner
+- [x] 4.5 `lib/auth/require-session.ts`; replace every local `requireSession` in `app/**/actions.ts`; only `changePasswordAction`/`signOutAction` opt in; verify test "create-member action refused while mustChangePassword" and a test that greps every `"use server"` file for direct `auth()` use
+- [x] 4.6 CSP adds `base-uri 'none'; object-src 'none'; form-action 'self'`; HSTS production-only; verify `curl -I` on dev (no HSTS) and on `pnpm start` (HSTS present), and a forms/login still submits
 
 ## 5. User management & authorization
 

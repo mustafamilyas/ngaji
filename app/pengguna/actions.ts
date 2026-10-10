@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { requireSession } from "@/lib/auth/require-session";
 import type { User, UserGroupRole } from "@/lib/generated/prisma/client";
 import { type ActionResult, ValidationError, runAction } from "@/lib/errors";
 import {
@@ -19,12 +18,6 @@ import {
   setUserActiveSchema,
   updateUserRoleSchema,
 } from "@/lib/validation/user";
-
-async function requireSession() {
-  const session = await auth();
-  if (!session) redirect("/login");
-  return session.user;
-}
 
 export async function createUserAction(
   _prevState: ActionResult<{ user: User; temporaryPassword: string }> | null,

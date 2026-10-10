@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { requireSession } from "@/lib/auth/require-session";
 import type { Member } from "@/lib/generated/prisma/client";
 import { MEMBER_COLUMNS, MEMBER_COLUMNS_COOKIE, serializeMemberColumns } from "@/lib/member/columns";
 import { createMember, deleteMember, updateMember } from "@/lib/member/mutations";
@@ -13,12 +13,6 @@ import {
   deleteMemberSchema,
   updateMemberSchema,
 } from "@/lib/validation/member";
-
-async function requireSession() {
-  const session = await auth();
-  if (!session) redirect("/login");
-  return session.user;
-}
 
 /**
  * `input` arrives as the plain object react-hook-form validated client-side

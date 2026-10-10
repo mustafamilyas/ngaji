@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { requireSession } from "@/lib/auth/require-session";
 import {
   createActivity,
   deleteActivity,
@@ -24,12 +24,6 @@ import {
 } from "@/lib/validation/activity";
 import { attendanceSaveSchema, checkInMembersSchema, checkInSchema } from "@/lib/validation/attendance";
 import { occurrenceOverrideSchema } from "@/lib/validation/occurrence";
-
-async function requireSession() {
-  const session = await auth();
-  if (!session) redirect("/login");
-  return session.user;
-}
 
 type CreateResult = ActionResult<{ activity: Activity; hasConflict: boolean }>;
 
