@@ -8,10 +8,10 @@
 
 ## 2. Pure logic (tests first)
 
-- [ ] 2.1 `lib/validation/survey.ts` form schema (title, question types, ≥2 distinct options, scale bounds/steps, Ya/Tidak preset helper); verify tests for every "Question types" / "Survey fields" scenario pass
-- [ ] 2.2 `lib/survey/form-plan.ts` `planFormUpdate` (create/update/archive/delete-unanswered, reject type or scale change on answered questions); verify tests for every "Form locks once answered" scenario pass
-- [ ] 2.3 `lib/survey/answers.ts` `validateAnswers` (foreign/archived ids, per-type rules, required/optional, archived answers preserved); verify tests for every "Answers are validated" scenario pass
-- [ ] 2.4 `lib/survey/summary.ts` (`summarizeChoice` with multi-choice %, `summarizeScale` with zero buckets, `ageBracketRange` from `AGE_BRACKETS`); verify unit tests pass
+- [x] 2.1 `lib/validation/survey.ts` form schema (title, question types, ≥2 distinct options, scale bounds/steps, Ya/Tidak preset helper); verify tests for every "Question types" / "Survey fields" scenario pass
+- [x] 2.2 `lib/survey/form-plan.ts` `planFormUpdate` (create/update/archive/delete-unanswered, reject type or scale change on answered questions); verify tests for every "Form locks once answered" scenario pass
+- [x] 2.3 `lib/survey/answers.ts` `validateAnswers` (foreign/archived ids, per-type rules, required/optional, archived answers preserved); verify tests for every "Answers are validated" scenario pass
+- [x] 2.4 `lib/survey/summary.ts` (`summarizeChoice` with multi-choice %, `summarizeScale` with zero buckets, `ageBracketRange` from `AGE_BRACKETS`); verify unit tests pass
 
 ## 3. Authorization
 

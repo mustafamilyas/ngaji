@@ -38,6 +38,8 @@ export const MAX_GROUP_FILTER_IDS = 50;
 
 /** Survey form limits and defaults (member-surveys spec). Reject, never truncate. */
 export const SURVEY_TITLE_MAX = 200;
+export const SURVEY_MAX_QUESTIONS = 100;
+export const SURVEY_MAX_OPTIONS = 50;
 export const SURVEY_DESCRIPTION_MAX = MAX_NOTES_LENGTH;
 export const SURVEY_QUESTION_LABEL_MAX = 300;
 export const SURVEY_HELP_TEXT_MAX = 500;
