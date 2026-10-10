@@ -47,7 +47,7 @@
 
 ## 8. Documentation
 
-- [ ] 8.1 Rewrite DEPLOYMENT.md for IDCloudHost: VPS order (2 vCPU/2 GB/40 GB, Jakarta, Ubuntu 24.04), first-boot hardening (user, SSH keys, ufw, fail2ban, unattended-upgrades, swap, timezone), app install, Nginx/certbot, Object Storage bucket + key, `age` keygen on the owner's laptop, backup timer, healthchecks.io, restore runbook, quarterly drill log, upgrade procedure (backup + snapshot + audit gate), go-live checklist; verify by following it end-to-end on a fresh hourly VPS
+- [x] 8.1 Rewrite DEPLOYMENT.md for IDCloudHost: VPS order (2 vCPU/2 GB/40 GB, Jakarta, Ubuntu 24.04), first-boot hardening (user, SSH keys, ufw, fail2ban, unattended-upgrades, swap, timezone), app install, Nginx/certbot, Object Storage bucket + key, `age` keygen on the owner's laptop, backup timer, healthchecks.io, restore runbook, quarterly drill log, upgrade procedure (backup + snapshot + audit gate), go-live checklist; verify by following it end-to-end on a fresh hourly VPS
 - [ ] 8.2 Update DESIGN.md §3.4 (peer OWNER reset, CLI recovery), §4.1 (normalization, serialization, timing, sessionVersion, actions enforcement), §4.3 (CSP/HSTS, trusted IP), §4.4 (backup now specified), §8; update `openspec/config.yaml` context (Next 16, Prisma 7, SQLite) so it matches CLAUDE.md
 - [ ] 8.3 `pnpm test`, `pnpm tsc --noEmit`, `pnpm lint` (note pre-existing lint breakage if still present), `openspec validate security-hardening-and-deployment --strict` all pass
 

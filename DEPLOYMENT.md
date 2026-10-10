@@ -1,226 +1,346 @@
-# Panduan Deployment
+# Deployment Guide (IDCloudHost)
 
-Panduan ini untuk deployment production, terpisah dari [README.md](README.md) (setup lokal). Baca [DESIGN.md](DESIGN.md) §8 untuk konteks arsitektur.
+Production deployment of Ngaji on a single IDCloudHost Cloud VPS, with encrypted daily backups to IDCloudHost Object Storage. Local development setup is in [README.md](README.md). Architecture context: [DESIGN.md](DESIGN.md) §8.
 
-## 1. Batasan arsitektur — baca ini dulu
+The reference files live in the repository and are copied to the server in the steps below:
 
-Aplikasi ini memakai **SQLite sebagai file lokal** (`@prisma/adapter-better-sqlite3`), bukan server database terpisah — ini keputusan desain yang sengaja (DESIGN.md §8), bukan cuma untuk development. Konsekuensinya:
+| File | Installed at |
+|---|---|
+| `deploy/nginx/ngaji.conf` | `/etc/nginx/sites-available/ngaji.conf` |
+| `deploy/systemd/ngaji.service` | `/etc/systemd/system/ngaji.service` |
+| `deploy/systemd/ngaji-backup.service`, `ngaji-backup.timer` | `/etc/systemd/system/` |
+| `deploy/env/backup.env.example` | `/etc/ngaji/backup.env` |
+| `deploy/rclone.conf.example` | `/home/ngaji/.config/rclone/rclone.conf` |
+| `scripts/backup.sh`, `scripts/restore.sh` | run in place from `/opt/ngaji/scripts/` |
 
-- **Harus satu proses Node.js yang hidup terus** (long-running), di server dengan **disk persisten**. Middleware auth (`proxy.ts`) juga sengaja jalan di Node.js runtime, bukan Edge, karena butuh query Prisma langsung.
-- **Tidak cocok untuk platform serverless/edge klasik** — Vercel Serverless/Edge Functions, Netlify Functions, Cloudflare Workers, dll. Platform-platform itu punya filesystem *ephemeral* atau *read-only* dan bisa menjalankan banyak instance sekaligus tanpa berbagi disk — file SQLite akan hilang atau tidak konsisten antar instance.
-- **Cocok untuk**: VPS biasa (systemd/pm2), atau container di platform yang menyediakan *volume* persisten (Fly.io, Railway, dll). Panduan di bawah pakai VPS + systemd + Nginx sebagai jalur utama; lihat §11 untuk alternatif container.
-- File database berisi **PII (data anggota)** — wajib di luar git (`*.db` sudah di `.gitignore`), permission dibatasi ke user aplikasi, dan masuk rencana backup.
+## 1. Architecture constraints (read first)
 
-## 2. Prasyarat di server
+- The app uses **SQLite as a local file** (`@prisma/adapter-better-sqlite3`). That is deliberate (DESIGN.md §8).
+- It must run as **exactly one long-lived Node.js process** on a server with a **persistent disk**. The login rate limiter uses an in-process lock that is only correct with one process. Never run two instances, and never use serverless/edge platforms.
+- The process listens on **127.0.0.1:3000 only**. Nginx is the only way in, terminates TLS, and overwrites the forwarding headers so clients cannot spoof their IP.
+- The database holds **member PII**. It stays out of git, is readable only by the `ngaji` user, and leaves the server only encrypted.
+- Targets: RPO ≤ 24 h (daily backup), RTO ≤ 1 h for "VPS lost".
 
-- Linux (Ubuntu 22.04+/Debian 12+ atau sejenis) dengan akses root/sudo
-- Node.js 20+ (24 dipakai saat pengembangan)
-- pnpm (`corepack enable && corepack prepare pnpm@10 --activate`)
-- Nginx + certbot, jika memakai domain sendiri dengan HTTPS (sangat disarankan — sesi login memakai cookie yang butuh HTTPS di production, lihat `auth.ts`)
-- Satu user khusus untuk menjalankan aplikasi (jangan root), misal `ngaji`
+## 2. Order the VPS
 
-## 3. Ambil kode & install dependencies
+In the IDCloudHost console:
+
+1. Create a **Cloud VPS**: Ubuntu 24.04 LTS, **2 vCPU / 2 GB RAM / 40 GB NVMe**, Jakarta data center. Hourly billing is fine for the rehearsal; use monthly billing for production.
+2. Add your SSH **public key** at creation time.
+3. If your plan offers a network firewall, allow inbound **22, 80, 443** only. This is in addition to `ufw` below. *Check in the console whether your plan includes it.*
+4. Point a DNS `A` record for your domain (e.g. `ngaji.example.org`) at the VPS IP. Do this now so certbot works in §6.
+
+## 3. First-boot hardening
+
+SSH in as the initial user, then:
 
 ```bash
-sudo mkdir -p /opt/ngaji && sudo chown ngaji:ngaji /opt/ngaji
-sudo -u ngaji git clone <url-repo-anda> /opt/ngaji
+# Updates and tools
+sudo apt update && sudo apt -y upgrade
+sudo apt -y install ufw fail2ban unattended-upgrades sqlite3 nginx certbot python3-certbot-nginx curl git rclone age build-essential python3
+
+# Timezone: timers and the app's day boundary use Asia/Jakarta
+sudo timedatectl set-timezone Asia/Jakarta
+
+# 2 GB swap so `pnpm build` is not OOM-killed
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
+# Dedicated app user (no login password)
+sudo adduser --disabled-password --gecos "" ngaji
+
+# Firewall: only SSH, HTTP, HTTPS
+sudo ufw default deny incoming && sudo ufw default allow outgoing
+sudo ufw allow 22/tcp && sudo ufw allow 80/tcp && sudo ufw allow 443/tcp
+sudo ufw enable
+
+# Automatic security updates
+sudo dpkg-reconfigure -plow unattended-upgrades
+```
+
+SSH: key-only, no root login. **Before** closing your session, confirm key login works from a second terminal.
+
+```bash
+sudo tee /etc/ssh/sshd_config.d/99-ngaji.conf <<'EOF'
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+EOF
+sudo sshd -t && sudo systemctl reload ssh
+```
+
+fail2ban (sshd jail is enabled by default on Ubuntu):
+
+```bash
+sudo systemctl enable --now fail2ban
+sudo fail2ban-client status sshd
+```
+
+Plan a monthly reboot window so kernel updates apply.
+
+## 4. Install the application
+
+Node 24 LTS via NodeSource, pnpm via corepack:
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
+sudo apt -y install nodejs
+sudo corepack enable
+```
+
+Code and data directories:
+
+```bash
+sudo mkdir -p /opt/ngaji /var/lib/ngaji /var/backups/ngaji /etc/ngaji
+sudo chown ngaji:ngaji /opt/ngaji /var/lib/ngaji /var/backups/ngaji
+sudo chmod 700 /var/lib/ngaji /var/backups/ngaji
+sudo -u ngaji git clone <your-repo-url> /opt/ngaji
 cd /opt/ngaji
-pnpm install --frozen-lockfile
+sudo -u ngaji pnpm install --frozen-lockfile
 ```
 
-## 4. Siapkan lokasi database (di luar direktori kode)
-
-Simpan file SQLite **di luar** direktori kode, supaya `git pull` / redeploy berikutnya tidak pernah menyentuhnya dan backup lebih mudah dipisahkan dari kode:
-
-```bash
-sudo mkdir -p /var/lib/ngaji
-sudo chown ngaji:ngaji /var/lib/ngaji
-sudo chmod 700 /var/lib/ngaji
-```
-
-## 5. Konfigurasi environment (`.env`)
-
-Buat `/opt/ngaji/.env` (jangan commit ke git):
+`/opt/ngaji/.env` (mode 600, owned by `ngaji`, never committed):
 
 ```bash
 DATABASE_URL="file:/var/lib/ngaji/production.db"
-AUTH_SECRET="<hasil: openssl rand -base64 32>"
+AUTH_SECRET="<output of: openssl rand -base64 32>"
 AUTH_TRUST_HOST="true"
 ```
 
-Catatan:
-
-- `AUTH_SECRET` **harus digenerate ulang** untuk production — jangan pakai nilai dari `.env` development.
-- `DATABASE_URL` di sini memakai **path absolut** (`/var/lib/ngaji/production.db`), bukan `file:./dev.db` seperti di development. `lib/database-url.ts` hanya menulis ulang path *relatif* agar konsisten dipakai oleh app, Prisma CLI, dan seed/bootstrap script (lihat komentarnya) — path absolut dipakai apa adanya, jadi ini cara paling jelas untuk memisahkan lokasi data dari lokasi kode di production.
-- `AUTH_TRUST_HOST="true"` wajib ketika Auth.js v5 berjalan di belakang reverse proxy (Nginx) — tanpa ini, Auth.js menolak request karena tidak mengenali host dari header `X-Forwarded-Host`.
-- `NODE_ENV=production` diset otomatis oleh `next build`/`next start`; tidak perlu diisi manual. Cookie sesi otomatis memakai `secure` (DESIGN.md §4.1, `auth.ts`) begitu `NODE_ENV=production` — pastikan HTTPS sudah aktif (§9) sebelum go-live, kalau tidak browser akan menolak cookie-nya.
-
-## 6. Generate Prisma Client & jalankan migrasi
-
 ```bash
-pnpm prisma generate
-pnpm prisma migrate deploy
+sudo -u ngaji chmod 600 /opt/ngaji/.env
 ```
 
-- Pakai `migrate deploy`, **bukan** `migrate dev` — `deploy` hanya menerapkan migrasi yang sudah ada, tanpa prompt interaktif dan tanpa bisa membuat migrasi baru. Ini yang aman untuk dijalankan otomatis saat deploy.
-- `pnpm prisma generate` wajib dijalankan manual setiap `pnpm install` di server: `lib/generated/prisma` sengaja tidak dikomit (`.gitignore`) dan tidak ada `postinstall` hook yang menjalankannya otomatis.
-- Setelah ini, `/var/lib/ngaji/production.db` sudah punya skema lengkap tapi **kosong** (belum ada organisasi/user).
+- Generate a fresh `AUTH_SECRET` for production; never reuse the development one.
+- `DATABASE_URL` is an **absolute** path so the data lives outside the code directory.
+- `AUTH_TRUST_HOST=true` is required behind Nginx.
+- `NODE_ENV=production` is set by the systemd unit. Session cookies are `secure` and HSTS is sent only in production, so HTTPS must work (§6) before go-live.
 
-## 7. Sisipkan user pertama (bootstrap)
-
-**Jangan** jalankan `pnpm prisma db seed` di production — itu `prisma/seed.ts`, yang membuat organisasi, ~30 anggota, dan kegiatan **contoh/palsu** khusus untuk development (lihat README.md). Untuk production, pakai `prisma/bootstrap.ts` — hanya membuat satu organisasi, level-levelnya, satu grup akar, dan **satu** user OWNER, tanpa data contoh apa pun:
-
-```bash
-BOOTSTRAP_ORG_NAME="Yayasan Ngaji Anda" \
-BOOTSTRAP_ROOT_GROUP_NAME="Pusat" \
-BOOTSTRAP_OWNER_USERNAME="owner" \
-BOOTSTRAP_OWNER_NAME="Nama Pemilik Akun" \
-BOOTSTRAP_OWNER_PASSWORD="<password kuat, minimal 8 karakter>" \
-pnpm bootstrap
-```
-
-Catatan:
-
-- Script menolak berjalan kalau sudah ada `User` di database sama sekali — aman dari klik/jalan dobel.
-- `BOOTSTRAP_LEVEL_NAMES` opsional (default `pusat,daerah,desa,kelompok`, dipisah koma). Nama level bisa diganti lagi nanti oleh OWNER lewat `/pengaturan/jenjang`, jadi tidak perlu pas dari awal.
-- Owner yang dibuat otomatis punya `mustChangePassword = true` — wajib ganti password saat login pertama (DESIGN.md §3.4).
-- Password di atas terekam di history shell selama sesi ini masih terbuka. Setelah selesai, bersihkan riwayatnya (`history -d <nomor-baris>` atau `history -c` kalau sesi ini memang cuma untuk ini), atau jalankan lewat file sementara yang langsung dihapus:
-  ```bash
-  cat > /tmp/bootstrap.env <<'EOF'
-  BOOTSTRAP_ORG_NAME=Yayasan Ngaji Anda
-  BOOTSTRAP_ROOT_GROUP_NAME=Pusat
-  BOOTSTRAP_OWNER_USERNAME=owner
-  BOOTSTRAP_OWNER_NAME=Nama Pemilik Akun
-  BOOTSTRAP_OWNER_PASSWORD=<password kuat>
-  EOF
-  set -a; source /tmp/bootstrap.env; set +a
-  pnpm bootstrap
-  rm /tmp/bootstrap.env
-  ```
-
-## 8. Build & jalankan
-
-```bash
-pnpm build
-pnpm start   # next start, default port 3000
-```
-
-Jangan jalankan `pnpm start` langsung di terminal interaktif untuk production — pakai service manager (systemd di bawah, atau pm2) supaya otomatis restart kalau proses/servernya mati.
-
-## 9. Contoh service systemd
-
-`/etc/systemd/system/ngaji.service` (ganti `ExecStart` sesuai hasil `which pnpm`):
-
-```ini
-[Unit]
-Description=Ngaji
-After=network.target
-
-[Service]
-Type=simple
-User=ngaji
-WorkingDirectory=/opt/ngaji
-ExecStart=/usr/bin/pnpm start
-Restart=on-failure
-RestartSec=5
-NoNewPrivileges=true
-ProtectSystem=strict
-ReadWritePaths=/var/lib/ngaji
-
-[Install]
-WantedBy=multi-user.target
-```
-
-`.env` di `/opt/ngaji/.env` terbaca otomatis oleh Next.js sendiri (tidak perlu `EnvironmentFile=` di unit ini) — `ProtectSystem=strict` + `ReadWritePaths=/var/lib/ngaji` membatasi proses ini agar hanya bisa menulis ke direktori database.
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable --now ngaji
-sudo systemctl status ngaji
-```
-
-## 10. Reverse proxy (Nginx + TLS)
-
-```nginx
-server {
-    listen 80;
-    server_name ngaji.contoh.org;
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl;
-    server_name ngaji.contoh.org;
-
-    ssl_certificate     /etc/letsencrypt/live/ngaji.contoh.org/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/ngaji.contoh.org/privkey.pem;
-
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-```bash
-sudo certbot --nginx -d ngaji.contoh.org
-```
-
-Verifikasi header keamanan (dari DESIGN.md §4.3) sudah terkirim lewat proxy:
-
-```bash
-curl -I https://ngaji.contoh.org/login
-```
-
-## 11. Update ke versi baru
+Generate the Prisma client and apply migrations (use `migrate deploy`, never `migrate dev`):
 
 ```bash
 cd /opt/ngaji
-git pull
-pnpm install --frozen-lockfile
-pnpm prisma generate
-pnpm prisma migrate deploy
-pnpm build
-sudo systemctl restart ngaji
+sudo -u ngaji pnpm prisma generate
+sudo -u ngaji pnpm prisma migrate deploy
 ```
 
-## 12. Backup
+`lib/generated/prisma` is not committed, so `prisma generate` is needed after every install.
 
-- File yang dibackup: `/var/lib/ngaji/production.db` (dan `-wal`/`-shm` di sebelahnya kalau ada saat proses berjalan — hentikan service dulu untuk backup yang konsisten, atau pakai `sqlite3 production.db ".backup '/path/backup.db'"` yang aman dijalankan sambil service tetap hidup).
-- Berisi PII — simpan hasil backup terenkripsi dan di luar server yang sama.
-- Jadwalkan (cron) dan **uji proses restore-nya**, bukan cuma memastikan file backup ada.
+### Create the first OWNER
 
-Contoh: skrip backup `/opt/ngaji/backup.sh` (pakai `sqlite3 .backup`, aman dijalankan sambil database sedang aktif):
+Do **not** run `pnpm prisma db seed` in production (it creates fake sample data). Use bootstrap, which creates one organization, its levels, a root group and one OWNER:
 
 ```bash
-#!/bin/sh
-set -e
-mkdir -p /var/backups/ngaji
-sqlite3 /var/lib/ngaji/production.db ".backup '/var/backups/ngaji/production-$(date +%F).db'"
+sudo -u ngaji bash -c 'cd /opt/ngaji && cat > /tmp/bootstrap.env' <<'EOF'
+BOOTSTRAP_ORG_NAME=Your Organization
+BOOTSTRAP_ROOT_GROUP_NAME=Pusat
+BOOTSTRAP_OWNER_USERNAME=owner
+BOOTSTRAP_OWNER_NAME=Owner Full Name
+BOOTSTRAP_OWNER_PASSWORD=<strong password, min 8 chars>
+EOF
+sudo -u ngaji bash -c 'cd /opt/ngaji && set -a && . /tmp/bootstrap.env && set +a && pnpm bootstrap; rm -f /tmp/bootstrap.env'
 ```
+
+- The script refuses to run if any `User` already exists.
+- `BOOTSTRAP_LEVEL_NAMES` is optional (default `pusat,daerah,desa,kelompok`); the OWNER can rename levels later under `/pengaturan/jenjang`.
+- The OWNER is created with `mustChangePassword = true` and must change it on first login (DESIGN.md §3.4).
+
+### Build and start
 
 ```bash
-chmod +x /opt/ngaji/backup.sh
+cd /opt/ngaji
+sudo -u ngaji pnpm build
+
+sudo cp deploy/systemd/ngaji.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now ngaji
+sudo systemctl status ngaji
+curl -sI http://127.0.0.1:3000/login | head -1
 ```
 
-Lalu jadwalkan lewat cron harian jam 02:00 (`crontab -e` sebagai user `ngaji`):
+If `which pnpm` is not `/usr/bin/pnpm`, edit `ExecStart` in the unit first.
 
-```cron
-0 2 * * * /opt/ngaji/backup.sh
+## 5. Dependency audit gate
+
+Run before every deploy and upgrade:
+
+```bash
+cd /opt/ngaji && pnpm audit --prod
 ```
 
-## 13. Alternatif: container dengan volume persisten
+**Do not deploy** while it reports a high or critical advisory in a runtime package without a recorded exception below.
 
-Bisa juga dikemas sebagai Docker image dan dijalankan di platform yang menyediakan *volume* persisten (Fly.io, Railway, VPS dengan Docker). Intinya sama seperti VPS: satu instance, `DATABASE_URL` menunjuk ke path di dalam volume yang persisten antar deploy — **bukan** filesystem container yang dibuang setiap redeploy, karena itu artinya database kembali kosong setiap kali deploy ulang. Langkah §5–§8 di atas (siapkan lokasi DB, generate, migrate, bootstrap, build, start) tetap sama, cuma dijalankan di dalam container/image build step alih-alih langsung di VPS.
+### Recorded exceptions
 
-## 14. Checklist sebelum go-live
+| Date | Advisory | Path | Reason accepted | Revisit |
+|---|---|---|---|---|
+| 2026-10-10 | `mysql2` (GHSA-rgwj-5xj2-c3m3 high, + one moderate) | `@prisma/client › prisma › mysql2` | Prisma CLI tooling only. The app uses SQLite and never loads the MySQL driver at runtime. | On the next Prisma upgrade |
+| 2026-10-10 | `fast-uri` (GHSA-hrr3-gc8f-f4qj, moderate) | `@hookform/resolvers › ajv › fast-uri` | Moderate; transitive dependency of the form-validation resolver. Not reachable from untrusted URLs in this app. Re-check when a patched version is available. | On the next `@hookform/resolvers` upgrade |
 
-- [ ] `AUTH_SECRET` unik untuk production (bukan hasil copy dari `.env` development)
-- [ ] HTTPS aktif dan http di-redirect ke https
-- [ ] `AUTH_TRUST_HOST=true` sudah diset (kalau di belakang reverse proxy)
-- [ ] Password OWNER hasil bootstrap sudah diganti setelah login pertama
-- [ ] File database ada di luar direktori kode, permission dibatasi ke user aplikasi
-- [ ] Backup terjadwal, dan proses restore-nya sudah pernah dicoba sekali
-- [ ] `pnpm prisma db seed` **tidak pernah** dijalankan terhadap database ini
+Re-run the audit at each upgrade and update this table; delete rows that are fixed.
+
+## 6. Nginx and TLS
+
+```bash
+sudo cp /opt/ngaji/deploy/nginx/ngaji.conf /etc/nginx/sites-available/ngaji.conf
+sudo sed -i 's/ngaji.example.com/ngaji.example.org/g' /etc/nginx/sites-available/ngaji.conf   # your domain
+sudo rm -f /etc/nginx/sites-enabled/default
+```
+
+The config references certificates that do not exist yet, so get them first, then enable the site:
+
+```bash
+sudo certbot certonly --nginx -d ngaji.example.org
+sudo ln -s /etc/nginx/sites-available/ngaji.conf /etc/nginx/sites-enabled/ngaji.conf
+sudo nginx -t && sudo systemctl reload nginx
+sudo systemctl list-timers | grep certbot     # auto-renew timer present
+```
+
+Verify:
+
+```bash
+curl -I http://ngaji.example.org/login          # 301 to https
+curl -I https://ngaji.example.org/login         # 200, with Content-Security-Policy and Strict-Transport-Security
+```
+
+Security headers come from the app. Do not add them in Nginx or they duplicate.
+
+## 7. Backups
+
+Daily at 02:00 Asia/Jakarta: online SQLite copy, integrity check, gzip, **age** encryption with a public key, upload to Object Storage. The server never holds the private key, so a compromised server cannot read backups.
+
+### 7.1 Generate the age key (on your laptop, not the server)
+
+```bash
+age-keygen -o ngaji-backup.age.key
+```
+
+- It prints the public recipient (`age1…`). That goes on the server.
+- The file `ngaji-backup.age.key` is the **private key**. Store it in your password manager **and** print a copy to keep offline. **If it is lost, every backup is unreadable.**
+- Never copy it to the server except temporarily during a restore (§8).
+
+### 7.2 Object Storage bucket and key
+
+In the IDCloudHost console:
+
+1. Create an Object Storage bucket (e.g. `ngaji-backup-<random>`), private.
+2. Create an access key **scoped to this bucket only**, if the console supports per-bucket keys. *Check in the console.*
+3. Note the S3 endpoint and region. *Take them from the console; they are not hard-coded in this repo.*
+4. Enable **versioning or object lock** if available, so a compromised server cannot silently delete backups. *Check in the console; if unavailable, note it as an accepted risk.*
+
+### 7.3 Configure the server
+
+```bash
+# rclone remote "idch"
+sudo -u ngaji mkdir -p /home/ngaji/.config/rclone
+sudo -u ngaji cp /opt/ngaji/deploy/rclone.conf.example /home/ngaji/.config/rclone/rclone.conf
+sudo -u ngaji chmod 600 /home/ngaji/.config/rclone/rclone.conf
+sudo -u ngaji nano /home/ngaji/.config/rclone/rclone.conf     # access key, secret, endpoint
+
+# Backup settings
+sudo cp /opt/ngaji/deploy/env/backup.env.example /etc/ngaji/backup.env
+sudo chown ngaji:ngaji /etc/ngaji/backup.env && sudo chmod 600 /etc/ngaji/backup.env
+sudo nano /etc/ngaji/backup.env     # BACKUP_BUCKET, AGE_RECIPIENT (public), HEALTHCHECK_URL
+```
+
+The real `backup.env` and `rclone.conf` are git-ignored; only the `*.example` files are committed.
+
+### 7.4 Alerting (healthchecks.io)
+
+1. Create a free healthchecks.io check: period **1 day**, grace **2 hours**.
+2. Add your email/phone as the notification channel.
+3. Put its ping URL in `HEALTHCHECK_URL`.
+
+The script pings `/fail` on any error, and a missed ping alerts via the grace period, so one check covers both "failed" and "never ran". Pings contain no PII.
+
+### 7.5 Enable the timer
+
+```bash
+cd /opt/ngaji
+sudo cp deploy/systemd/ngaji-backup.service deploy/systemd/ngaji-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now ngaji-backup.timer
+sudo systemctl start ngaji-backup.service       # run once now
+journalctl -u ngaji-backup.service -n 30
+rclone lsf idch:<bucket>/daily/ --config /home/ngaji/.config/rclone/rclone.conf
+```
+
+Retention (done by the script): bucket keeps 30 days of `daily/` and 12 months of `monthly/` (first backup of each month); the server keeps the newest 7 locally in `/var/backups/ngaji`.
+
+## 8. Restore runbook
+
+Use this for "database damaged" or "VPS lost". Time budget: under 1 hour.
+
+**VPS lost:** redo §2–§6 on a new VPS (skip bootstrap), then restore below.
+
+1. Copy the private key to the server temporarily:
+   ```bash
+   scp ngaji-backup.age.key you@server:/tmp/ngaji-restore.key
+   ```
+2. Restore (root; loads the bucket settings from `backup.env`):
+   ```bash
+   sudo bash -c 'set -a; . /etc/ngaji/backup.env; set +a; \
+     rclone --config /home/ngaji/.config/rclone/rclone.conf lsf idch:$BACKUP_BUCKET/daily/ | tail -3'
+   sudo bash -c 'set -a; . /etc/ngaji/backup.env; set +a; export RCLONE_CONFIG=/home/ngaji/.config/rclone/rclone.conf; \
+     /opt/ngaji/scripts/restore.sh daily/ngaji-<YYYY-MM-DD>.db.gz.age /tmp/ngaji-restore.key'
+   ```
+   A local file also works: `restore.sh /var/backups/ngaji/ngaji-<date>.db.gz.age /tmp/ngaji-restore.key`.
+3. Shred the key: `shred -u /tmp/ngaji-restore.key`.
+4. Log in and check recent data.
+
+What the script does: decrypt → integrity check → stop service → keep the old DB as `production.db.pre-restore-<timestamp>` → install the restored file (mode 600, owner `ngaji`) → start → request `/login`. A wrong key or a corrupt backup aborts **before** production is touched. Delete the `.pre-restore-*` file once you are sure.
+
+### Drill log
+
+Do a drill **at least once per quarter**: restore the latest bucket backup onto a scratch hourly VPS with the offline key, check login and recent data, then delete the VPS.
+
+| Date | Backup restored | By | Result |
+|---|---|---|---|
+| _(pending first drill)_ | | | |
+
+## 9. Upgrade procedure
+
+1. Run a fresh backup: `sudo systemctl start ngaji-backup.service` and confirm it succeeded.
+2. Take a **VPS snapshot** in the IDCloudHost console.
+3. Run the audit gate (§5).
+4. Deploy:
+   ```bash
+   cd /opt/ngaji
+   sudo -u ngaji git pull
+   sudo -u ngaji pnpm install --frozen-lockfile
+   sudo -u ngaji pnpm prisma generate
+   sudo -u ngaji pnpm prisma migrate deploy
+   sudo -u ngaji pnpm build
+   sudo systemctl restart ngaji
+   ```
+5. Check `curl -I https://<domain>/login` and log in.
+
+**Rollback:** if a migration fails or the app misbehaves, restore the VPS snapshot, or run `scripts/restore.sh` with the pre-upgrade backup (§8) and redeploy the previous commit. New columns are ignored by older code.
+
+## 10. Recovery: lost OWNER password
+
+Run on the server as the `ngaji` user. The temporary password is printed once; the account must change it at next login and all its sessions end.
+
+```bash
+cd /opt/ngaji
+sudo -u ngaji pnpm reset-owner-password <username> [--activate]
+```
+
+The action is audited with `actorId = null` and `meta.via = "cli"`. It exits non-zero for an unknown username.
+
+## 11. Go-live checklist
+
+- [ ] `AUTH_SECRET` is unique to production
+- [ ] `.env` mode 600, DB in `/var/lib/ngaji` (mode 700)
+- [ ] `pnpm audit --prod` clean or exceptions recorded in §5
+- [ ] From outside: port 3000 refused; `http://` redirects to `https://`
+- [ ] `curl -I https://<domain>/login` shows CSP and HSTS
+- [ ] Password SSH login refused; root SSH login refused; `ufw status` shows only 22/80/443
+- [ ] Bootstrap OWNER password changed after first login
+- [ ] `pnpm prisma db seed` was **never** run against this database
+- [ ] Backup timer enabled; `daily/` and `monthly/` objects exist; healthchecks.io shows success
+- [ ] A failed backup (e.g. wrong endpoint) triggers an alert
+- [ ] `age` private key stored in password manager **and** printed copy
+- [ ] At least one restore drill passed and is logged in §8, **before** real data is entered
+- [ ] Users were told they must log in again once after this deploy (sessions without `sessionVersion` are ended)
