@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Save, Search, X } from "lucide-react";
 import { saveAttendanceAction } from "@/app/kegiatan/actions";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,15 @@ export type AttendanceMemberRow = {
 
 const STATUS_LABEL: Record<AttendanceStatus, string> = { HADIR: "Hadir", IZIN: "Izin" };
 const SUGGESTION_LIMIT = 8;
+
+function StatTile({ label, value, className }: { label: string; value: number; className?: string }) {
+  return (
+    <div className="rounded-lg border p-3 text-center">
+      <p className={cn("text-2xl font-semibold tabular-nums", className)}>{value}</p>
+      <p className="text-xs text-muted-foreground">{label}</p>
+    </div>
+  );
+}
 
 export function AttendanceForm({
   activityId,
@@ -101,24 +111,16 @@ export function AttendanceForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-3 gap-2 text-center text-sm">
-        <div className="rounded-md border p-2">
-          <p className="text-lg font-semibold">{hadirCount}</p>
-          <p className="text-xs text-muted-foreground">Hadir</p>
-        </div>
-        <div className="rounded-md border p-2">
-          <p className="text-lg font-semibold">{izinCount}</p>
-          <p className="text-xs text-muted-foreground">Izin</p>
-        </div>
-        <div className="rounded-md border p-2">
-          <p className="text-lg font-semibold">{members.length - hadirCount - izinCount}</p>
-          <p className="text-xs text-muted-foreground">Belum absen</p>
-        </div>
+      <div className="grid grid-cols-3 gap-2">
+        <StatTile label="Hadir" value={hadirCount} className="text-emerald-700 dark:text-emerald-400" />
+        <StatTile label="Izin" value={izinCount} className="text-amber-700 dark:text-amber-400" />
+        <StatTile label="Belum absen" value={members.length - hadirCount - izinCount} />
       </div>
       <p className="text-xs text-muted-foreground">Total {members.length} anggota diharapkan hadir.</p>
 
       {!readOnly && members.length > 0 && (
         <div className="relative">
+          <Search aria-hidden className="pointer-events-none absolute top-3 left-3 size-4 text-muted-foreground" />
           <input
             ref={searchRef}
             type="text"
@@ -129,7 +131,7 @@ export function AttendanceForm({
             }}
             onKeyDown={onSearchKeyDown}
             placeholder="Cari nama anggota…"
-            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="h-10 w-full rounded-md border border-input bg-background pr-3 pl-9 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           />
           {suggestions.length > 0 && (
             <ul className="absolute z-10 mt-1 max-h-72 w-full overflow-auto rounded-md border bg-background shadow-md">
@@ -184,20 +186,26 @@ export function AttendanceForm({
               <div className="flex items-center gap-2">
                 <span
                   className={cn(
-                    "rounded-full px-2 py-0.5 text-xs",
-                    status === "HADIR" ? "bg-primary text-primary-foreground" : "bg-muted",
+                    "rounded-full px-2 py-0.5 text-xs font-medium",
+                    status === "HADIR"
+                      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                      : "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
                   )}
                 >
                   {STATUS_LABEL[status]}
                 </span>
                 {!readOnly && (
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon-sm"
                     onClick={() => unmark(member.id)}
-                    className="text-xs text-muted-foreground hover:text-destructive"
+                    aria-label={`Batalkan tanda ${member.name}`}
+                    title="Batalkan tanda"
+                    className="text-muted-foreground hover:text-destructive"
                   >
-                    Hapus
-                  </button>
+                    <X />
+                  </Button>
                 )}
               </div>
             </li>
@@ -215,7 +223,8 @@ export function AttendanceForm({
       </ul>
 
       {!readOnly && members.length > 0 && (
-        <Button onClick={onSave} disabled={pending}>
+        <Button onClick={onSave} size="lg" disabled={pending} className="h-11">
+          <Save />
           {pending ? "Menyimpan…" : "Simpan absensi"}
         </Button>
       )}

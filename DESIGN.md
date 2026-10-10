@@ -492,14 +492,14 @@ Rentang default "30 hari terakhir" = 30 hari inklusif (today−29 .. today). Sta
 | `/akun/password` | Ganti password sendiri (wajib jika `mustChangePassword`) |
 | `/` | Dashboard: ringkasan statistik scope + kegiatan 7 hari ke depan |
 | `/grup` | Pohon grup dalam scope |
-| `/grup/[id]` | Detail: anak, anggota, kegiatan, user — masing-masing dipaginasi sendiri (`?subgrup=`, `?anggota=`, `?kegiatan=`, `?pengguna=`, 10/hal); tombol tambah sub-grup |
+| `/grup/[id]` | Detail (§7.2), tab: anggota (grup daun) **atau** sub-grup, kegiatan, pengguna, pengaturan (ADMIN/OWNER: rename + zona berbahaya hapus) — tiap daftar dipaginasi sendiri (`?subgrup=`, `?anggota=`, `?kegiatan=`, `?pengguna=`, 10/hal); aksi: lihat semua anggota, tambah anggota (daun, `/anggota/baru?grup=`) atau tambah sub-grup (dialog) |
 | `/anggota` | Tabel (paginasi `?page=`, 50/hal) + cari nama + filter grup (multi, termasuk turunan) / status; kolom bisa dipilih (§7.1); tombol WhatsApp per anggota |
-| `/anggota/baru`, `/anggota/[id]` | Form; detail + tombol WhatsApp + riwayat kehadiran (paginasi `?riwayat=`, 10/hal); hapus (soft) |
+| `/anggota/baru`, `/anggota/[id]` | Form (`?grup=` memilih grup awal); detail (§7.2) tab profil, kehadiran (paginasi `?riwayat=`, 10/hal, tautan ke occurrence), ubah (form + zona berbahaya hapus soft); tombol WhatsApp |
 | `/kegiatan` | Daftar **atau** kalender (toggle) per rentang tanggal — preset Hari ini/Minggu ini/Bulan ini/pilih tanggal (default Minggu ini) dengan tombol ‹ › per rentang, badge *warisan*, *konflik*, *dipindah*, *batal*; cari nama kegiatan (badge konflik tetap dihitung dari semua kegiatan); filter grup multi-select (dengan pintasan "pilih dengan turunannya") atas union §5.3; daftar dipaginasi 50/hal; semua state (grup, rentang, tampilan, cari) di URL |
-| `/kegiatan/baru`, `/kegiatan/[id]` | Form template; absensi per rentang (preset 7/30/90 hari, bulan ini, pilih tanggal; default 30 hari) dengan tabel per-occurrence & per-anggota (10/hal); jadwal 90 hari ke depan (`?jadwal=`, 10/hal); aksi geser/akhiri (hanya `canEdit`) |
+| `/kegiatan/baru`, `/kegiatan/[id]` | Form template; detail (§7.2) tab absensi per rentang (preset 7/30/90 hari, bulan ini, pilih tanggal; default 30 hari) dengan tabel per-occurrence & per-anggota (10/hal), jadwal 90 hari ke depan (`?jadwal=`, 10/hal; ubah satu tanggal lewat dialog, hanya `canEdit`), pengaturan (hanya `canEdit`: form, geser, zona berbahaya akhiri/hapus); aksi "Isi absensi hari ini" bila ada occurrence hari ini |
 | `/kegiatan/[id]/[tanggal]` | Absensi occurrence (+ batalkan / override / geser satu kali) — **tidak** dipaginasi (semua anggota perlu terlihat saat mengisi; ada pencarian) |
 | `/statistik` | Tab: anggota, kegiatan, partisipasi; filter satu grup + rentang tanggal (tidak di tab anggota); tab partisipasi bisa cari nama dan dipaginasi 50/hal |
-| `/pengguna` | OWNER & ADMIN: buat user; OWNER: ubah peran, pindah grup, nonaktifkan; reset password sesuai §3.4; cari nama/username + filter grup (multi, termasuk turunan); paginasi 50/hal |
+| `/pengguna` | OWNER & ADMIN: buat user (dialog "Tambah pengguna"); OWNER: ubah peran, pindah grup, nonaktifkan; reset password sesuai §3.4; cari nama/username + filter grup (multi, termasuk turunan); paginasi 50/hal; kontrol per user di dialog "Kelola", hanya tampil bila ada aksi yang diizinkan |
 | `/pengaturan/jenjang` | OWNER root: rename level |
 | `/audit` | OWNER: audit log dalam scope (§4.5) |
 
@@ -511,6 +511,15 @@ Rentang default "30 hari terakhir" = 30 hari inklusif (today−29 .. today). Sta
 - **Paginasi** (`lib/pagination.ts`, `components/pagination.tsx`): setiap daftar yang mungkin dipaginasi; halaman di luar jangkauan dijepit ke halaman terakhir. Daftar penuh `PAGE_SIZE`, daftar di dalam halaman detail `EMBEDDED_PAGE_SIZE` dengan parameter sendiri dan tanpa lompat ke atas. Tidak dipaginasi: form absensi, pohon grup, pratinjau dashboard. Tabel yang diurutkan di klien (partisipasi, per-occurrence) dipaginasi di klien.
 - **Kolom tabel anggota** (`lib/member/columns.ts`): Nama selalu tampil; default WhatsApp, Grup, Jenis kelamin, Tanggal lahir (+umur), Status; opsional No. HP, Tempat lahir, Alamat, Status nikah, Pekerjaan, Email, Tanggal masuk. Pilihan disimpan di cookie httpOnly `anggota_kolom` (preferensi UI, tidak diaudit) dan divalidasi ulang tiap request. Hanya kolom terpilih yang dirender di server, jadi PII kolom tersembunyi tidak dikirim ke browser.
 - **WhatsApp**: link `https://wa.me/<nomor>` (tab baru). `Member.phone` teks bebas dinormalisasi (`lib/member/whatsapp.ts`): `0…`, `62…`, `+62…`, `8…` → `62…`; nomor negara lain harus diawali `+`. Nomor yang tidak valid tidak menghasilkan tombol.
+
+### 7.2 Konvensi tata letak halaman
+
+- **Header** (`components/page-header.tsx`): breadcrumb (akar bagian dulu, halaman sekarang terakhir tanpa tautan; di halaman grup = leluhur grup, hanya grup dalam scope yang bertautan — `lib/group/trail.ts`), judul + badge status, baris fakta ikon + teks, dan aksi di kanan (di HP di bawah judul).
+- **Aksi**: aksi harian di header (sekunder `outline`, utama `default`, dengan ikon). Aksi yang tidak bisa dibatalkan (hapus, akhiri) **tidak** di header, melainkan di blok *Zona berbahaya* yang menjelaskan akibatnya; tetap dengan `confirm()`.
+- **Tab** (`components/tab-nav.tsx`, `lib/tabs.ts`): halaman dengan beberapa bagian berbeda dipisah tab di URL `?tab=` (tab default tidak ditulis); hanya tab aktif yang dirender & di-query. Tab yang tidak boleh dipakai viewer tidak ditampilkan, dan memintanya lewat URL jatuh ke tab default. Pindah tab membuang parameter paginasi/filter tab lain.
+- **Isi**: tiap bagian berupa `Card`; baris daftar bisa diklik penuh. Form panjang dua kolom di layar ≥ sm, tombol simpan di kanan bawah.
+- Halaman daftar (`/statistik`, `/pengguna`, …) memakai header yang sama tanpa breadcrumb di akar bagian; tab `/statistik` mempertahankan filter grup & rentang antar tab.
+- Halaman check-in (`/absen`) dan `/akun/password` (layar wajib ganti password) tetap tata letak terpusat tanpa header ini.
 
 ---
 

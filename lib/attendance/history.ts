@@ -18,7 +18,10 @@ export async function attendanceHistoryForMember(memberId: number, page = 1, pag
   const entries = attendances.map((attendance) => ({
     id: attendance.id,
     status: attendance.status,
+    activityId: attendance.occurrence.activityId,
     activityName: attendance.occurrence.activity.name,
+    /** Rule key date — what the occurrence page is addressed by. */
+    date: attendance.occurrence.date,
     effectiveDate: attendance.occurrence.overrideDate ?? attendance.occurrence.date,
   }));
   return { entries, total, page: current, pageSize };

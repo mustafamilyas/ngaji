@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { CalendarX } from "lucide-react";
 import { endActivityAction } from "@/app/kegiatan/actions";
 import { Button } from "@/components/ui/button";
 import type { Activity } from "@/lib/generated/prisma/client";
@@ -33,6 +34,7 @@ export function EndActivityForm({ activityId }: { activityId: number }) {
         />
       </label>
       <Button type="submit" variant="outline" disabled={pending}>
+        <CalendarX />
         {pending ? "Menyimpan…" : "Akhiri"}
       </Button>
       {state && !state.ok && (

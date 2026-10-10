@@ -29,6 +29,22 @@ describe("MemberDetailPage", () => {
       await MemberDetailPage({ params: Promise.resolve({ id: String(fixture.memberId) }), searchParams: Promise.resolve({}) }),
     );
     expect(html).toContain("Anggota Uji");
+    expect(html).not.toContain("Hapus anggota");
+  });
+
+  it("shows the edit form and delete action on the edit tab", async () => {
+    const fixture = await buildPageFixture("anggota-detail-ubah");
+    const session = sessionFor(fixture.actorId, "OWNER", fixture.root);
+    mockAuthSession(auth, { user: session });
+
+    const html = renderToStaticMarkup(
+      await MemberDetailPage({
+        params: Promise.resolve({ id: String(fixture.memberId) }),
+        searchParams: Promise.resolve({ tab: "ubah" }),
+      }),
+    );
+    expect(html).toContain("Data anggota");
+    expect(html).toContain("Hapus anggota");
   });
 
   it("404s for a non-numeric id", async () => {

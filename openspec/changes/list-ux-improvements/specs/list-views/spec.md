@@ -64,3 +64,18 @@ The member table and member detail page SHALL offer a button that opens a WhatsA
 #### Scenario: Unusable number
 - **WHEN** a member's phone is "12345"
 - **THEN** no WhatsApp link is shown for that member
+
+### Requirement: Consistent page layout
+Every page with the app frame SHALL open with the shared page header: a breadcrumb (section root first, current page last and not a link; on group pages the group's ancestry, linking only groups inside the viewer's scope), the title with status badges, a row of icon + text facts, and the page's actions on the right (below the title on phones). Header actions SHALL be everyday actions only; irreversible actions (delete, end) SHALL live in a separate "Zona berbahaya" block that explains each consequence. A page with several distinct parts SHALL split them into tabs held in the URL (`?tab=`, default tab omitted); a tab the viewer may not use SHALL NOT be shown, and requesting it SHALL fall back to the default tab.
+
+#### Scenario: Settings tab hidden from USER
+- **WHEN** a USER opens `/grup/<id>?tab=pengaturan`
+- **THEN** the default tab is shown and no rename or delete control is rendered
+
+#### Scenario: Out-of-scope ancestor in the breadcrumb
+- **WHEN** a Desa admin opens a Kelompok page
+- **THEN** the Pusat and Daerah crumbs show names without links, and the Desa crumb links to its group page
+
+#### Scenario: Only the active tab is rendered
+- **WHEN** `/grup/<leaf id>` is opened without `?tab=`
+- **THEN** the members tab is shown and the group's activities are not in the HTML

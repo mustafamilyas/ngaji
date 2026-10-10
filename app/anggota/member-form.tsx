@@ -4,9 +4,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
+import { Save } from "lucide-react";
 import { createMemberAction, updateMemberAction } from "@/app/anggota/actions";
 import { Button } from "@/components/ui/button";
 import { today } from "@/lib/dates";
+import { cn } from "@/lib/utils";
 import { formatEnumLabel, SEX_LABELS } from "@/lib/member/labels";
 import { MARITAL_STATUSES, MEMBER_STATUSES, SEXES, WORK_STATUSES } from "@/lib/validation/enums";
 import { memberFormSchema, type MemberFormValues } from "@/lib/validation/member";
@@ -20,15 +22,18 @@ function Field({
   label,
   htmlFor,
   error,
+  wide,
   children,
 }: {
   label: string;
   htmlFor: string;
   error?: string;
+  /** Spans both columns of the form grid. */
+  wide?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className={cn("flex flex-col gap-1", wide && "sm:col-span-2")}>
       <label htmlFor={htmlFor} className="text-sm font-medium">
         {label}
       </label>
@@ -45,7 +50,7 @@ function Field({
 type LeafGroupOption = { id: number; name: string };
 
 type MemberFormProps =
-  | { mode: "create"; leafGroups: LeafGroupOption[] }
+  | { mode: "create"; leafGroups: LeafGroupOption[]; initialGroupId?: number }
   | { mode: "edit"; memberId: number; defaultValues: MemberFormValues };
 
 const emptyDefaults: MemberFormValues = {
@@ -67,7 +72,7 @@ export function MemberForm(props: MemberFormProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [groupId, setGroupId] = useState<number | undefined>(
-    props.mode === "create" ? props.leafGroups[0]?.id : undefined,
+    props.mode === "create" ? (props.initialGroupId ?? props.leafGroups[0]?.id) : undefined,
   );
   const {
     register,
@@ -98,9 +103,9 @@ export function MemberForm(props: MemberFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 sm:grid-cols-2">
       {props.mode === "create" && (
-        <Field label="Grup" htmlFor="groupId">
+        <Field label="Grup" htmlFor="groupId" wide>
           {props.leafGroups.length > 0 ? (
             <select
               id="groupId"
@@ -120,7 +125,7 @@ export function MemberForm(props: MemberFormProps) {
         </Field>
       )}
 
-      <Field label="Nama" htmlFor="name" error={errors.name?.message}>
+      <Field label="Nama" htmlFor="name" error={errors.name?.message} wide>
         <input id="name" className={inputClass} {...register("name")} />
       </Field>
 
@@ -142,7 +147,7 @@ export function MemberForm(props: MemberFormProps) {
         </select>
       </Field>
 
-      <Field label="Alamat" htmlFor="address" error={errors.address?.message}>
+      <Field label="Alamat" htmlFor="address" error={errors.address?.message} wide>
         <textarea id="address" className={textareaClass} {...register("address")} />
       </Field>
 
@@ -195,14 +200,17 @@ export function MemberForm(props: MemberFormProps) {
       )}
 
       {errors.root?.message && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-destructive sm:col-span-2">
           {errors.root.message}
         </p>
       )}
 
-      <Button type="submit" disabled={pending}>
-        {pending ? "Menyimpan…" : "Simpan"}
-      </Button>
+      <div className="flex justify-end border-t pt-4 sm:col-span-2">
+        <Button type="submit" size="lg" disabled={pending} className="w-full sm:w-auto">
+          <Save />
+          {pending ? "Menyimpan…" : "Simpan"}
+        </Button>
+      </div>
     </form>
   );
 }

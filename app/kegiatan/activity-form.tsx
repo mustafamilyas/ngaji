@@ -4,9 +4,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useTransition } from "react";
 import { useForm } from "react-hook-form";
+import { Save } from "lucide-react";
 import { createActivityAction, splitActivityAction, updateActivityAction } from "@/app/kegiatan/actions";
 import { Button } from "@/components/ui/button";
 import { today } from "@/lib/dates";
+import { cn } from "@/lib/utils";
 import { activityUpdateSchema, type ActivityUpdateInput } from "@/lib/validation/activity";
 import { FREQS } from "@/lib/validation/enums";
 
@@ -28,15 +30,18 @@ function Field({
   label,
   htmlFor,
   error,
+  wide,
   children,
 }: {
   label: string;
   htmlFor: string;
   error?: string;
+  /** Spans both columns of the form grid. */
+  wide?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className={cn("flex flex-col gap-1", wide && "sm:col-span-2")}>
       <label htmlFor={htmlFor} className="text-sm font-medium">
         {label}
       </label>
@@ -111,7 +116,7 @@ export function ActivityForm(props: ActivityFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 sm:grid-cols-2">
       <Field label="Nama" htmlFor="name" error={errors.name?.message}>
         <input id="name" className={inputClass} {...register("name")} />
       </Field>
@@ -120,7 +125,7 @@ export function ActivityForm(props: ActivityFormProps) {
         <input id="location" className={inputClass} {...register("location")} />
       </Field>
 
-      <Field label="Catatan (opsional)" htmlFor="notes" error={errors.notes?.message}>
+      <Field label="Catatan (opsional)" htmlFor="notes" error={errors.notes?.message} wide>
         <textarea id="notes" className={textareaClass} {...register("notes")} />
       </Field>
 
@@ -162,7 +167,7 @@ export function ActivityForm(props: ActivityFormProps) {
       )}
 
       {freq === "WEEKLY" && (
-        <Field label="Hari" htmlFor="weekdays" error={errors.weekdays?.message}>
+        <Field label="Hari" htmlFor="weekdays" error={errors.weekdays?.message} wide>
           <div id="weekdays" className="flex flex-wrap gap-2">
             {WEEKDAY_LABELS.map((label, day) => (
               <label
@@ -207,14 +212,17 @@ export function ActivityForm(props: ActivityFormProps) {
       </Field>
 
       {errors.root?.message && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-destructive sm:col-span-2">
           {errors.root.message}
         </p>
       )}
 
-      <Button type="submit" disabled={pending}>
-        {pending ? "Menyimpan…" : "Simpan"}
-      </Button>
+      <div className="flex justify-end border-t pt-4 sm:col-span-2">
+        <Button type="submit" size="lg" disabled={pending} className="w-full sm:w-auto">
+          <Save />
+          {pending ? "Menyimpan…" : "Simpan"}
+        </Button>
+      </div>
     </form>
   );
 }

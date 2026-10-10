@@ -28,11 +28,12 @@ describe("ActivityDetailPage", () => {
     const html = renderToStaticMarkup(
       await ActivityDetailPage({
         params: Promise.resolve({ id: String(fixture.activityId) }),
-        searchParams: Promise.resolve({}),
+        searchParams: Promise.resolve({ tab: "pengaturan" }),
       }),
     );
     expect(html).toContain("Kajian Uji");
     expect(html).toContain("Ubah kegiatan");
+    expect(html).toContain("Hapus kegiatan");
   });
 
   it("renders the read-only (inherited) view for an ancestor group without crashing", async () => {
@@ -48,6 +49,21 @@ describe("ActivityDetailPage", () => {
     );
     expect(html).toContain("Kajian Uji");
     expect(html).toContain("diwarisi dari");
+  });
+
+  it("never renders the settings tab for a caller who cannot edit, even when asked for it", async () => {
+    const fixture = await buildPageFixture("kegiatan-detail-inherited-settings");
+    const session = sessionFor(fixture.actorId, "OWNER", fixture.root);
+    mockAuthSession(auth, { user: session });
+
+    const html = renderToStaticMarkup(
+      await ActivityDetailPage({
+        params: Promise.resolve({ id: String(fixture.activityId) }),
+        searchParams: Promise.resolve({ tab: "pengaturan" }),
+      }),
+    );
+    expect(html).not.toContain("Hapus kegiatan");
+    expect(html).toContain("Rekap absensi");
   });
 
   it("shows the conflict warning banner when ?conflict=1", async () => {

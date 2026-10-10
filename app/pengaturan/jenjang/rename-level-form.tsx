@@ -15,11 +15,14 @@ export function RenameLevelForm({ depth, name }: { depth: number; name: string }
   return (
     <form action={formAction} className="flex flex-col gap-2">
       <input type="hidden" name="depth" value={depth} />
-      <div className="flex items-center gap-2">
-        <span className="w-16 shrink-0 text-xs text-muted-foreground">Jenjang {depth}</span>
+      <div className="flex items-center gap-3">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium tabular-nums">
+          {depth + 1}
+        </span>
         <input
           name="name"
           defaultValue={name}
+          aria-label={`Nama jenjang ${depth + 1}`}
           required
           className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         />

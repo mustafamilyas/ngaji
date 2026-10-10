@@ -25,3 +25,10 @@
 ## 5. Docs
 - [x] 5.1 DESIGN.md §4.5, §6, §7, §7.1 and these spec deltas
 - [ ] 5.2 `pnpm test` green after step 4 (step 3 run: 454/454; step 4 suite not yet run). `pnpm lint` is broken on `main` by the pre-existing eslint-plugin-react / ESLint 10 incompatibility
+
+## 6. Page layout
+- [x] 6.1 `PageHeader` (breadcrumb, badges, meta, actions), `TabNav` + `lib/tabs.ts` (tests), `DangerZone`, `groupTrail`
+- [x] 6.2 Detail pages: `/grup/[id]`, `/anggota/[id]`, `/kegiatan/[id]`, `/kegiatan/[id]/[tanggal]`, plus `/anggota/baru` (`?grup=` preselect), `/kegiatan/baru`, `/kegiatan/[id]/geser`
+- [x] 6.3 Sub-group add and single-occurrence override move into dialogs
+- [x] 6.4 `/statistik` (shared tabs, filters kept across tabs), `/pengguna` (create + per-user "Kelola" dialogs, `lib/user/row-permissions.ts` with tests), `/pengaturan/jenjang`
+- [ ] 6.5 `pnpm test` green (page tests updated for tabs; not yet run)

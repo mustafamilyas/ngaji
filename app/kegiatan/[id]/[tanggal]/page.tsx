@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { CalendarDays, Clock, Info, MapPin, Network, UserCheck, type LucideIcon } from "lucide-react";
 import { auth } from "@/auth";
+import { MetaItem, PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { occurrencesFor } from "@/lib/activity/occurrences";
 import { loadOccurrenceRows } from "@/lib/activity/rows";
 import { checkInPath } from "@/lib/attendance/paths";
@@ -8,6 +13,7 @@ import { toActivityTemplate } from "@/lib/activity/template";
 import { db } from "@/lib/db";
 import { today } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
+import { formatDate } from "@/lib/filters";
 import { getMaxDepth } from "@/lib/group/levels";
 import { resolveActivity, resolveGroup } from "@/lib/resolve";
 import { isInScope } from "@/lib/scope";
@@ -16,6 +22,15 @@ import type { MemberStatus } from "@/lib/validation/enums";
 import { AttendanceForm } from "./attendance-form";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function Notice({ icon: Icon, children }: { icon: LucideIcon; children: React.ReactNode }) {
+  return (
+    <p className="flex items-start gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+      <Icon className="mt-0.5 size-4 shrink-0" />
+      <span>{children}</span>
+    </p>
+  );
+}
 
 export default async function AttendancePage({
   params,
@@ -47,6 +62,36 @@ export default async function AttendancePage({
 
   const isCancelled = occurrence.status === "CANCELLED";
   const isFuture = occurrence.effectiveDate > today();
+  const moved = occurrence.effectiveDate !== occurrence.key;
+  const activityHref = `/kegiatan/${activity.id}`;
+
+  const header = (groupName: string, actions?: React.ReactNode) => (
+    <PageHeader
+      breadcrumb={[
+        { label: "Kegiatan", href: "/kegiatan" },
+        { label: activity.name, href: activityHref },
+        { label: formatDate(occurrence.effectiveDate) },
+      ]}
+      title={activity.name}
+      badges={
+        <>
+          {isCancelled && <Badge variant="destructive">Batal</Badge>}
+          {moved && <Badge variant="outline">Dipindah dari {formatDate(occurrence.key)}</Badge>}
+        </>
+      }
+      meta={
+        <>
+          <MetaItem icon={CalendarDays}>{formatDate(occurrence.effectiveDate)}</MetaItem>
+          <MetaItem icon={Clock}>
+            {occurrence.effectiveStartTime} · {occurrence.effectiveDurationMinutes} menit
+          </MetaItem>
+          <MetaItem icon={MapPin}>{occurrence.effectiveLocation}</MetaItem>
+          <MetaItem icon={Network}>{groupName}</MetaItem>
+        </>
+      }
+      actions={actions}
+    />
+  );
 
   // DESIGN.md §3.3: a user above the activity's own group can view attendance
   // but never record it — show the whole subtree read-only instead of the
@@ -71,30 +116,28 @@ export default async function AttendancePage({
     );
 
     return (
-      <div className="flex flex-col gap-4">
-        <div>
-          <p className="text-xs text-muted-foreground">
-            {activity.group.name} · {occurrence.effectiveDate} · {occurrence.effectiveStartTime}
-          </p>
-          <h1 className="text-lg font-semibold">{activity.name}</h1>
-          <p className="text-sm text-muted-foreground">
-            Kegiatan ini diwarisi dari {activity.group.name}. Anda bisa melihat, tetapi tidak bisa mengisi
-            absensi di sini karena tidak berada di grup pemiliknya atau di bawahnya.
-          </p>
-          {isCancelled && <p className="text-sm text-destructive">Kegiatan ini dibatalkan pada tanggal ini.</p>}
-        </div>
+      <div className="flex flex-col gap-6">
+        {header(activity.group.name)}
+        <Notice icon={Info}>
+          Kegiatan ini diwarisi dari {activity.group.name}. Anda bisa melihat, tetapi tidak bisa mengisi absensi di
+          sini karena tidak berada di grup pemiliknya atau di bawahnya.
+        </Notice>
 
-        <AttendanceForm
-          activityId={activity.id}
-          groupId={activity.groupId}
-          date={tanggal}
-          readOnly
-          members={expectedMembers.map((member) => ({
-            id: member.id,
-            name: member.name,
-            current: attendanceByMember.get(member.id),
-          }))}
-        />
+        <Card>
+          <CardContent>
+            <AttendanceForm
+              activityId={activity.id}
+              groupId={activity.groupId}
+              date={tanggal}
+              readOnly
+              members={expectedMembers.map((member) => ({
+                id: member.id,
+                name: member.name,
+                current: attendanceByMember.get(member.id),
+              }))}
+            />
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -137,32 +180,33 @@ export default async function AttendancePage({
   );
 
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <p className="text-xs text-muted-foreground">
-          {leafGroup.name} · {occurrence.effectiveDate} · {occurrence.effectiveStartTime}
-        </p>
-        <h1 className="text-lg font-semibold">{activity.name}</h1>
-        <Link href={checkInPath(activity.id, tanggal)} className="text-sm text-primary hover:underline">
-          Buka halaman check-in
-        </Link>
-        {isCancelled && <p className="text-sm text-destructive">Kegiatan ini dibatalkan pada tanggal ini.</p>}
-        {isFuture && !isCancelled && (
-          <p className="text-sm text-muted-foreground">Tanggal ini belum terjadi; absensi belum bisa diisi.</p>
-        )}
-      </div>
+    <div className="flex flex-col gap-6">
+      {header(
+        leafGroup.name,
+        <Link href={checkInPath(activity.id, tanggal)} className={buttonVariants({ variant: "outline", size: "lg" })}>
+          <UserCheck />
+          Mode check-in
+        </Link>,
+      )}
+      {isFuture && !isCancelled && (
+        <Notice icon={Info}>Tanggal ini belum terjadi; absensi belum bisa diisi.</Notice>
+      )}
 
-      <AttendanceForm
-        activityId={activity.id}
-        groupId={leafGroup.id}
-        date={tanggal}
-        readOnly={isFutureOrCancelled}
-        members={expectedMembers.map((member) => ({
-          id: member.id,
-          name: member.name,
-          current: attendanceByMember.get(member.id),
-        }))}
-      />
+      <Card>
+        <CardContent>
+          <AttendanceForm
+            activityId={activity.id}
+            groupId={leafGroup.id}
+            date={tanggal}
+            readOnly={isFutureOrCancelled}
+            members={expectedMembers.map((member) => ({
+              id: member.id,
+              name: member.name,
+              current: attendanceByMember.get(member.id),
+            }))}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

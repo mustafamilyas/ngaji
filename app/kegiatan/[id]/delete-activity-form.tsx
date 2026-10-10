@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { Trash2 } from "lucide-react";
 import { deleteActivityAction } from "@/app/kegiatan/actions";
 import { Button } from "@/components/ui/button";
 import type { ActionResult } from "@/lib/errors";
@@ -23,6 +24,7 @@ export function DeleteActivityForm({ activityId }: { activityId: number }) {
     >
       <input type="hidden" name="activityId" value={activityId} />
       <Button type="submit" variant="destructive" disabled={pending}>
+        <Trash2 />
         {pending ? "Menghapus…" : "Hapus kegiatan"}
       </Button>
       {state && !state.ok && (

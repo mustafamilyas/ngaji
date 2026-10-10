@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { Trash2 } from "lucide-react";
 import { deleteMemberAction } from "@/app/anggota/actions";
 import { Button } from "@/components/ui/button";
 import type { ActionResult } from "@/lib/errors";
@@ -23,6 +24,7 @@ export function DeleteMemberForm({ memberId }: { memberId: number }) {
     >
       <input type="hidden" name="memberId" value={memberId} />
       <Button type="submit" variant="destructive" disabled={pending}>
+        <Trash2 />
         {pending ? "Menghapus…" : "Hapus anggota"}
       </Button>
       {state && !state.ok && (

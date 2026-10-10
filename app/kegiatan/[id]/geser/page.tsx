@@ -1,5 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { PageHeader } from "@/components/page-header";
+import { Card, CardContent } from "@/components/ui/card";
 import { authorize } from "@/lib/authz";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 import { resolveActivity } from "@/lib/resolve";
@@ -44,15 +46,21 @@ export default async function SplitActivityPage({ params }: { params: Promise<{ 
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <p className="text-xs text-muted-foreground">{activity.name}</p>
-        <h1 className="text-lg font-semibold">Ubah ini &amp; seterusnya</h1>
-        <p className="text-sm text-muted-foreground">
-          Perubahan berlaku mulai tanggal yang dipilih; jadwal sebelum tanggal itu tidak berubah.
-        </p>
-      </div>
-      <ActivityForm mode="split" activityId={activity.id} defaultValues={defaultValues} />
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        breadcrumb={[
+          { label: "Kegiatan", href: "/kegiatan" },
+          { label: activity.name, href: `/kegiatan/${activity.id}?tab=pengaturan` },
+          { label: "Ubah ini & seterusnya" },
+        ]}
+        title="Ubah ini & seterusnya"
+        meta="Perubahan berlaku mulai tanggal yang dipilih; jadwal sebelum tanggal itu tidak berubah."
+      />
+      <Card>
+        <CardContent>
+          <ActivityForm mode="split" activityId={activity.id} defaultValues={defaultValues} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

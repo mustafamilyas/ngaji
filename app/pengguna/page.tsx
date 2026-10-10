@@ -1,5 +1,9 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { PageHeader } from "@/components/page-header";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Pagination } from "@/components/pagination";
 import { FilterBar, SearchFilter } from "@/components/filters/filter-bar";
 import { GroupFilter } from "@/components/filters/group-filter";
@@ -10,8 +14,10 @@ import { parseGroupIds, parsePage, parseSearch } from "@/lib/filters";
 import { pageHref } from "@/lib/pagination";
 import { listUsers } from "@/lib/user/queries";
 import { ROLES } from "@/lib/validation/enums";
-import { CreateUserForm } from "./create-user-form";
-import { UserRowControls } from "./user-row-controls";
+import { userRowPermissions } from "@/lib/user/row-permissions";
+import { initials } from "@/lib/utils";
+import { CreateUserDialog } from "./create-user-dialog";
+import { ManageUserDialog } from "./manage-user-dialog";
 
 export default async function UsersPage({
   searchParams,
@@ -47,51 +53,71 @@ export default async function UsersPage({
   const allowedCreateRoles = session.user.role === "OWNER" ? ROLES : ROLES.filter((r) => r !== "OWNER");
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-lg font-semibold">Pengguna</h1>
-
-      {canCreate && <CreateUserForm groups={groups} allowedRoles={allowedCreateRoles} />}
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Pengguna"
+        meta={`${total} pengguna dalam scope Anda`}
+        actions={canCreate && <CreateUserDialog groups={groups} allowedRoles={allowedCreateRoles} />}
+      />
 
       <FilterBar action="/pengguna" isFiltered={Boolean(q || groupIds)} resetHref="/pengguna">
         <SearchFilter value={q} placeholder="Cari nama atau username…" />
         <GroupFilter groups={groups} selected={groupIds ?? []} hint="Termasuk semua grup di bawahnya." />
       </FilterBar>
 
-      <ul className="flex flex-col gap-3">
-        {roles.map((userRole) => (
-          <li key={userRole.id} className="flex flex-col gap-1 rounded-md border p-3">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <p className="text-sm font-medium">{userRole.user.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  @{userRole.user.username} · {userRole.role} · {userRole.group.name}
-                </p>
-              </div>
-              {!userRole.user.isActive && (
-                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                  Nonaktif
-                </span>
-              )}
-            </div>
-            <UserRowControls
-              userId={userRole.user.id}
-              role={userRole.role as (typeof ROLES)[number]}
-              groupId={userRole.groupId}
-              isActive={userRole.user.isActive}
-              isSelf={String(userRole.user.id) === session.user.id}
-              viewerRole={session.user.role}
-              viewerGroupId={session.user.groupId}
-              groups={groups}
-            />
-          </li>
-        ))}
-      </ul>
-
-      {roles.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          {q || groupIds ? "Tidak ada pengguna yang cocok." : "Belum ada pengguna."}
-        </p>
-      )}
+      <Card>
+        <CardContent>
+          {roles.length > 0 ? (
+            <ul className="flex flex-col divide-y">
+              {roles.map((userRole) => {
+                const role = userRole.role as (typeof ROLES)[number];
+                const { canManage, canReset } = userRowPermissions({
+                  viewerRole: session.user.role,
+                  viewerGroupId: session.user.groupId,
+                  targetRole: role,
+                  targetGroupId: userRole.groupId,
+                  isSelf: String(userRole.user.id) === session.user.id,
+                });
+                return (
+                  <li key={userRole.id} className="flex items-center justify-between gap-3 py-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Avatar>
+                        <AvatarFallback>{initials(userRole.user.name)}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
+                          <span className="truncate">{userRole.user.name}</span>
+                          <Badge variant="secondary">{role}</Badge>
+                          {!userRole.user.isActive && <Badge variant="outline">Nonaktif</Badge>}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          @{userRole.user.username} · {userRole.group.name}
+                        </p>
+                      </div>
+                    </div>
+                    {(canManage || canReset) && (
+                      <ManageUserDialog
+                        userId={userRole.user.id}
+                        userName={userRole.user.name}
+                        role={role}
+                        groupId={userRole.groupId}
+                        isActive={userRole.user.isActive}
+                        canManage={canManage}
+                        canReset={canReset}
+                        groups={groups}
+                      />
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              {q || groupIds ? "Tidak ada pengguna yang cocok." : "Belum ada pengguna."}
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <Pagination
         page={currentPage}

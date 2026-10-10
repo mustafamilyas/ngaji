@@ -1,21 +1,15 @@
 import Link from "next/link";
+import { MemberStatusBadge } from "@/components/member-status-badge";
 import { WhatsAppButton } from "@/components/whatsapp-button";
 import { ageInYears, today } from "@/lib/dates";
 import { formatDate } from "@/lib/filters";
 import { MEMBER_COLUMNS, type MemberColumnKey } from "@/lib/member/columns";
-import { formatEnumLabel, MEMBER_STATUS_LABELS, SEX_LABELS } from "@/lib/member/labels";
+import { formatEnumLabel, SEX_LABELS } from "@/lib/member/labels";
 import type { listMembers } from "@/lib/member/queries";
 import { cn } from "@/lib/utils";
-import type { MemberStatus, Sex } from "@/lib/validation/enums";
+import type { Sex } from "@/lib/validation/enums";
 
 type MemberRow = Awaited<ReturnType<typeof listMembers>>["members"][number];
-
-const STATUS_CLASS: Record<MemberStatus, string> = {
-  AKTIF: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-  PINDAH: "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
-  KELUAR: "bg-muted text-muted-foreground",
-  MENINGGAL: "bg-muted text-muted-foreground",
-};
 
 function cell(member: MemberRow, key: MemberColumnKey, asOf: string): React.ReactNode {
   switch (key) {
@@ -37,14 +31,8 @@ function cell(member: MemberRow, key: MemberColumnKey, asOf: string): React.Reac
           <span className="text-muted-foreground"> · {ageInYears(member.birthDate, asOf)} th</span>
         </>
       );
-    case "status": {
-      const status = member.status as MemberStatus;
-      return (
-        <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", STATUS_CLASS[status])}>
-          {MEMBER_STATUS_LABELS[status] ?? member.status}
-        </span>
-      );
-    }
+    case "status":
+      return <MemberStatusBadge status={member.status} />;
     case "whatsapp":
       return <WhatsAppButton phone={member.phone} name={member.name} compact />;
     case "hp":

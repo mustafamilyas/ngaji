@@ -1,17 +1,39 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { CalendarDays, ChevronRight, Network, Settings, UserCog, UserPlus, Users } from "lucide-react";
 import { auth } from "@/auth";
+import { DangerZone, DangerZoneItem } from "@/components/danger-zone";
+import { MemberStatusBadge } from "@/components/member-status-badge";
+import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
+import { TabNav, type TabItem } from "@/components/tab-nav";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { scheduleLabel } from "@/lib/activity/labels";
 import { EMBEDDED_PAGE_SIZE } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
 import { parsePage } from "@/lib/filters";
 import { getLevels } from "@/lib/group/levels";
+import { groupTrail } from "@/lib/group/trail";
 import { clampPage, pageHref, paginate } from "@/lib/pagination";
 import { resolveGroup } from "@/lib/resolve";
-import { AddSubgroupForm } from "./add-subgroup-form";
+import { parseTab } from "@/lib/tabs";
+import { initials } from "@/lib/utils";
+import { AddSubgroupDialog } from "./add-subgroup-dialog";
 import { DeleteGroupForm } from "./delete-group-form";
 import { RenameGroupForm } from "./rename-group-form";
+
+const TABS = ["subgrup", "anggota", "kegiatan", "pengguna", "pengaturan"] as const;
+type Tab = (typeof TABS)[number];
+
+const rowClass = "-mx-2 flex items-center justify-between gap-3 rounded-md px-2 py-2.5 hover:bg-muted";
+
+function EmptyRow({ children }: { children: React.ReactNode }) {
+  return <p className="py-6 text-center text-sm text-muted-foreground">{children}</p>;
+}
 
 export default async function GroupDetailPage({
   params,
@@ -39,7 +61,7 @@ export default async function GroupDetailPage({
   const memberTotal = await db.member.count({ where: { groupId: group.id } });
   const memberPage = clampPage(parsePage(query.anggota), memberTotal, EMBEDDED_PAGE_SIZE);
 
-  const [allChildren, members, allActivities, allUserRoles, levels] = await Promise.all([
+  const [allChildren, members, allActivities, allUserRoles, levels, trail] = await Promise.all([
     db.group.findMany({ where: { parentId: group.id }, orderBy: { name: "asc" } }),
     db.member.findMany({
       where: { groupId: group.id },
@@ -54,6 +76,7 @@ export default async function GroupDetailPage({
       orderBy: { user: { name: "asc" } },
     }),
     getLevels(group.organizationId),
+    groupTrail(session.user.groupPath, group.path),
   ]);
 
   const children = paginate(allChildren, parsePage(query.subgrup), EMBEDDED_PAGE_SIZE);
@@ -65,124 +88,197 @@ export default async function GroupDetailPage({
   const maxDepth = levels.length > 0 ? levels[levels.length - 1].depth : 0;
   const isLeaf = group.depth === maxDepth;
   const levelName = levels[group.depth]?.name ?? "";
+  const childLevelName = levels[group.depth + 1]?.name ?? "";
+
+  // Only leaves hold members and only non-leaves hold sub-groups, so each group shows one of the two.
+  const tabs: TabItem<Tab>[] = [
+    isLeaf
+      ? { key: "anggota", label: "Anggota", icon: Users, count: memberTotal }
+      : { key: "subgrup", label: childLevelName || "Sub-grup", icon: Network, count: children.total },
+    { key: "kegiatan", label: "Kegiatan", icon: CalendarDays, count: activities.total },
+    { key: "pengguna", label: "Pengguna", icon: UserCog, count: userRoles.total },
+    ...(canEdit ? [{ key: "pengaturan" as const, label: "Pengaturan", icon: Settings }] : []),
+  ];
+  const defaultTab: Tab = isLeaf ? "anggota" : "subgrup";
+  const requested = parseTab(query.tab, TABS, defaultTab);
+  const tab = tabs.some((t) => t.key === requested) ? requested : defaultTab;
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <p className="text-xs text-muted-foreground">{levelName}</p>
-        <h1 className="text-lg font-semibold">{group.name}</h1>
-      </div>
-
-      {canEdit && (
-        <section className="flex flex-col gap-3 rounded-md border p-3">
-          <h2 className="text-sm font-medium">Pengaturan grup</h2>
-          <RenameGroupForm groupId={group.id} name={group.name} />
-          <DeleteGroupForm groupId={group.id} />
-        </section>
-      )}
-
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium">Sub-grup ({children.total})</h2>
-        {children.total > 0 ? (
-          <ul className="flex flex-col gap-1">
-            {children.items.map((child) => (
-              <li key={child.id}>
-                <Link href={`/grup/${child.id}`} className="text-sm text-primary hover:underline">
-                  {child.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">Belum ada sub-grup.</p>
-        )}
-        <Pagination
-          {...children}
-          scroll={false}
-          hrefFor={(target) => pageHref(path, query, target, "subgrup")}
-        />
-        {canEdit && !isLeaf && (
-          <div className="mt-2">
-            <AddSubgroupForm parentId={group.id} />
-          </div>
-        )}
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-medium">Anggota ({memberTotal})</h2>
-          {memberTotal > 0 && (
-            <Link href={`/anggota?grup=${group.id}`} className="text-xs text-primary hover:underline">
-              Buka di daftar anggota
+      <PageHeader
+        breadcrumb={[
+          { label: "Grup", href: "/grup" },
+          ...trail.map((g) => ({ label: g.name, href: g.href })),
+        ]}
+        title={group.name}
+        badges={levelName && <Badge variant="secondary">{levelName}</Badge>}
+        actions={
+          <>
+            <Link href={`/anggota?grup=${group.id}`} className={buttonVariants({ variant: "outline", size: "lg" })}>
+              <Users />
+              Lihat semua anggota
             </Link>
-          )}
-        </div>
-        {members.length > 0 ? (
-          <ul className="flex flex-col gap-1 text-sm">
-            {members.map((member) => (
-              <li key={member.id}>
-                <Link href={`/anggota/${member.id}`} className="hover:underline">
-                  {member.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">Belum ada anggota.</p>
-        )}
-        <Pagination
-          page={memberPage}
-          pageSize={EMBEDDED_PAGE_SIZE}
-          total={memberTotal}
-          scroll={false}
-          hrefFor={(target) => pageHref(path, query, target, "anggota")}
-        />
-      </section>
+            {isLeaf ? (
+              <Link href={`/anggota/baru?grup=${group.id}`} className={buttonVariants({ size: "lg" })}>
+                <UserPlus />
+                Tambah anggota
+              </Link>
+            ) : (
+              canEdit && (
+                <AddSubgroupDialog parentId={group.id} parentName={group.name} childLevelName={childLevelName} />
+              )
+            )}
+          </>
+        }
+      />
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium">Kegiatan ({activities.total})</h2>
-        {activities.total > 0 ? (
-          <ul className="flex flex-col gap-1 text-sm">
-            {activities.items.map((activity) => (
-              <li key={activity.id}>
-                <Link href={`/kegiatan/${activity.id}`} className="hover:underline">
-                  {activity.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">Belum ada kegiatan.</p>
-        )}
-        <Pagination
-          {...activities}
-          scroll={false}
-          hrefFor={(target) => pageHref(path, query, target, "kegiatan")}
-        />
-      </section>
+      <div className="flex flex-col gap-4">
+        <TabNav path={path} tabs={tabs} current={tab} defaultTab={defaultTab} />
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium">Pengguna ({userRoles.total})</h2>
-        {userRoles.total > 0 ? (
-          <ul className="flex flex-col gap-1 text-sm">
-            {userRoles.items.map((userRole) => (
-              <li key={userRole.id}>
-                {userRole.user.name} — {userRole.role}
-                {!userRole.user.isActive && (
-                  <span className="ml-1 text-xs text-muted-foreground">(nonaktif)</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">Belum ada pengguna.</p>
+        {tab === "subgrup" && (
+          <Card>
+            <CardContent className="flex flex-col gap-3">
+              {children.total > 0 ? (
+                <ul className="flex flex-col divide-y">
+                  {children.items.map((child) => (
+                    <li key={child.id}>
+                      <Link href={`/grup/${child.id}`} className={rowClass}>
+                        <span className="truncate text-sm font-medium">{child.name}</span>
+                        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <EmptyRow>Belum ada {(childLevelName || "sub-grup").toLowerCase()}.</EmptyRow>
+              )}
+              <Pagination
+                {...children}
+                scroll={false}
+                hrefFor={(target) => pageHref(path, query, target, "subgrup")}
+              />
+            </CardContent>
+          </Card>
         )}
-        <Pagination
-          {...userRoles}
-          scroll={false}
-          hrefFor={(target) => pageHref(path, query, target, "pengguna")}
-        />
-      </section>
+
+        {tab === "anggota" && (
+          <Card>
+            <CardContent className="flex flex-col gap-3">
+              {members.length > 0 ? (
+                <ul className="flex flex-col divide-y">
+                  {members.map((member) => (
+                    <li key={member.id}>
+                      <Link href={`/anggota/${member.id}`} className={rowClass}>
+                        <span className="truncate text-sm font-medium">{member.name}</span>
+                        <MemberStatusBadge status={member.status} />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <EmptyRow>Belum ada anggota.</EmptyRow>
+              )}
+              <Pagination
+                page={memberPage}
+                pageSize={EMBEDDED_PAGE_SIZE}
+                total={memberTotal}
+                scroll={false}
+                hrefFor={(target) => pageHref(path, query, target, "anggota")}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {tab === "kegiatan" && (
+          <Card>
+            <CardHeader>
+              <CardDescription>
+                Kegiatan milik {group.name}; berlaku juga untuk semua grup di bawahnya.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              {activities.total > 0 ? (
+                <ul className="flex flex-col divide-y">
+                  {activities.items.map((activity) => (
+                    <li key={activity.id}>
+                      <Link href={`/kegiatan/${activity.id}`} className={rowClass}>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{activity.name}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {scheduleLabel(activity)} · {activity.startTime} · {activity.location}
+                          </p>
+                        </div>
+                        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <EmptyRow>Belum ada kegiatan.</EmptyRow>
+              )}
+              <Pagination
+                {...activities}
+                scroll={false}
+                hrefFor={(target) => pageHref(path, query, target, "kegiatan")}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {tab === "pengguna" && (
+          <Card>
+            <CardContent className="flex flex-col gap-3">
+              {userRoles.total > 0 ? (
+                <ul className="flex flex-col divide-y">
+                  {userRoles.items.map((userRole) => (
+                    <li key={userRole.id} className="flex items-center justify-between gap-3 py-2.5">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Avatar size="sm">
+                          <AvatarFallback>{initials(userRole.user.name)}</AvatarFallback>
+                        </Avatar>
+                        <span className="truncate text-sm font-medium">{userRole.user.name}</span>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        {!userRole.user.isActive && <Badge variant="outline">Nonaktif</Badge>}
+                        <Badge variant="secondary">{userRole.role}</Badge>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <EmptyRow>Belum ada pengguna.</EmptyRow>
+              )}
+              <Pagination
+                {...userRoles}
+                scroll={false}
+                hrefFor={(target) => pageHref(path, query, target, "pengguna")}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {tab === "pengaturan" && (
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle>Nama grup</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <RenameGroupForm groupId={group.id} name={group.name} />
+              </CardContent>
+            </Card>
+
+            <DangerZone>
+              <DangerZoneItem
+                title="Hapus grup"
+                description="Hanya bisa jika grup kosong: tanpa sub-grup, anggota, kegiatan, dan pengguna."
+              >
+                <DeleteGroupForm groupId={group.id} />
+              </DangerZoneItem>
+            </DangerZone>
+          </>
+        )}
+      </div>
     </div>
   );
 }

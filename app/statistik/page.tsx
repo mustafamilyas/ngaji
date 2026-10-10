@@ -1,6 +1,8 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { CalendarDays, CalendarRange, Network, UserCheck, Users } from "lucide-react";
 import { auth } from "@/auth";
+import { MetaItem, PageHeader } from "@/components/page-header";
+import { TabNav } from "@/components/tab-nav";
 import { visibleGroupsWhere } from "@/lib/authz";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { FilterBar, SearchFilter } from "@/components/filters/filter-bar";
@@ -9,23 +11,20 @@ import { STATS_DATE_RANGE } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { today } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
-import { parseGroupIds, parseSearch, resolveDateRange } from "@/lib/filters";
+import { formatDateRange, parseGroupIds, parseSearch, resolveDateRange } from "@/lib/filters";
+import { parseTab } from "@/lib/tabs";
 import { activityStatistics, memberStatistics, participationStatistics } from "@/lib/stats";
 import { ActivityCharts } from "./activity-charts";
 import { MemberCharts } from "./member-charts";
 import { ParticipationTable } from "./participation-table";
 
 const TABS = [
-  { key: "anggota", label: "Anggota" },
-  { key: "kegiatan", label: "Kegiatan" },
-  { key: "partisipasi", label: "Partisipasi" },
+  { key: "anggota", label: "Anggota", icon: Users },
+  { key: "kegiatan", label: "Kegiatan", icon: CalendarDays },
+  { key: "partisipasi", label: "Partisipasi", icon: UserCheck },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
-
-function isTabKey(value: string): value is TabKey {
-  return TABS.some((t) => t.key === value);
-}
 
 export default async function StatisticsPage({
   searchParams,
@@ -36,7 +35,7 @@ export default async function StatisticsPage({
   if (!session) redirect("/login");
 
   const params = await searchParams;
-  const tab: TabKey = typeof params.tab === "string" && isTabKey(params.tab) ? params.tab : "anggota";
+  const tab = parseTab(params.tab, TABS.map((t) => t.key), "anggota" as TabKey);
   const now = today();
   const range = resolveDateRange(params, STATS_DATE_RANGE, now);
   // STATS_DATE_RANGE has no open-ended mode, so both bounds are always set.
@@ -98,45 +97,48 @@ export default async function StatisticsPage({
     );
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-lg font-semibold">Statistik</h1>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Statistik"
+        meta={
+          <>
+            <MetaItem icon={Network}>{groups.find((g) => g.id === grup)?.name ?? ownGroupName}</MetaItem>
+            {tab !== "anggota" && <MetaItem icon={CalendarRange}>{formatDateRange(from, to)}</MetaItem>}
+          </>
+        }
+      />
 
-      <FilterBar
-        action="/statistik"
-        preserve={{
-          tab,
-          // The anggota tab has no date filter; keep the chosen range for the other tabs.
-          ...(tab === "anggota" ? rangeParams : {}),
-        }}
-        isFiltered={Boolean(grup || q || (tab !== "anggota" && rangeFiltered))}
-        resetHref={`/statistik?tab=${tab}`}
-      >
-        {tab === "partisipasi" && <SearchFilter value={q} placeholder="Cari nama anggota…" />}
-        <GroupFilter
-          groups={groups}
-          selected={grup ? [grup] : []}
-          mode="single"
-          emptyLabel={ownGroupName}
-          hint="Statistik dihitung untuk grup ini dan semua grup di bawahnya."
+      <div className="flex flex-col gap-4">
+        <TabNav
+          path="/statistik"
+          current={tab}
+          defaultTab="anggota"
+          tabs={TABS.map((t) => ({ ...t, href: tabHref(t.key) }))}
         />
-        {tab !== "anggota" && <DateRangeFilter range={range} {...STATS_DATE_RANGE} today={now} />}
-      </FilterBar>
 
-      <div className="flex gap-1 border-b">
-        {TABS.map((t) => (
-          <Link
-            key={t.key}
-            href={tabHref(t.key)}
-            className={`rounded-t-md px-3 py-2 text-sm ${
-              t.key === tab ? "border-b-2 border-primary font-medium" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t.label}
-          </Link>
-        ))}
+        <FilterBar
+          action="/statistik"
+          preserve={{
+            tab,
+            // The anggota tab has no date filter; keep the chosen range for the other tabs.
+            ...(tab === "anggota" ? rangeParams : {}),
+          }}
+          isFiltered={Boolean(grup || q || (tab !== "anggota" && rangeFiltered))}
+          resetHref={`/statistik?tab=${tab}`}
+        >
+          {tab === "partisipasi" && <SearchFilter value={q} placeholder="Cari nama anggota…" />}
+          <GroupFilter
+            groups={groups}
+            selected={grup ? [grup] : []}
+            mode="single"
+            emptyLabel={ownGroupName}
+            hint="Statistik dihitung untuk grup ini dan semua grup di bawahnya."
+          />
+          {tab !== "anggota" && <DateRangeFilter range={range} {...STATS_DATE_RANGE} today={now} />}
+        </FilterBar>
+
+        {content}
       </div>
-
-      {content}
     </div>
   );
 }

@@ -25,13 +25,13 @@ describe("NewMemberPage", () => {
     const session = sessionFor(fixture.actorId, "OWNER", fixture.root);
     mockAuthSession(auth, { user: session });
 
-    const html = renderToStaticMarkup(await NewMemberPage());
+    const html = renderToStaticMarkup(await NewMemberPage({ searchParams: Promise.resolve({}) }));
     expect(html).toContain("Anggota baru");
   });
 
   it("redirects to /login when there is no session", async () => {
     mockAuthSession(auth, null);
-    await expect(NewMemberPage()).rejects.toMatchObject({
+    await expect(NewMemberPage({ searchParams: Promise.resolve({}) })).rejects.toMatchObject({
       digest: expect.stringContaining("NEXT_REDIRECT"),
     });
   });

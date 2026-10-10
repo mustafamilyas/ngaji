@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { deleteGroupAction } from "@/app/grup/actions";
 import type { ActionResult } from "@/lib/errors";
@@ -23,6 +24,7 @@ export function DeleteGroupForm({ groupId }: { groupId: number }) {
     >
       <input type="hidden" name="groupId" value={groupId} />
       <Button type="submit" variant="destructive" disabled={pending}>
+        <Trash2 />
         {pending ? "Menghapus…" : "Hapus grup"}
       </Button>
       {state && !state.ok && (
