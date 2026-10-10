@@ -168,6 +168,6 @@ describe("ActivityListPage", () => {
 
     expect((html.match(/min-h-16/g) ?? []).length).toBe(expectedCells);
     expect(html).toContain("Kajian Cabang");
-    expect(html).toContain("warisan");
+    expect(html).toContain("Warisan");
   });
 });

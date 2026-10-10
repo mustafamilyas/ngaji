@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { SortIcon } from "@/components/data-table";
 import { Pagination } from "@/components/pagination";
 import { PAGE_SIZE } from "@/lib/constants";
 import { paginate } from "@/lib/pagination";
 import type { ParticipationRow } from "@/lib/stats";
+import { cn } from "@/lib/utils";
 
 type SortKey = keyof Pick<ParticipationRow, "memberName" | "occurrenceCount" | "hadir" | "izin" | "percentHadir">;
 
@@ -58,18 +60,26 @@ export function ParticipationTable({ rows, pageSize = PAGE_SIZE }: { rows: Parti
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-xs text-muted-foreground">
-              {COLUMNS.map((col) => (
-                <th key={col.key} className={col.align === "right" ? "py-2 text-right" : "py-2 text-left"}>
-                  <button
-                    type="button"
-                    onClick={() => toggleSort(col.key)}
-                    className="hover:text-foreground"
+              {COLUMNS.map((col) => {
+                const active = sortKey === col.key;
+                return (
+                  <th
+                    key={col.key}
+                    scope="col"
+                    aria-sort={active ? (descending ? "descending" : "ascending") : "none"}
+                    className={col.align === "right" ? "py-2 text-right" : "py-2 text-left"}
                   >
-                    {col.label}
-                    {sortKey === col.key && (descending ? " ↓" : " ↑")}
-                  </button>
-                </th>
-              ))}
+                    <button
+                      type="button"
+                      onClick={() => toggleSort(col.key)}
+                      className={cn("inline-flex items-center gap-1 hover:text-foreground", active && "text-foreground")}
+                    >
+                      {col.label}
+                      <SortIcon dir={active ? (descending ? "desc" : "asc") : undefined} />
+                    </button>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>

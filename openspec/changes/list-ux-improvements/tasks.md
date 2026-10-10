@@ -32,3 +32,10 @@
 - [x] 6.3 Sub-group add and single-occurrence override move into dialogs
 - [x] 6.4 `/statistik` (shared tabs, filters kept across tabs), `/pengguna` (create + per-user "Kelola" dialogs, `lib/user/row-permissions.ts` with tests), `/pengaturan/jenjang`
 - [ ] 6.5 `pnpm test` green (page tests updated for tabs; not yet run)
+
+## 7. List tables
+- [x] 7.1 `lib/sort.ts` (parse, href, preserve, comparator) and `lib/activity/list-sort.ts`, with tests
+- [x] 7.2 `TableCard`, `SortableTh`, `StatTiles`, `RowActions` (kebab of links) and `ui/dropdown-menu`
+- [x] 7.3 Whitelisted `orderBy` in `listMembers`, `listUsers`, `listAuditLog`, with id/name tie-breakers
+- [x] 7.4 `/anggota`, `/pengguna`, `/kegiatan` (list view), `/audit` as sortable table cards; `/grup` tree card; participation table uses the shared sort icon
+- [ ] 7.5 `pnpm test` green (member sort page test added; not yet run)

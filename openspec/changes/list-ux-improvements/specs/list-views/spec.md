@@ -79,3 +79,18 @@ Every page with the app frame SHALL open with the shared page header: a breadcru
 #### Scenario: Only the active tab is rendered
 - **WHEN** `/grup/<leaf id>` is opened without `?tab=`
 - **THEN** the members tab is shown and the group's activities are not in the HTML
+
+### Requirement: Sortable list columns
+List tables SHALL let the viewer sort by selected columns through `?sort=<key>&dir=asc|desc`. The key SHALL be checked against the page's whitelist; anything else SHALL fall back to the default order. The default order SHALL NOT appear in the URL, changing the order SHALL return to page 1, and filtering SHALL keep the chosen order. Every order SHALL end with a unique tie-breaker so paging is stable. On `/anggota`, only the name and currently visible optional columns SHALL be sortable.
+
+#### Scenario: Toggling a column
+- **WHEN** the member list is sorted by name ascending and the user clicks the name header
+- **THEN** the list is sorted by name descending, starting at page 1
+
+#### Scenario: Unknown sort key
+- **WHEN** `/pengguna?sort=passwordHash` is requested
+- **THEN** the default order (name ascending) is used
+
+#### Scenario: Sort on a hidden member column
+- **WHEN** the birth-date column is hidden and `/anggota?sort=tanggalLahir` is requested
+- **THEN** the list is ordered by name

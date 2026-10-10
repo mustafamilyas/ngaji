@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Network, Settings } from "lucide-react";
 import { auth } from "@/auth";
+import { PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { visibleGroupsWhere } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { getLevels } from "@/lib/group/levels";
@@ -21,10 +26,14 @@ function GroupTreeNode({
     <li>
       <Link
         href={`/grup/${group.id}`}
-        className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+        className="flex items-center justify-between gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted"
       >
-        <span>{group.name}</span>
-        <span className="text-xs text-muted-foreground">{levelNames[group.depth] ?? ""}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          <Network className="size-4 shrink-0 text-muted-foreground" />
+          <span className="truncate font-medium">{group.name}</span>
+          {children.length > 0 && <span className="text-xs text-muted-foreground tabular-nums">{children.length}</span>}
+        </span>
+        {levelNames[group.depth] && <Badge variant="secondary">{levelNames[group.depth]}</Badge>}
       </Link>
       {children.length > 0 && (
         <ul className="ml-4 border-l pl-2">
@@ -73,22 +82,30 @@ export default async function GroupTreePage() {
   const isRootOwner = session.user.role === "OWNER" && root?.depth === 0;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Grup</h1>
-        {isRootOwner && (
-          <Link href="/pengaturan/jenjang" className="text-sm text-primary hover:underline">
-            Pengaturan jenjang
-          </Link>
-        )}
-      </div>
-      {root ? (
-        <ul>
-          <GroupTreeNode group={root} childrenByParent={childrenByParent} levelNames={levelNames} />
-        </ul>
-      ) : (
-        <p className="text-sm text-muted-foreground">Grup tidak ditemukan.</p>
-      )}
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Grup"
+        meta={`${groups.length} grup dalam scope Anda${levelNames.length > 0 ? ` · ${levelNames.join(" › ")}` : ""}`}
+        actions={
+          isRootOwner && (
+            <Link href="/pengaturan/jenjang" className={buttonVariants({ variant: "outline", size: "lg" })}>
+              <Settings />
+              Pengaturan jenjang
+            </Link>
+          )
+        }
+      />
+      <Card>
+        <CardContent>
+          {root ? (
+            <ul>
+              <GroupTreeNode group={root} childrenByParent={childrenByParent} levelNames={levelNames} />
+            </ul>
+          ) : (
+            <p className="py-6 text-center text-sm text-muted-foreground">Grup tidak ditemukan.</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

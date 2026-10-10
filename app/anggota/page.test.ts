@@ -62,4 +62,51 @@ describe("MembersPage", () => {
       cookieValue.current = undefined;
     }
   });
+
+  it("sorts by a visible column from the URL, and ignores a sort on a hidden column", async () => {
+    const fixture = await buildPageFixture("anggota-sort");
+    const session = sessionFor(fixture.actorId, "OWNER", fixture.root);
+    mockAuthSession(auth, { user: session });
+    await db.member.create({
+      data: {
+        groupId: fixture.leaf.id,
+        name: "Zaid Uji",
+        birthPlace: "Bandung",
+        birthDate: "1990-01-01",
+        sex: "L",
+        address: "Jl. Uji No. 2",
+        phone: "081200000001",
+        maritalStatus: "MENIKAH",
+        workStatus: "BEKERJA",
+        status: "AKTIF",
+        joinedAt: "2025-01-01",
+        createdById: fixture.actorId,
+      },
+    });
+    const order = (html: string) => html.indexOf("Zaid Uji") < html.indexOf("Anggota Uji");
+
+    const byName = renderToStaticMarkup(await MembersPage({ searchParams: Promise.resolve({ q: "Uji" }) }));
+    expect(order(byName)).toBe(false);
+
+    const byNameDesc = renderToStaticMarkup(
+      await MembersPage({ searchParams: Promise.resolve({ q: "Uji", sort: "nama", dir: "desc" }) }),
+    );
+    expect(order(byNameDesc)).toBe(true);
+
+    // Birth date is a default column: the older member (Zaid, 1990) comes first ascending.
+    const byBirth = renderToStaticMarkup(
+      await MembersPage({ searchParams: Promise.resolve({ q: "Uji", sort: "tanggalLahir", dir: "asc" }) }),
+    );
+    expect(order(byBirth)).toBe(true);
+
+    cookieValue.current = "alamat";
+    try {
+      const hidden = renderToStaticMarkup(
+        await MembersPage({ searchParams: Promise.resolve({ q: "Uji", sort: "tanggalLahir", dir: "asc" }) }),
+      );
+      expect(order(hidden)).toBe(false);
+    } finally {
+      cookieValue.current = undefined;
+    }
+  });
 });

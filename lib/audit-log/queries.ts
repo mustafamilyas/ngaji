@@ -5,6 +5,19 @@ import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
 import { clampPage } from "@/lib/pagination";
 import { resolveGroups } from "@/lib/resolve";
+import type { SortState } from "@/lib/sort";
+
+/** Sortable `/audit` columns → the field they order by. */
+const AUDIT_SORT_FIELDS = {
+  waktu: (dir) => ({ createdAt: dir }),
+  aksi: (dir) => ({ action: dir }),
+  aktor: (dir) => ({ actor: { name: dir } }),
+  entitas: (dir) => ({ entity: dir }),
+} satisfies Record<string, (dir: "asc" | "desc") => object>;
+
+export type AuditSortKey = keyof typeof AUDIT_SORT_FIELDS;
+export const AUDIT_SORT_KEYS = Object.keys(AUDIT_SORT_FIELDS) as AuditSortKey[];
+export const DEFAULT_AUDIT_SORT: SortState<AuditSortKey> = { key: "waktu", dir: "desc" };
 
 export type AuditLogFilter = {
   page?: number;
@@ -16,6 +29,7 @@ export type AuditLogFilter = {
   to?: string;
   /** Only entries scoped to these groups or their descendants (drops group-less `auth.*` entries). */
   groupIds?: number[];
+  sort?: SortState<AuditSortKey>;
 };
 
 const JAKARTA_UTC_OFFSET = "+07:00";
@@ -76,7 +90,11 @@ export async function listAuditLog(session: SessionUser, filter: AuditLogFilter 
   const entries = await db.auditLog.findMany({
     where,
     include: { actor: { select: { id: true, name: true, username: true } } },
-    orderBy: { createdAt: "desc" },
+    orderBy: [
+      AUDIT_SORT_FIELDS[(filter.sort ?? DEFAULT_AUDIT_SORT).key]((filter.sort ?? DEFAULT_AUDIT_SORT).dir),
+      { createdAt: "desc" as const },
+      { id: "desc" as const },
+    ],
     skip: (page - 1) * PAGE_SIZE,
     take: PAGE_SIZE,
   });
