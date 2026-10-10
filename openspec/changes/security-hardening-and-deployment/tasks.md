@@ -2,8 +2,8 @@
 
 ## 1. Dependencies (own commit, first)
 
-- [ ] 1.1 Upgrade `next` + `eslint-config-next` to ≥ 16.3.8, move `shadcn` to devDependencies; verify `pnpm audit --prod` has no high/critical in runtime packages (record any remaining tooling-only exceptions in DEPLOYMENT.md) and `pnpm test` + `pnpm tsc --noEmit` pass
-- [ ] 1.2 Smoke-test login, member list, attendance save on `pnpm build && pnpm start`; verify no CSP console errors
+- [x] 1.1 Upgrade `next` + `eslint-config-next` to ≥ 16.3.8, move `shadcn` to devDependencies; verify `pnpm audit --prod` has no high/critical in runtime packages (record any remaining tooling-only exceptions in DEPLOYMENT.md) and `pnpm test` + `pnpm tsc --noEmit` pass
+- [x] 1.2 Smoke-test login, member list, attendance save on `pnpm build && pnpm start`; verify no CSP console errors
 
 ## 2. Schema
 
