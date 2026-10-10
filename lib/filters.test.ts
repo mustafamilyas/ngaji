@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   formatDate,
   formatDateRange,
-  isDateString,
   parseGroupIds,
   parsePage,
   parseSearch,
@@ -16,20 +15,6 @@ const TODAY = "2026-10-09"; // a Friday
 const KEGIATAN: DateRangeConfig = { modes: ["hari", "minggu", "bulan", "custom"], defaultMode: "minggu" };
 const STATS: DateRangeConfig = { modes: ["7h", "30h", "90h", "bulan", "custom"], defaultMode: "30h" };
 const AUDIT: DateRangeConfig = { modes: ["semua", "7h", "30h", "custom"], defaultMode: "semua" };
-
-describe("isDateString", () => {
-  it("accepts a real calendar date", () => {
-    expect(isDateString("2026-02-28")).toBe(true);
-  });
-
-  it("rejects malformed and impossible dates", () => {
-    expect(isDateString("2026-2-28")).toBe(false);
-    expect(isDateString("2026-02-30")).toBe(false);
-    expect(isDateString("2026-13-01")).toBe(false);
-    expect(isDateString("abc")).toBe(false);
-    expect(isDateString(undefined)).toBe(false);
-  });
-});
 
 describe("parseGroupIds", () => {
   it("parses a comma-separated list of positive integer ids, de-duplicated", () => {

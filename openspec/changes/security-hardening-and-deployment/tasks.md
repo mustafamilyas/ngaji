@@ -11,10 +11,10 @@
 
 ## 3. Pure logic first (tests before code)
 
-- [ ] 3.1 `lib/http.ts#getClientIp` takes the last `X-Forwarded-For` hop, falls back to `X-Real-IP`; verify unit tests for single, multi-hop and spoofed-first-hop headers
-- [ ] 3.2 Keyed mutex `lib/auth/keyed-lock.ts` (sorted multi-key acquire); verify tests show same-key calls serialize and different keys run concurrently
-- [ ] 3.3 `isDateString` moved to `lib/dates.ts` with 1900–2100 bound; shared `dateSchema` in `lib/validation/common.ts`; verify tests for `2026-02-30`, `2026-99-99`, `0001-01-01`, `2028-02-29`
-- [ ] 3.4 `authorize("user.resetPassword")`: OWNER→OWNER only strictly below; verify authz tests for peer OWNER (403), OWNER below (ok), ADMIN in own group (ok)
+- [x] 3.1 `lib/http.ts#getClientIp` takes the last `X-Forwarded-For` hop, falls back to `X-Real-IP`; verify unit tests for single, multi-hop and spoofed-first-hop headers
+- [x] 3.2 Keyed mutex `lib/auth/keyed-lock.ts` (sorted multi-key acquire); verify tests show same-key calls serialize and different keys run concurrently
+- [x] 3.3 `isDateString` moved to `lib/dates.ts` with 1900–2100 bound; shared `dateSchema` in `lib/validation/common.ts`; verify tests for `2026-02-30`, `2026-99-99`, `0001-01-01`, `2028-02-29`
+- [x] 3.4 `authorize("user.resetPassword")`: OWNER→OWNER only strictly below; verify authz tests for peer OWNER (403), OWNER below (ok), ADMIN in own group (ok)
 
 ## 4. Authentication
 

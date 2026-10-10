@@ -261,11 +261,34 @@ describe("authorize user.create", () => {
 });
 
 describe("authorize user.resetPassword", () => {
-  it("OWNER can reset anyone in scope, including another OWNER", () => {
+  it("OWNER can reset an OWNER in a group strictly below", () => {
     const s = session("OWNER", 2, DAERAH);
     expect(() =>
       authorize(s, "user.resetPassword", { groupPath: DESA, role: "OWNER", groupId: 3 }),
     ).not.toThrow();
+  });
+
+  it("OWNER cannot reset a peer OWNER in the same group", () => {
+    const s = session("OWNER", 2, DAERAH);
+    expect(() =>
+      authorize(s, "user.resetPassword", { groupPath: DAERAH, role: "OWNER", groupId: 2 }),
+    ).toThrow(ForbiddenError);
+  });
+
+  it("root OWNER cannot reset another root OWNER", () => {
+    const s = session("OWNER", 1, ROOT);
+    expect(() =>
+      authorize(s, "user.resetPassword", { groupPath: ROOT, role: "OWNER", groupId: 1 }),
+    ).toThrow(ForbiddenError);
+  });
+
+  it("OWNER can still reset an ADMIN or USER in their own group", () => {
+    const s = session("OWNER", 2, DAERAH);
+    for (const role of ["ADMIN", "USER"] as const) {
+      expect(() =>
+        authorize(s, "user.resetPassword", { groupPath: DAERAH, role, groupId: 2 }),
+      ).not.toThrow();
+    }
   });
 
   it("ADMIN can reset a USER in the exact same group", () => {

@@ -2,6 +2,18 @@ const TIMEZONE = "Asia/Jakarta";
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MS = 86_400_000;
 
+const MIN_YEAR = 1900;
+const MAX_YEAR = 2100;
+
+/** A well-formed, real calendar date (`YYYY-MM-DD`) with a year in 1900–2100. */
+export function isDateString(value: string | undefined): value is string {
+  if (!value || !DATE_RE.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  if (year < MIN_YEAR || year > MAX_YEAR) return false;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
 function assertDateString(date: string): void {
   if (!DATE_RE.test(date)) {
     throw new Error(`Invalid date string: ${date}`);

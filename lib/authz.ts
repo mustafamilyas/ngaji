@@ -200,7 +200,11 @@ export function authorize(session: SessionUser, action: Action, target?: unknown
     case "user.resetPassword": {
       const { groupPath, role, groupId } = target as ResetPasswordTarget;
       assertInScope(session, groupPath);
-      if (session.role === "OWNER") return;
+      if (session.role === "OWNER") {
+        // Peer OWNERs are recovered via the CLI, not by each other (design.md §8).
+        if (role === "OWNER" && !isAncestorOf(session.groupPath, groupPath)) throw new ForbiddenError();
+        return;
+      }
       if (session.role === "ADMIN") {
         if (role !== "USER" || groupId !== session.groupId) throw new ForbiddenError();
         return;

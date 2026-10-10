@@ -5,6 +5,7 @@ import {
   ageInYears,
   daysBetween,
   fromDbDate,
+  isDateString,
   monthEndOf,
   monthStartOf,
   monthsBetween,
@@ -207,5 +208,30 @@ describe("rangeForMode", () => {
 
   it("returns the calendar month bounds for 'bulan'", () => {
     expect(rangeForMode("bulan", fixedToday)).toEqual({ from: "2026-09-01", to: "2026-09-30" });
+  });
+});
+
+describe("isDateString", () => {
+  it("accepts real calendar dates, including a leap day", () => {
+    expect(isDateString("2026-02-28")).toBe(true);
+    expect(isDateString("2028-02-29")).toBe(true);
+  });
+
+  it("rejects malformed and impossible dates", () => {
+    expect(isDateString("2026-2-28")).toBe(false);
+    expect(isDateString("2026-02-30")).toBe(false);
+    expect(isDateString("2026-99-99")).toBe(false);
+    expect(isDateString("2026-13-01")).toBe(false);
+    expect(isDateString("2027-02-29")).toBe(false);
+    expect(isDateString("abc")).toBe(false);
+    expect(isDateString(undefined)).toBe(false);
+  });
+
+  it("rejects years outside 1900-2100", () => {
+    expect(isDateString("0001-01-01")).toBe(false);
+    expect(isDateString("1899-12-31")).toBe(false);
+    expect(isDateString("2101-01-01")).toBe(false);
+    expect(isDateString("1900-01-01")).toBe(true);
+    expect(isDateString("2100-12-31")).toBe(true);
   });
 });

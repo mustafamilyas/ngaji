@@ -6,11 +6,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import {
   DATE_RANGE_LABELS,
   formatDateRange,
-  isDateString,
   shiftDateRange,
   type DateRange,
   type DateRangeMode,
 } from "@/lib/filters";
+import { isDateString } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { filterTriggerClass, submitFilterForm } from "./filter-bar";
 

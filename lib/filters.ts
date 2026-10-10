@@ -5,23 +5,14 @@
  * these only normalize shape — group ids must still be resolved and
  * scope-checked server-side by the caller.
  */
-import { addDays, addMonthsOnDay, daysBetween, monthStartOf, rangeForMode, today as todayInJakarta } from "@/lib/dates";
+import { addDays, addMonthsOnDay, daysBetween, isDateString, monthStartOf, rangeForMode, today as todayInJakarta } from "@/lib/dates";
 
 type Param = string | string[] | undefined;
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_SEARCH_LENGTH = 100;
 
 function first(param: Param): string | undefined {
   return Array.isArray(param) ? param[0] : param;
-}
-
-/** A well-formed, real calendar date (`YYYY-MM-DD`). */
-export function isDateString(value: string | undefined): value is string {
-  if (!value || !DATE_RE.test(value)) return false;
-  const [year, month, day] = value.split("-").map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 
 export function parseGroupIds(param: Param): number[] | undefined {
