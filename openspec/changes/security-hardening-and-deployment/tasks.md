@@ -7,7 +7,7 @@
 
 ## 2. Schema
 
-- [ ] 2.1 Migration: `User.sessionVersion Int @default(0)` and `AuditLog @@index([action, createdAt])`; verify `pnpm prisma migrate dev` applies cleanly on a copy of `dev.db` and seed still runs
+- [x] 2.1 Migration: `User.sessionVersion Int @default(0)` and `AuditLog @@index([action, createdAt])` (the index already existed in the init migration); verify `pnpm prisma migrate dev` applies cleanly on a copy of `dev.db` and seed still runs
 
 ## 3. Pure logic first (tests before code)
 
