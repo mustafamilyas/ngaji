@@ -15,8 +15,8 @@
 
 ## 3. Authorization
 
-- [ ] 3.1 Add `survey.*` / `survey_response.*` actions and targets to `lib/authz.ts`; verify `lib/authz.test.ts` covers every scenario in the authorization delta, including denied (403) and out-of-scope (404) cases
-- [ ] 3.2 Add `resolveSurvey` (and member-for-survey resolution) to `lib/resolve.ts`; verify tests: deleted survey → 404, other branch → 404, inherited → resolved
+- [x] 3.1 Add `survey.*` / `survey_response.*` actions and targets to `lib/authz.ts`; verify `lib/authz.test.ts` covers every scenario in the authorization delta, including denied (403) and out-of-scope (404) cases
+- [x] 3.2 Add `resolveSurvey` (and member-for-survey resolution) to `lib/resolve.ts`; verify tests: deleted survey → 404, other branch → 404, inherited → resolved
 
 **Checkpoint**: `pnpm test` green; cross-scope survey access fails closed.
 

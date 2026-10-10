@@ -19,6 +19,12 @@ export type Action =
   | "activity.split"
   | "occurrence.override"
   | "attendance.record"
+  | "survey.view"
+  | "survey.create"
+  | "survey.update"
+  | "survey.delete"
+  | "survey_response.record"
+  | "survey_response.delete"
   | "stats.view"
   | "user.view"
   | "user.create"
@@ -32,6 +38,8 @@ export type Action =
 type ScopeTarget = { groupPath: string };
 type ActivityGroupTarget = { groupId: number };
 type AttendanceTarget = { activityGroupPath: string; leafGroupPath: string; isLeaf: boolean };
+type SurveyViewTarget = { surveyGroupPath: string };
+type SurveyResponseTarget = { surveyGroupPath: string; memberGroupPath: string; memberIsLeaf: boolean };
 type UserCreateTarget = { groupPath: string; newRole: Role };
 type ResetPasswordTarget = { groupPath: string; role: Role; groupId: number };
 type UserMutateTarget = { userId: number; groupPath: string; isLastActiveRootOwner?: boolean };
@@ -83,6 +91,12 @@ export function canRecordAttendance(
   return sessionAtOrBelowActivityGroup && leafInOwnScope && activityAppliesToLeaf;
 }
 
+/** Surveys inherit exactly like activities: visible = ancestor-or-scope. */
+export const canViewSurvey = canViewActivity;
+
+/** Survey edits are strictly the owning group, role >= ADMIN (same as activities). */
+export const canEditSurvey = canEditActivity;
+
 function assertInScope(session: SessionUser, groupPath: string): void {
   if (!isInScope(groupPath, session.groupPath)) {
     throw new NotFoundError();
@@ -114,6 +128,21 @@ export function authorize(
   session: SessionUser,
   action: "attendance.record",
   target: AttendanceTarget,
+): void;
+export function authorize(
+  session: SessionUser,
+  action: "survey.view",
+  target: SurveyViewTarget,
+): void;
+export function authorize(
+  session: SessionUser,
+  action: "survey.create" | "survey.update" | "survey.delete",
+  target: ActivityGroupTarget,
+): void;
+export function authorize(
+  session: SessionUser,
+  action: "survey_response.record" | "survey_response.delete",
+  target: SurveyResponseTarget,
 ): void;
 export function authorize(
   session: SessionUser,
@@ -186,6 +215,38 @@ export function authorize(session: SessionUser, action: Action, target?: unknown
       const { activityGroupPath, leafGroupPath, isLeaf } = target as AttendanceTarget;
       const ok = canRecordAttendance(session, activityGroupPath, { path: leafGroupPath, isLeaf });
       if (!ok) throw new ForbiddenError();
+      return;
+    }
+
+    case "survey.view": {
+      const { surveyGroupPath } = target as SurveyViewTarget;
+      if (!canViewSurvey(session, surveyGroupPath)) throw new NotFoundError();
+      return;
+    }
+
+    case "survey.create": {
+      const { groupId } = target as ActivityGroupTarget;
+      if (!atLeast(session.role, "ADMIN")) throw new ForbiddenError();
+      if (groupId !== session.groupId) throw new ForbiddenError();
+      return;
+    }
+
+    case "survey.update":
+    case "survey.delete": {
+      const { groupId } = target as ActivityGroupTarget;
+      if (!canEditSurvey(session, groupId)) throw new ForbiddenError();
+      return;
+    }
+
+    case "survey_response.record":
+    case "survey_response.delete": {
+      const { surveyGroupPath, memberGroupPath, memberIsLeaf } = target as SurveyResponseTarget;
+      // Existence first: a survey or member outside the caller's reach is a 404.
+      if (!canViewSurvey(session, surveyGroupPath)) throw new NotFoundError();
+      assertInScope(session, memberGroupPath);
+      // Visible but not actionable: survey must be at-or-above the caller's group.
+      const surveyAtOrAboveSession = isInScope(session.groupPath, surveyGroupPath);
+      if (!surveyAtOrAboveSession || !memberIsLeaf) throw new ForbiddenError();
       return;
     }
 

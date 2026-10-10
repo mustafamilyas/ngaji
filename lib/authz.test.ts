@@ -222,6 +222,119 @@ describe("canRecordAttendance / authorize attendance.record", () => {
   });
 });
 
+describe("authorize survey.view", () => {
+  const roles: Role[] = ["OWNER", "ADMIN", "USER"];
+
+  for (const role of roles) {
+    it(`${role} can view a survey owned by an ancestor group (inherited)`, () => {
+      const s = session(role, 4, KELOMPOK);
+      expect(() => authorize(s, "survey.view", { surveyGroupPath: DESA })).not.toThrow();
+    });
+
+    it(`${role} can view a survey owned by own group or a descendant`, () => {
+      const s = session(role, 3, DESA);
+      expect(() => authorize(s, "survey.view", { surveyGroupPath: DESA })).not.toThrow();
+      expect(() => authorize(s, "survey.view", { surveyGroupPath: KELOMPOK })).not.toThrow();
+    });
+
+    it(`${role} gets NotFoundError for a survey of another branch`, () => {
+      const s = session(role, 3, DESA);
+      expect(() => authorize(s, "survey.view", { surveyGroupPath: OTHER_KELOMPOK })).toThrow(NotFoundError);
+    });
+  }
+});
+
+describe("authorize survey.create / update / delete", () => {
+  it("USER create is denied", () => {
+    const s = session("USER", 3, DESA);
+    expect(() => authorize(s, "survey.create", { groupId: 3 })).toThrow(ForbiddenError);
+  });
+
+  it("ADMIN can create for own group only", () => {
+    const s = session("ADMIN", 3, DESA);
+    expect(() => authorize(s, "survey.create", { groupId: 3 })).not.toThrow();
+    expect(() => authorize(s, "survey.create", { groupId: 4 })).toThrow(ForbiddenError);
+  });
+
+  for (const action of ["survey.update", "survey.delete"] as const) {
+    it(`OWNER and ADMIN can ${action} a survey of their own group`, () => {
+      expect(() => authorize(session("OWNER", 3, DESA), action, { groupId: 3 })).not.toThrow();
+      expect(() => authorize(session("ADMIN", 3, DESA), action, { groupId: 3 })).not.toThrow();
+    });
+
+    it(`USER cannot ${action} a survey of their own group`, () => {
+      expect(() => authorize(session("USER", 3, DESA), action, { groupId: 3 })).toThrow(ForbiddenError);
+    });
+
+    it(`ADMIN of desa cannot ${action} a survey owned by a kelompok below (descendant)`, () => {
+      expect(() => authorize(session("ADMIN", 3, DESA), action, { groupId: 4 })).toThrow(ForbiddenError);
+    });
+
+    it(`ADMIN of kelompok cannot ${action} an inherited survey owned by an ancestor`, () => {
+      expect(() => authorize(session("ADMIN", 4, KELOMPOK), action, { groupId: 3 })).toThrow(ForbiddenError);
+    });
+
+    it(`root OWNER cannot ${action} a survey of a descendant group (no override)`, () => {
+      expect(() => authorize(session("OWNER", 1, ROOT), action, { groupId: 3 })).toThrow(ForbiddenError);
+    });
+  }
+});
+
+describe("authorize survey_response.record / delete", () => {
+  const actions = ["survey_response.record", "survey_response.delete"] as const;
+  const roles: Role[] = ["OWNER", "ADMIN", "USER"];
+
+  for (const action of actions) {
+    for (const role of roles) {
+      it(`${role} can ${action} for a leaf member of an inherited survey in own scope`, () => {
+        const s = session(role, 4, KELOMPOK);
+        expect(() =>
+          authorize(s, action, { surveyGroupPath: DESA, memberGroupPath: KELOMPOK, memberIsLeaf: true }),
+        ).not.toThrow();
+      });
+
+      it(`${role} can ${action} when survey is owned by own group`, () => {
+        const s = session(role, 3, DESA);
+        expect(() =>
+          authorize(s, action, { surveyGroupPath: DESA, memberGroupPath: KELOMPOK, memberIsLeaf: true }),
+        ).not.toThrow();
+      });
+    }
+
+    it(`${action} from above the survey's group is denied (ForbiddenError)`, () => {
+      const s = session("ADMIN", 2, DAERAH);
+      expect(() =>
+        authorize(s, action, { surveyGroupPath: DESA, memberGroupPath: KELOMPOK, memberIsLeaf: true }),
+      ).toThrow(ForbiddenError);
+    });
+
+    it(`${action} for a member outside scope is NotFoundError`, () => {
+      const s = session("USER", 4, KELOMPOK);
+      expect(() =>
+        authorize(s, action, { surveyGroupPath: DESA, memberGroupPath: "1/2/3/5/", memberIsLeaf: true }),
+      ).toThrow(NotFoundError);
+    });
+
+    it(`${action} for a survey of another branch is NotFoundError`, () => {
+      const s = session("USER", 4, KELOMPOK);
+      expect(() =>
+        authorize(s, action, {
+          surveyGroupPath: OTHER_DAERAH,
+          memberGroupPath: KELOMPOK,
+          memberIsLeaf: true,
+        }),
+      ).toThrow(NotFoundError);
+    });
+
+    it(`${action} for a member in a non-leaf group is ForbiddenError`, () => {
+      const s = session("ADMIN", 3, DESA);
+      expect(() =>
+        authorize(s, action, { surveyGroupPath: DESA, memberGroupPath: DESA, memberIsLeaf: false }),
+      ).toThrow(ForbiddenError);
+    });
+  }
+});
+
 describe("authorize user.create", () => {
   it("ADMIN can create a USER in scope", () => {
     const s = session("ADMIN", 2, DAERAH);

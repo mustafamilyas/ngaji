@@ -64,6 +64,27 @@ export async function resolveActivity(session: SessionUser, activityId: number) 
   return activity;
 }
 
+/**
+ * Resolves to a visible survey: owned by the session's own group, a
+ * descendant, or an ancestor (inherited) — same bar as `resolveActivity`.
+ * Soft-deleted surveys are filtered by `lib/db.ts`. Edit/record rights
+ * are `lib/authz.ts`'s job.
+ */
+export async function resolveSurvey(session: SessionUser, surveyId: number) {
+  const survey = await db.survey.findUnique({
+    where: { id: surveyId },
+    include: { group: true },
+  });
+  if (!survey) throw new NotFoundError();
+
+  const visible =
+    isInScope(survey.group.path, session.groupPath) ||
+    isAncestorOf(survey.group.path, session.groupPath);
+  if (!visible) throw new NotFoundError();
+
+  return survey;
+}
+
 export async function resolveOccurrence(session: SessionUser, occurrenceId: number) {
   const occurrence = await db.activityOccurrence.findUnique({
     where: { id: occurrenceId },

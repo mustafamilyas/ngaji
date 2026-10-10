@@ -6,6 +6,7 @@ import {
   resolveGroup,
   resolveMember,
   resolveOccurrence,
+  resolveSurvey,
   resolveUser,
 } from "./resolve";
 import type { SessionUser } from "./auth/session-user";
@@ -205,6 +206,53 @@ describe("lib/resolve", () => {
       });
       const session = sessionAt(branchA.id, branchA.path);
       await expect(resolveActivity(session, activity.id)).rejects.toBeInstanceOf(NotFoundError);
+    });
+  });
+
+  describe("resolveSurvey", () => {
+    function createSurvey(groupId: number, deletedAt: Date | null = null) {
+      return db.survey.create({
+        data: { groupId, title: "Survei Uji", createdById: owner.id, deletedAt },
+      });
+    }
+
+    it("resolves a survey owned by the session's own group", async () => {
+      const survey = await createSurvey(branchA.id);
+      const resolved = await resolveSurvey(sessionAt(branchA.id, branchA.path), survey.id);
+      expect(resolved.id).toBe(survey.id);
+      expect(resolved.group.path).toBe(branchA.path);
+    });
+
+    it("resolves an inherited survey owned by an ancestor group", async () => {
+      const survey = await createSurvey(root.id);
+      const resolved = await resolveSurvey(sessionAt(leafA.id, leafA.path), survey.id);
+      expect(resolved.id).toBe(survey.id);
+    });
+
+    it("resolves a survey owned by a descendant group", async () => {
+      const survey = await createSurvey(leafA.id);
+      const resolved = await resolveSurvey(sessionAt(branchA.id, branchA.path), survey.id);
+      expect(resolved.id).toBe(survey.id);
+    });
+
+    it("throws NotFoundError for a survey on a sibling branch", async () => {
+      const survey = await createSurvey(branchB.id);
+      await expect(
+        resolveSurvey(sessionAt(branchA.id, branchA.path), survey.id),
+      ).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it("throws NotFoundError for a soft-deleted survey", async () => {
+      const survey = await createSurvey(branchA.id, new Date());
+      await expect(
+        resolveSurvey(sessionAt(branchA.id, branchA.path), survey.id),
+      ).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it("throws NotFoundError for a nonexistent id", async () => {
+      await expect(
+        resolveSurvey(sessionAt(branchA.id, branchA.path), 999_999),
+      ).rejects.toBeInstanceOf(NotFoundError);
     });
   });
 
