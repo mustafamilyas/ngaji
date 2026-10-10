@@ -2,9 +2,9 @@
 
 ## 1. Schema & seed
 
-- [ ] 1.1 Add `Survey`, `SurveyQuestion`, `SurveyOption`, `SurveyResponse` (`@@unique([surveyId, memberId])`), `SurveyAnswer` + relations on `Group`/`Member`/`User` to `prisma/schema.prisma`; run `pnpm prisma migrate dev --name member_surveys` and verify `pnpm tsc --noEmit` passes
-- [ ] 1.2 Add `QuestionType` to `lib/validation/enums.ts` and survey limits/defaults to `lib/constants.ts`; verify `pnpm tsc --noEmit`
-- [ ] 1.3 Seed a desa-level sample survey (one question of each type, an archived option) with responses for some members; verify `pnpm prisma db seed` succeeds on a fresh DB
+- [x] 1.1 Add `Survey`, `SurveyQuestion`, `SurveyOption`, `SurveyResponse` (`@@unique([surveyId, memberId])`), `SurveyAnswer` + relations on `Group`/`Member`/`User` to `prisma/schema.prisma`; run `pnpm prisma migrate dev --name member_surveys` and verify `pnpm tsc --noEmit` passes
+- [x] 1.2 Add `QuestionType` to `lib/validation/enums.ts` and survey limits/defaults to `lib/constants.ts`; verify `pnpm tsc --noEmit`
+- [x] 1.3 Seed a desa-level sample survey (one question of each type, an archived option) with responses for some members; verify `pnpm prisma db seed` succeeds on a fresh DB
 
 ## 2. Pure logic (tests first)
 

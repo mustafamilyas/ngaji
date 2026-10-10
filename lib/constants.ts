@@ -36,6 +36,18 @@ export const MAX_ATTENDANCE_ENTRIES = 1000;
 export const MAX_WEEKDAYS = 7;
 export const MAX_GROUP_FILTER_IDS = 50;
 
+/** Survey form limits and defaults (member-surveys spec). Reject, never truncate. */
+export const SURVEY_TITLE_MAX = 200;
+export const SURVEY_DESCRIPTION_MAX = MAX_NOTES_LENGTH;
+export const SURVEY_QUESTION_LABEL_MAX = 300;
+export const SURVEY_HELP_TEXT_MAX = 500;
+export const SURVEY_OPTION_LABEL_MAX = 200;
+export const SHORT_TEXT_MAX = 200;
+export const LONG_TEXT_MAX = 2000;
+export const SCALE_MAX_STEPS = 11;
+export const SCALE_DEFAULT_MIN = 1;
+export const SCALE_DEFAULT_MAX = 5;
+
 /** bcrypt work factor for password hashing (DESIGN.md §4.1). */
 export const BCRYPT_COST = 12;
 
@@ -68,4 +80,9 @@ export const AUDIT_ACTIONS = [
   "activity.split",
   "occurrence.override",
   "attendance.save",
+  "survey.create",
+  "survey.update",
+  "survey.delete",
+  "survey_response.save",
+  "survey_response.delete",
 ] as const;

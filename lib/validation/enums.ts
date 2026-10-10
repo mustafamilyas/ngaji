@@ -39,3 +39,13 @@ export type OccurrenceStatus = (typeof OCCURRENCE_STATUSES)[number];
 
 export const ATTENDANCE_STATUSES = ["HADIR", "IZIN"] as const;
 export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number];
+
+export const QUESTION_TYPES = [
+  "SINGLE_CHOICE",
+  "MULTI_CHOICE",
+  "NUMBER",
+  "SCALE",
+  "SHORT_TEXT",
+  "LONG_TEXT",
+] as const;
+export type QuestionType = (typeof QUESTION_TYPES)[number];

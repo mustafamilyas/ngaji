@@ -25,6 +25,8 @@ datasource db {
 //   Freq             = "ONCE" | "DAILY" | "WEEKLY" | "MONTHLY"
 //   OccurrenceStatus = "SCHEDULED" | "CANCELLED"
 //   AttendanceStatus = "HADIR" | "IZIN"
+//   QuestionType     = "SINGLE_CHOICE" | "MULTI_CHOICE" | "NUMBER" | "SCALE"
+//                    | "SHORT_TEXT" | "LONG_TEXT"
 
 model Organization {
   id        Int      @id @default(autoincrement())
@@ -65,6 +67,7 @@ model Group {
   children     Group[]         @relation("tree")
   members      Member[]
   activities   Activity[]
+  surveys      Survey[]
   userRoles    UserGroupRole[]
 
   @@index([path])
@@ -83,9 +86,11 @@ model User {
   updatedAt          DateTime @updatedAt
 
   role               UserGroupRole?
-  createdMembers     Member[]     @relation("memberCreatedBy")
-  createdActivities  Activity[]   @relation("activityCreatedBy")
-  recordedAttendance Attendance[] @relation("attendanceRecordedBy")
+  createdMembers     Member[]         @relation("memberCreatedBy")
+  createdActivities  Activity[]       @relation("activityCreatedBy")
+  recordedAttendance Attendance[]     @relation("attendanceRecordedBy")
+  createdSurveys     Survey[]         @relation("surveyCreatedBy")
+  recordedSurveys    SurveyResponse[] @relation("surveyResponseRecordedBy")
   auditLogs          AuditLog[]
 }
 
@@ -123,9 +128,10 @@ model Member {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  group       Group        @relation(fields: [groupId], references: [id])
-  createdBy   User         @relation("memberCreatedBy", fields: [createdById], references: [id])
-  attendances Attendance[]
+  group           Group            @relation(fields: [groupId], references: [id])
+  createdBy       User             @relation("memberCreatedBy", fields: [createdById], references: [id])
+  attendances     Attendance[]
+  surveyResponses SurveyResponse[]
 
   @@index([groupId, status])
   @@index([name])
@@ -164,17 +170,17 @@ model Activity {
 /// Created lazily: only when attendance is recorded or an override (cancel / move / change time / location) is made.
 /// `date` = the rule's canonical date (key). Effective date = overrideDate ?? date.
 model ActivityOccurrence {
-  id                      Int       @id @default(autoincrement())
+  id                      Int      @id @default(autoincrement())
   activityId              Int
   date                    String // YYYY-MM-DD
-  status                  String    @default("SCHEDULED") // OccurrenceStatus
+  status                  String   @default("SCHEDULED") // OccurrenceStatus
   overrideDate            String? // YYYY-MM-DD; "move once" to another date
   overrideStartTime       String?
   overrideDurationMinutes Int?
   overrideLocation        String?
   overrideNotes           String?
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
   activity    Activity     @relation(fields: [activityId], references: [id])
   attendances Attendance[]
@@ -198,6 +204,97 @@ model Attendance {
 
   @@unique([occurrenceId, memberId])
   @@index([memberId])
+}
+
+/// Survey form. Owned by one group; applies to all its descendants (same inheritance as Activity).
+model Survey {
+  id          Int       @id @default(autoincrement())
+  groupId     Int
+  title       String
+  description String?
+  createdById Int
+  deletedAt   DateTime? // soft delete; questions, responses and answers are kept
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  group     Group            @relation(fields: [groupId], references: [id])
+  createdBy User             @relation("surveyCreatedBy", fields: [createdById], references: [id])
+  questions SurveyQuestion[]
+  responses SurveyResponse[]
+
+  @@index([groupId])
+}
+
+/// Locked once answered (type, scale range, hard delete): the lock is derived from SurveyAnswer rows, not stored.
+model SurveyQuestion {
+  id         Int       @id @default(autoincrement())
+  surveyId   Int
+  order      Int
+  type       String // QuestionType
+  label      String
+  helpText   String?
+  required   Boolean   @default(false)
+  scaleMin   Int? // SCALE only
+  scaleMax   Int? // SCALE only; scaleMin < scaleMax, at most 11 steps
+  archivedAt DateTime? // hidden from the entry form, kept in results
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  survey  Survey         @relation(fields: [surveyId], references: [id])
+  options SurveyOption[]
+  answers SurveyAnswer[]
+
+  @@index([surveyId, order])
+}
+
+/// Choice option with a stable id so renames relabel history and archiving keeps counts.
+model SurveyOption {
+  id         Int       @id @default(autoincrement())
+  questionId Int
+  order      Int
+  label      String
+  archivedAt DateTime?
+
+  question SurveyQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answers  SurveyAnswer[]
+
+  @@index([questionId, order])
+}
+
+/// At most one per member per survey; saving again overwrites.
+model SurveyResponse {
+  id           Int      @id @default(autoincrement())
+  surveyId     Int
+  memberId     Int
+  recordedById Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  survey     Survey         @relation(fields: [surveyId], references: [id])
+  member     Member         @relation(fields: [memberId], references: [id])
+  recordedBy User           @relation("surveyResponseRecordedBy", fields: [recordedById], references: [id])
+  answers    SurveyAnswer[]
+
+  @@unique([surveyId, memberId])
+  @@index([memberId])
+}
+
+/// One row per answered question; MULTI_CHOICE has one row per selected option.
+/// Exactly one of optionId / numberValue / textValue is set, according to the question type.
+model SurveyAnswer {
+  id          Int     @id @default(autoincrement())
+  responseId  Int
+  questionId  Int
+  optionId    Int?
+  numberValue Float?
+  textValue   String?
+
+  response SurveyResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  question SurveyQuestion @relation(fields: [questionId], references: [id])
+  option   SurveyOption?  @relation(fields: [optionId], references: [id])
+
+  @@index([responseId])
+  @@index([questionId, optionId])
 }
 
 /// Audit trail. Written in the same transaction as its mutation. Append-only (no update/delete).
