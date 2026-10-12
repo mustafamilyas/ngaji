@@ -12,7 +12,13 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { auth } from "@/auth";
-import { createSurveyAction, deleteSurveyAction, saveSurveyResponseAction, updateSurveyAction } from "./actions";
+import {
+  createSurveyAction,
+  deleteSurveyAction,
+  deleteSurveyResponseAction,
+  saveSurveyResponseAction,
+  updateSurveyAction,
+} from "./actions";
 
 const validForm = {
   title: "Kesiapan Ramadhan",
@@ -183,6 +189,47 @@ describe("survei server actions", () => {
 
       expect(result.ok).toBe(false);
       expect(await db.surveyResponse.count({ where: { surveyId } })).toBe(0);
+    });
+  });
+
+  describe("deleteSurveyResponseAction", () => {
+    async function setupResponse() {
+      const survey = await db.survey.create({
+        data: { groupId: fixture.branch.id, createdById: fixture.actorId, title: "Hapus respons" },
+      });
+      await db.surveyResponse.create({
+        data: { surveyId: survey.id, memberId: fixture.memberId, recordedById: fixture.actorId },
+      });
+      return survey.id;
+    }
+
+    it("deletes the response of a member in the caller's scope", async () => {
+      const surveyId = await setupResponse();
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "USER", fixture.leaf) });
+
+      const result = await deleteSurveyResponseAction({ surveyId, memberId: fixture.memberId });
+
+      expect(result).toEqual({ ok: true, data: { memberId: fixture.memberId } });
+      expect(await db.surveyResponse.count({ where: { surveyId } })).toBe(0);
+    });
+
+    it("refuses a user above the owning group and keeps the response", async () => {
+      const surveyId = await setupResponse();
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "OWNER", fixture.root) });
+
+      const result = await deleteSurveyResponseAction({ surveyId, memberId: fixture.memberId });
+
+      expect(result.ok).toBe(false);
+      expect(await db.surveyResponse.count({ where: { surveyId } })).toBe(1);
+    });
+
+    it("rejects malformed input generically", async () => {
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "USER", fixture.leaf) });
+
+      expect(await deleteSurveyResponseAction({ surveyId: "x", memberId: 1 })).toEqual({
+        ok: false,
+        error: "Data tidak valid",
+      });
     });
   });
 });

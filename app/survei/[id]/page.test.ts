@@ -18,6 +18,7 @@ import SurveyDetailPage from "./page";
 describe("SurveyDetailPage", () => {
   let fx: PageFixture;
   let surveyId: number;
+  let otherMemberId: number;
 
   beforeAll(async () => {
     fx = await buildPageFixture("survei-detail");
@@ -53,6 +54,26 @@ describe("SurveyDetailPage", () => {
         optionId: survey.questions[0].options[0].id,
       },
     });
+
+    otherMemberId = (
+      await db.member.create({
+        data: {
+          groupId: fx.otherLeaf.id,
+          name: "Warga Cabang",
+          birthPlace: "Bandung",
+          birthDate: "1999-05-05",
+          sex: "P",
+          address: "Jl. Uji No. 9",
+          phone: "081200000009",
+          maritalStatus: "BELUM_MENIKAH",
+          workStatus: "BEKERJA",
+          status: "AKTIF",
+          joinedAt: "2024-01-01",
+          createdById: fx.actorId,
+        },
+      })
+    ).id;
+    await db.surveyResponse.create({ data: { surveyId, memberId: otherMemberId, recordedById: fx.actorId } });
   });
 
   afterAll(async () => {
@@ -112,6 +133,62 @@ describe("SurveyDetailPage", () => {
 
     expect(html).toContain("hanya bisa diubah oleh admin Branch");
     expect(html).not.toContain("Simpan perubahan");
+  });
+
+  describe("Responden tab", () => {
+    const renderTab = (query: Record<string, string> = {}) =>
+      SurveyDetailPage({
+        params: Promise.resolve({ id: String(surveyId) }),
+        searchParams: Promise.resolve({ tab: "responden", ...query }),
+      });
+
+    it("lists respondents in the owner's subtree with edit and delete controls", async () => {
+      mockAuthSession(auth, { user: sessionFor(fx.actorId, "ADMIN", fx.branch) });
+
+      const html = renderToStaticMarkup(await renderTab());
+
+      expect(html).toContain("Anggota Uji");
+      expect(html).toContain("Warga Cabang");
+      expect(html).toContain(`/survei/${surveyId}/isi?anggota=${fx.memberId}`);
+      expect(html).toContain("Hapus respons Anggota Uji");
+      expect(html).not.toContain("Segera hadir");
+    });
+
+    it("shows a USER only the respondents of their own group", async () => {
+      mockAuthSession(auth, { user: sessionFor(fx.actorId, "USER", fx.leaf) });
+
+      const html = renderToStaticMarkup(await renderTab());
+
+      expect(html).toContain("Anggota Uji");
+      expect(html).not.toContain("Warga Cabang");
+    });
+
+    it("filters by name search", async () => {
+      mockAuthSession(auth, { user: sessionFor(fx.actorId, "ADMIN", fx.branch) });
+
+      const html = renderToStaticMarkup(await renderTab({ q: "warga" }));
+
+      expect(html).toContain("Warga Cabang");
+      expect(html).not.toContain("Anggota Uji");
+    });
+
+    it("gives users above the owning group a view-only list", async () => {
+      mockAuthSession(auth, { user: sessionFor(fx.actorId, "OWNER", fx.root) });
+
+      const html = renderToStaticMarkup(await renderTab());
+
+      expect(html).toContain("Anggota Uji");
+      expect(html).not.toContain("Hapus respons");
+      expect(html).not.toContain("/isi?anggota=");
+    });
+
+    it("says so when nothing matches", async () => {
+      mockAuthSession(auth, { user: sessionFor(fx.actorId, "ADMIN", fx.branch) });
+
+      const html = renderToStaticMarkup(await renderTab({ q: "tidak-ada" }));
+
+      expect(html).toContain("Tidak ada responden yang cocok.");
+    });
   });
 
   it("responds 404 for a survey owned by an unrelated group", async () => {

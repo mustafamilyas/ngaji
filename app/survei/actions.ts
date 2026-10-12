@@ -6,9 +6,9 @@ import { z } from "zod";
 import { requireSession } from "@/lib/auth/require-session";
 import { type ActionResult, ValidationError, runAction } from "@/lib/errors";
 import { createSurvey, deleteSurvey, updateSurvey } from "@/lib/survey/mutations";
-import { saveResponse } from "@/lib/survey/responses";
+import { deleteResponse, saveResponse } from "@/lib/survey/responses";
 import { idSchema } from "@/lib/validation/common";
-import { surveyFormSchema, surveyResponseSaveSchema } from "@/lib/validation/survey";
+import { surveyFormSchema, surveyResponseDeleteSchema, surveyResponseSaveSchema } from "@/lib/validation/survey";
 
 /**
  * The owning group is always the caller's own group (DESIGN.md §3.2) — it is
@@ -72,6 +72,19 @@ export async function saveSurveyResponseAction(input: unknown): Promise<ActionRe
     const parsed = surveyResponseSaveSchema.safeParse(input);
     if (!parsed.success) throw new ValidationError("Data tidak valid");
     await saveResponse(session, parsed.data);
+    return { memberId: parsed.data.memberId };
+  });
+  if (result.ok) revalidatePath("/survei", "layout");
+  return result;
+}
+
+/** Removes one member's response; ids are resolved and authorized in `deleteResponse`. */
+export async function deleteSurveyResponseAction(input: unknown): Promise<ActionResult<{ memberId: number }>> {
+  const session = await requireSession();
+  const result = await runAction(async () => {
+    const parsed = surveyResponseDeleteSchema.safeParse(input);
+    if (!parsed.success) throw new ValidationError("Data tidak valid");
+    await deleteResponse(session, parsed.data);
     return { memberId: parsed.data.memberId };
   });
   if (result.ok) revalidatePath("/survei", "layout");

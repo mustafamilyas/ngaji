@@ -5,10 +5,15 @@ import { MetaItem, PageHeader } from "@/components/page-header";
 import { TabNav, type TabItem } from "@/components/tab-nav";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { visibleGroupsWhere } from "@/lib/authz";
+import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
+import { parseGroupIds, parsePage, parseSearch } from "@/lib/filters";
 import { loadSurveyDetail } from "@/lib/survey/detail";
+import { listRespondents } from "@/lib/survey/respondents";
 import { parseTab } from "@/lib/tabs";
 import { SurveyForm } from "../survey-form";
+import { RespondentsTab } from "./respondents-tab";
 
 const TABS = ["hasil", "responden", "formulir"] as const;
 type Tab = (typeof TABS)[number];
@@ -45,6 +50,26 @@ export default async function SurveyDetailPage({
   ];
   const tab = parseTab(query.tab, TABS, "hasil");
 
+  const groupIds = parseGroupIds(query.grup);
+  const search = parseSearch(query.q);
+  let respondents;
+  if (tab === "responden") {
+    try {
+      respondents = await listRespondents(session.user, surveyId, { groupIds, search, page: parsePage(query.page) });
+    } catch (error) {
+      if (error instanceof NotFoundError) notFound();
+      throw error;
+    }
+  }
+  const visibleGroups =
+    tab === "responden"
+      ? await db.group.findMany({
+          where: visibleGroupsWhere(session.user),
+          orderBy: [{ depth: "asc" }, { name: "asc" }],
+          select: { id: true, parentId: true, name: true, path: true },
+        })
+      : [];
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -60,7 +85,16 @@ export default async function SurveyDetailPage({
         <TabNav path={path} tabs={tabs} current={tab} defaultTab="hasil" />
 
         {tab === "hasil" && <ComingSoon>Ringkasan hasil survei akan tampil di sini.</ComingSoon>}
-        {tab === "responden" && <ComingSoon>Daftar responden akan tampil di sini.</ComingSoon>}
+        {respondents && (
+          <RespondentsTab
+            surveyId={survey.id}
+            list={respondents}
+            groups={visibleGroups}
+            params={query}
+            search={search}
+            groupIds={groupIds}
+          />
+        )}
 
         {tab === "formulir" && (
           <>
@@ -90,7 +124,7 @@ export default async function SurveyDetailPage({
   );
 }
 
-/** Stand-in for tabs built in later slices (responses list, statistics). */
+/** Stand-in for the statistics tab, built in a later slice. */
 function ComingSoon({ children }: { children: React.ReactNode }) {
   return (
     <Card>
