@@ -6,7 +6,7 @@ import { ArrowLeft, Check, ChevronRight } from "lucide-react";
 import { checkInAction, listCheckInMembersAction } from "@/app/kegiatan/actions";
 import { Button } from "@/components/ui/button";
 import { QuickRegisterDialog } from "./quick-register-dialog";
-import { Autocomplete, type AutocompleteItem } from "./autocomplete";
+import { Autocomplete, type AutocompleteItem } from "@/components/autocomplete";
 
 type CheckInMember = { id: number; name: string; checkedIn: boolean };
 type Welcome = { name: string; groupName: string; alreadyCheckedIn: boolean };

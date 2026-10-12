@@ -6,8 +6,9 @@ import { z } from "zod";
 import { requireSession } from "@/lib/auth/require-session";
 import { type ActionResult, ValidationError, runAction } from "@/lib/errors";
 import { createSurvey, deleteSurvey, updateSurvey } from "@/lib/survey/mutations";
+import { saveResponse } from "@/lib/survey/responses";
 import { idSchema } from "@/lib/validation/common";
-import { surveyFormSchema } from "@/lib/validation/survey";
+import { surveyFormSchema, surveyResponseSaveSchema } from "@/lib/validation/survey";
 
 /**
  * The owning group is always the caller's own group (DESIGN.md §3.2) — it is
@@ -62,4 +63,17 @@ export async function deleteSurveyAction(
     revalidatePath("/survei");
     redirect("/survei");
   });
+}
+
+/** Saves (replaces) one member's answers; `surveyId`/`memberId` are resolved and authorized in `saveResponse`. */
+export async function saveSurveyResponseAction(input: unknown): Promise<ActionResult<{ memberId: number }>> {
+  const session = await requireSession();
+  const result = await runAction(async () => {
+    const parsed = surveyResponseSaveSchema.safeParse(input);
+    if (!parsed.success) throw new ValidationError("Data tidak valid");
+    await saveResponse(session, parsed.data);
+    return { memberId: parsed.data.memberId };
+  });
+  if (result.ok) revalidatePath("/survei", "layout");
+  return result;
 }

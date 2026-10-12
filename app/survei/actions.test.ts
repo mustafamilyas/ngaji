@@ -12,7 +12,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { auth } from "@/auth";
-import { createSurveyAction, deleteSurveyAction, updateSurveyAction } from "./actions";
+import { createSurveyAction, deleteSurveyAction, saveSurveyResponseAction, updateSurveyAction } from "./actions";
 
 const validForm = {
   title: "Kesiapan Ramadhan",
@@ -121,6 +121,68 @@ describe("survei server actions", () => {
       formData.set("surveyId", "abc");
 
       expect(await deleteSurveyAction(null, formData)).toEqual({ ok: false, error: "Data tidak valid" });
+    });
+  });
+  describe("saveSurveyResponseAction", () => {
+    async function setupSurvey() {
+      const survey = await db.survey.create({
+        data: {
+          groupId: fixture.branch.id,
+          createdById: fixture.actorId,
+          title: "Isi",
+          questions: { create: [{ order: 0, type: "SHORT_TEXT", label: "Catatan", required: true }] },
+        },
+        include: { questions: true },
+      });
+      return { surveyId: survey.id, questionId: survey.questions[0].id };
+    }
+
+    it("saves the answers for a member in the caller's scope", async () => {
+      const { surveyId, questionId } = await setupSurvey();
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "USER", fixture.leaf) });
+
+      const result = await saveSurveyResponseAction({
+        surveyId,
+        memberId: fixture.memberId,
+        answers: [{ questionId, text: "Siap" }],
+      });
+
+      expect(result).toEqual({ ok: true, data: { memberId: fixture.memberId } });
+      const rows = await db.surveyAnswer.findMany({ where: { response: { surveyId } } });
+      expect(rows.map((r) => r.textValue)).toEqual(["Siap"]);
+    });
+
+    it("reports a missing required answer without writing", async () => {
+      const { surveyId } = await setupSurvey();
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "USER", fixture.leaf) });
+
+      const result = await saveSurveyResponseAction({ surveyId, memberId: fixture.memberId, answers: [] });
+
+      expect(result.ok).toBe(false);
+      expect(await db.surveyResponse.count({ where: { surveyId } })).toBe(0);
+    });
+
+    it("rejects malformed input generically", async () => {
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "USER", fixture.leaf) });
+
+      expect(await saveSurveyResponseAction({ surveyId: "x", memberId: 1, answers: [] })).toEqual({
+        ok: false,
+        error: "Data tidak valid",
+      });
+    });
+
+    it("refuses a user above the owning group", async () => {
+      const { surveyId, questionId } = await setupSurvey();
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "OWNER", fixture.root) });
+
+      const result = await saveSurveyResponseAction({
+        surveyId,
+        memberId: fixture.memberId,
+        answers: [{ questionId, text: "Siap" }],
+      });
+
+      expect(result.ok).toBe(false);
+      expect(await db.surveyResponse.count({ where: { surveyId } })).toBe(0);
     });
   });
 });
