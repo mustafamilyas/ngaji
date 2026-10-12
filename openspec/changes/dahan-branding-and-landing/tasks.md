@@ -2,9 +2,9 @@
 
 ## 1. Pure logic (tests first)
 
-- [ ] 1.1 Add `isPublicPath(pathname)` in `lib/auth/public-paths.ts` with tests: `/`, `/pengajian`, `/login` → true; `/anggota`, `/pengajian/1`, `/Login`, `/pengajian/`, `/api/x` → false. Verify with `pnpm test lib/auth/public-paths`.
-- [ ] 1.2 Add `contactWhatsappUrl()` in `lib/landing/contact.ts` (reads `DAHAN_WHATSAPP`, reuses `whatsappUrl`) with tests for a configured, missing and invalid number. Verify with `pnpm test lib/landing`.
-- [ ] 1.3 Add `getOrganizationName()` in `lib/organization.ts` (React `cache`, fallback `"Dahan"`) with tests for an existing org and an empty table. Verify with `pnpm test lib/organization`.
+- [x] 1.1 Add `isPublicPath(pathname)` in `lib/auth/public-paths.ts` with tests: `/`, `/pengajian`, `/login` → true; `/anggota`, `/pengajian/1`, `/Login`, `/pengajian/`, `/api/x` → false. Verify with `pnpm test lib/auth/public-paths`.
+- [x] 1.2 Add `contactWhatsappUrl()` in `lib/landing/contact.ts` (reads `DAHAN_WHATSAPP`, reuses `whatsappUrl`) with tests for a configured, missing and invalid number. Verify with `pnpm test lib/landing`.
+- [x] 1.3 Add `getOrganizationName()` in `lib/organization.ts` (React `cache`, fallback `"Dahan"`) with tests for an existing org and an empty table. Verify with `pnpm test lib/organization`.
 
 ## 2. Routing
 
