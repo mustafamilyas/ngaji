@@ -50,6 +50,17 @@ export const SCALE_MAX_STEPS = 11;
 export const SCALE_DEFAULT_MIN = 1;
 export const SCALE_DEFAULT_MAX = 5;
 
+/** Member view limits (member-view-query spec). Reject, never truncate. */
+export const VIEW_MAX_RULE_GROUPS = 10;
+export const VIEW_MAX_RULES_PER_GROUP = 10;
+export const VIEW_MAX_AGE_BUCKETS = 12;
+/** Members loaded per section in a grouped view, and per "Tampilkan lebih banyak" click. */
+export const VIEW_SECTION_PAGE_SIZE = 25;
+/** Sections that start expanded; the rest start collapsed. */
+export const VIEW_EXPANDED_SECTIONS = 5;
+/** Max length (characters) of the base64url `?d=` URL draft. */
+export const VIEW_MAX_DRAFT_LENGTH = 4000;
+
 /** bcrypt work factor for password hashing (DESIGN.md §4.1). */
 export const BCRYPT_COST = 12;
 

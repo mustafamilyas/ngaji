@@ -2,8 +2,8 @@
 
 ## 1. Schema & constants
 
-- [ ] 1.1 Add `MemberView` (`groupId`, `ownerId`, `createdById`, `name`, `source`, `visibility`, `definition` Json, `deletedAt`, timestamps, `@@index([groupId, deletedAt])`) + relations on `Group`/`User` to `prisma/schema.prisma`; run `pnpm prisma migrate dev --name member_views` and verify `pnpm tsc --noEmit` passes
-- [ ] 1.2 Add `VIEW_SOURCES` / `VIEW_VISIBILITIES` to `lib/validation/enums.ts` and `VIEW_MAX_RULE_GROUPS`, `VIEW_MAX_RULES_PER_GROUP`, `VIEW_MAX_AGE_BUCKETS`, `VIEW_SECTION_PAGE_SIZE`, `VIEW_EXPANDED_SECTIONS`, `VIEW_MAX_DRAFT_LENGTH` to `lib/constants.ts`; verify `pnpm tsc --noEmit`
+- [x] 1.1 Add `MemberView` (`groupId`, `ownerId`, `createdById`, `name`, `source`, `visibility`, `definition` Json, `deletedAt`, timestamps, `@@index([groupId, deletedAt])`) + relations on `Group`/`User` to `prisma/schema.prisma`; run `pnpm prisma migrate dev --name member_views` and verify `pnpm tsc --noEmit` passes
+- [x] 1.2 Add `VIEW_SOURCES` / `VIEW_VISIBILITIES` to `lib/validation/enums.ts` and `VIEW_MAX_RULE_GROUPS`, `VIEW_MAX_RULES_PER_GROUP`, `VIEW_MAX_AGE_BUCKETS`, `VIEW_SECTION_PAGE_SIZE`, `VIEW_EXPANDED_SECTIONS`, `VIEW_MAX_DRAFT_LENGTH` to `lib/constants.ts`; verify `pnpm tsc --noEmit`
 
 ## 2. Pure logic (tests first)
 

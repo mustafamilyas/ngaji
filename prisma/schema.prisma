@@ -68,6 +68,7 @@ model Group {
   members      Member[]
   activities   Activity[]
   surveys      Survey[]
+  memberViews  MemberView[]
   userRoles    UserGroupRole[]
 
   @@index([path])
@@ -90,6 +91,8 @@ model User {
   createdActivities  Activity[]       @relation("activityCreatedBy")
   recordedAttendance Attendance[]     @relation("attendanceRecordedBy")
   createdSurveys     Survey[]         @relation("surveyCreatedBy")
+  ownedMemberViews   MemberView[]     @relation("memberViewOwner")
+  createdMemberViews MemberView[]     @relation("memberViewCreatedBy")
   recordedSurveys    SurveyResponse[] @relation("surveyResponseRecordedBy")
   auditLogs          AuditLog[]
 }
@@ -223,6 +226,27 @@ model Survey {
   responses SurveyResponse[]
 
   @@index([groupId])
+}
+
+/// Saved member query owned by one group; visible to that exact group only (not its ancestors/descendants).
+model MemberView {
+  id          Int       @id @default(autoincrement())
+  groupId     Int
+  ownerId     Int // may differ from createdById after a takeover
+  createdById Int
+  name        String // unique among non-deleted views of the group, case-insensitive (checked in app)
+  source      String    @default("member") // ViewSource
+  visibility  String    @default("GROUP") // ViewVisibility
+  definition  Json // validated by lib/validation/member-view.ts on every save and load
+  deletedAt   DateTime? // soft delete
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  group     Group @relation(fields: [groupId], references: [id])
+  owner     User  @relation("memberViewOwner", fields: [ownerId], references: [id])
+  createdBy User  @relation("memberViewCreatedBy", fields: [createdById], references: [id])
+
+  @@index([groupId, deletedAt])
 }
 
 /// Locked once answered (type, scale range, hard delete): the lock is derived from SurveyAnswer rows, not stored.

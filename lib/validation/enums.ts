@@ -49,3 +49,9 @@ export const QUESTION_TYPES = [
   "LONG_TEXT",
 ] as const;
 export type QuestionType = (typeof QUESTION_TYPES)[number];
+
+export const VIEW_SOURCES = ["member"] as const;
+export type ViewSource = (typeof VIEW_SOURCES)[number];
+
+export const VIEW_VISIBILITIES = ["GROUP"] as const;
+export type ViewVisibility = (typeof VIEW_VISIBILITIES)[number];
