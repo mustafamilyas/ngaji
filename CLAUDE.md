@@ -1,6 +1,6 @@
-# Ngaji
+# Dahan
 
-Manajemen anggota & kegiatan untuk organisasi berjenjang (pusat → daerah → desa → kelompok).
+Manajemen anggota & kegiatan untuk organisasi berjenjang (pusat → daerah → desa → kelompok). Nama produk **Dahan**; repo, paket, dan identifier kode tetap `ngaji`.
 **`DESIGN.md` adalah sumber kebenaran** untuk skema, matriks izin, logika kegiatan, keamanan, dan halaman. Baca dulu sebelum mengubah model atau alur. Data anggota sensitif (PII): keamanan & audit adalah syarat.
 
 ## Stack

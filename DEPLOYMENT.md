@@ -1,6 +1,6 @@
 # Deployment Guide (IDCloudHost)
 
-Production deployment of Ngaji on a single IDCloudHost Cloud VPS, with encrypted daily backups to IDCloudHost Object Storage. Local development setup is in [README.md](README.md). Architecture context: [DESIGN.md](DESIGN.md) §8.
+Production deployment of Dahan on a single IDCloudHost Cloud VPS, with encrypted daily backups to IDCloudHost Object Storage. Local development setup is in [README.md](README.md). Architecture context: [DESIGN.md](DESIGN.md) §8.
 
 The reference files live in the repository and are copied to the server in the steps below:
 
@@ -106,6 +106,8 @@ sudo -u ngaji pnpm install --frozen-lockfile
 DATABASE_URL="file:/var/lib/ngaji/production.db"
 AUTH_SECRET="<output of: openssl rand -base64 32>"
 AUTH_TRUST_HOST="true"
+# Optional: WhatsApp number for the landing-page CTA (Indonesian format)
+DAHAN_WHATSAPP="08xxxxxxxxxx"
 ```
 
 ```bash
@@ -115,6 +117,7 @@ sudo -u ngaji chmod 600 /opt/ngaji/.env
 - Generate a fresh `AUTH_SECRET` for production; never reuse the development one.
 - `DATABASE_URL` is an **absolute** path so the data lives outside the code directory.
 - `AUTH_TRUST_HOST=true` is required behind Nginx.
+- `DAHAN_WHATSAPP` (optional) is the contact number for the "Hubungi via WhatsApp" button on the public landing pages (`/`, `/pengajian`). It is read on the server at request time, so changing it needs only a service restart, not a rebuild. If unset or invalid, the button is hidden.
 - `NODE_ENV=production` is set by the systemd unit. Session cookies are `secure` and HSTS is sent only in production, so HTTPS must work (§6) before go-live.
 
 Generate the Prisma client and apply migrations (use `migrate deploy`, never `migrate dev`):

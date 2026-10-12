@@ -1,7 +1,7 @@
-# Ngaji — Desain MVP
+# Dahan — Desain MVP
 
 Aplikasi manajemen anggota & kegiatan untuk organisasi berjenjang
-(pusat → daerah → desa → kelompok).
+(pusat → daerah → desa → kelompok). **Dahan** ("cabang pohon") adalah nama produk; di dalam aplikasi nama organisasi (`Organization.name`) tampil lebih dulu dengan tanda kecil "oleh Dahan". Repo, paket, database, dan identifier kode tetap `ngaji`.
 
 Stack: **Next.js (App Router, Server Actions) + Prisma + SQLite**, UI Bahasa Indonesia, mobile-first.
 
@@ -496,6 +496,7 @@ Setiap Server Action: `auth()` → zod parse → resolve target → `authorize` 
 - Cookie sesi: `httpOnly`, `secure` (production), `sameSite=lax`, `maxAge` 7 hari.
 - Seed owner `admin/admin` dibuat dengan `mustChangePassword = true`.
 - `mustChangePassword = true` → middleware mengarahkan semua route (kecuali `/akun/password`, `/login`) ke halaman ganti password.
+- **Route publik** (tanpa sesi): hanya `/`, `/pengajian`, `/login`, dicocokkan **persis** oleh `isPublicPath` di `lib/auth/public-paths.ts` (tanpa prefix: `/pengajian/1`, `/Login`, `/pengajian/` bukan publik). Route lain tanpa sesi → redirect `/login`. Halaman publik tidak membaca data dari DB, tidak memuat skrip/tracker pihak ketiga, dan CSP (§4.3) tidak berubah.
 
 ### 4.2 Otorisasi
 - Semua di §3. Tidak ada endpoint yang memakai `groupId`/`groupPath` dari client tanpa resolve + cek.
@@ -636,8 +637,10 @@ Rentang default "30 hari terakhir" = 30 hari inklusif (today−29 .. today). Sta
 | Route | Fungsi |
 |---|---|
 | `/login` | Username + password |
+| `/` (belum login) | Landing page publik generik Dahan (tanpa data organisasi); CTA "Hubungi via WhatsApp" dari env `DAHAN_WHATSAPP` (disembunyikan bila kosong/tidak valid) |
+| `/pengajian` | Landing page publik untuk segmen pengajian (jamaah, pengurus, pusat/daerah/desa/kelompok); CTA sama |
 | `/akun/password` | Ganti password sendiri (wajib jika `mustChangePassword`) |
-| `/` | Dashboard: ringkasan statistik scope + kegiatan 7 hari ke depan |
+| `/` (sudah login) | Dashboard: ringkasan statistik scope + kegiatan 7 hari ke depan |
 | `/grup` | Pohon grup dalam scope |
 | `/grup/[id]` | Detail (§7.2), tab: anggota (grup daun) **atau** sub-grup, kegiatan, pengguna, pengaturan (ADMIN/OWNER: rename + zona berbahaya hapus) — tiap daftar dipaginasi sendiri (`?subgrup=`, `?anggota=`, `?kegiatan=`, `?pengguna=`, 10/hal); aksi: lihat semua anggota, tambah anggota (daun, `/anggota/baru?grup=`) atau tambah sub-grup (dialog) |
 | `/anggota` | Tabel (paginasi `?page=`, 50/hal) + cari nama + filter grup (multi, termasuk turunan) / status; kolom bisa dipilih (§7.1); tombol WhatsApp per anggota |
