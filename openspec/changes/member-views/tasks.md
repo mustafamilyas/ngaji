@@ -38,4 +38,4 @@
 ## 6. Docs & wrap-up
 
 - [x] 6.1 Update DESIGN.md: §2 schema, §3.2 matrix, §3.5 actions, §4.5 audit table, §7 pages, new section for member views; add `member_view.*` to `AUDIT_ACTIONS`; verify sections match the specs
-- [ ] 6.2 Run `pnpm test && pnpm tsc --noEmit && pnpm lint` and `openspec validate member-views --strict`; verify all pass (note any pre-existing lint failure)
+- [x] 6.2 Run `pnpm test && pnpm tsc --noEmit && pnpm lint` and `openspec validate member-views --strict`; verify all pass (note any pre-existing lint failure)
