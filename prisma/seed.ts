@@ -3,6 +3,9 @@ import { db } from "../lib/db";
 import { BCRYPT_COST } from "../lib/constants";
 import { expandDates } from "../lib/activity/expand";
 import { addDays, daysBetween, today } from "../lib/dates";
+import { AGE_BRACKETS } from "../lib/constants";
+import type { Prisma } from "../lib/generated/prisma/client";
+import { definitionSchema, newViewDefinition } from "../lib/validation/member-view";
 import type { AttendanceStatus, MemberStatus, Role } from "../lib/validation/enums";
 
 const LEVEL_NAMES = ["pusat", "daerah", "desa", "kelompok"];
@@ -218,6 +221,9 @@ async function main() {
     "USER",
     false,
   );
+
+  // Owns the sample member views below (views belong to the owner's exact group).
+  const adminDesa = await createUser("admin_desa", "desa123", "Admin Desa Menteng", desaMenteng.id, "ADMIN");
 
   const memberCountPerGroup = [4, 4, 4, 4, 4, 4, 3, 3]; // sums to 30, one per kelompok
   const maritalStatuses = ["BELUM_MENIKAH", "MENIKAH", "CERAI_HIDUP", "CERAI_MATI"] as const;
@@ -630,8 +636,31 @@ async function main() {
     });
   }
 
+  // --- Member views (Desa Menteng) ---------------------------------------
+
+  const sampleViews: { name: string; groupBy: unknown }[] = [
+    {
+      name: "Anggota per Kelompok Umur",
+      groupBy: { kind: "ageBuckets", buckets: AGE_BRACKETS.map(({ label, min, max }) => ({ label, min, max })) },
+    },
+    { name: "Anggota per Kelompok", groupBy: { kind: "groupLevel", depth: 3 } },
+  ];
+  for (const { name, groupBy } of sampleViews) {
+    // Parsing here keeps the seeded definitions valid against the same schema the app saves with.
+    const definition = definitionSchema.parse({ ...newViewDefinition(), groupBy });
+    await db.memberView.create({
+      data: {
+        groupId: desaMenteng.id,
+        ownerId: adminDesa.id,
+        createdById: adminDesa.id,
+        name,
+        definition: definition as unknown as Prisma.InputJsonValue,
+      },
+    });
+  }
+
   console.log(
-    `Seed complete: ${index + 2} members, ${kelompokGroups.length} kelompok groups, 7 activities (1 conflicted, 1 monthly-edge, 1 ended, 1 split, 1 upcoming, 1 soft-deleted), 1 survey with responses, historical attendance over ${historyDatesA.length} weeks.`,
+    `Seed complete: ${index + 2} members, ${kelompokGroups.length} kelompok groups, 7 activities (1 conflicted, 1 monthly-edge, 1 ended, 1 split, 1 upcoming, 1 soft-deleted), 1 survey with responses, 2 member views, historical attendance over ${historyDatesA.length} weeks.`,
   );
 }
 

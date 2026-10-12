@@ -26,7 +26,7 @@
 - [x] 4.2 `lib/member-view/sections.ts` section counts + per-section pages for property, age buckets (+ "Lainnya") and org level (roll-up by path, level bounds); verify DB tests for every "Group by" and "Grouped and ungrouped result display" scenario
 - [x] 4.3 `lib/member-view/mutations.ts` create (group from session) / update / soft delete / transfer, each with `audit()` in the same transaction; verify DB tests: owner ok, non-owner 403, duplicate name rejected, deleted name reusable, takeover rules, audit before/after/meta, audit failure rolls back
 - [x] 4.4 `lib/member-view/list.ts` views of the user's exact group with search and pagination; verify DB test that ancestor/descendant views are never listed
-- [ ] 4.5 Seed two sample views (age buckets; org-level grouping) for a desa; verify `pnpm prisma db seed` succeeds on a fresh DB
+- [x] 4.5 Seed two sample views (age buckets; org-level grouping) for a desa; verify `pnpm prisma db seed` succeeds on a fresh DB
 
 ## 5. Pages
 
