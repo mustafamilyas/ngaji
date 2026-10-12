@@ -33,7 +33,12 @@ export type Action =
   | "user.setActive"
   | "user.resetPassword"
   | "level.rename"
-  | "audit.view";
+  | "audit.view"
+  | "member_view.view"
+  | "member_view.create"
+  | "member_view.update"
+  | "member_view.delete"
+  | "member_view.transfer";
 
 type ScopeTarget = { groupPath: string };
 type ActivityGroupTarget = { groupId: number };
@@ -43,6 +48,15 @@ type SurveyResponseTarget = { surveyGroupPath: string; memberGroupPath: string; 
 type UserCreateTarget = { groupPath: string; newRole: Role };
 type ResetPasswordTarget = { groupPath: string; role: Role; groupId: number };
 type UserMutateTarget = { userId: number; groupPath: string; isLastActiveRootOwner?: boolean };
+
+type MemberViewCreateTarget = { groupId: number };
+/** A resolved, non-deleted view plus its owner's current state (see `resolveMemberView`). */
+type MemberViewTarget = {
+  groupId: number;
+  ownerId: number;
+  ownerIsActive: boolean;
+  ownerGroupId: number;
+};
 
 const ROLE_RANK: Record<Role, number> = { USER: 0, ADMIN: 1, OWNER: 2 };
 
@@ -158,6 +172,16 @@ export function authorize(
   session: SessionUser,
   action: "user.updateRole" | "user.move" | "user.setActive",
   target: UserMutateTarget,
+): void;
+export function authorize(
+  session: SessionUser,
+  action: "member_view.create",
+  target: MemberViewCreateTarget,
+): void;
+export function authorize(
+  session: SessionUser,
+  action: "member_view.view" | "member_view.update" | "member_view.delete" | "member_view.transfer",
+  target: MemberViewTarget,
 ): void;
 export function authorize(session: SessionUser, action: "level.rename"): void;
 export function authorize(session: SessionUser, action: "audit.view"): void;
@@ -282,6 +306,29 @@ export function authorize(session: SessionUser, action: Action, target?: unknown
       if (action !== "user.move") {
         if (userId === Number(session.id)) throw new ForbiddenError();
         if (isLastActiveRootOwner) throw new ForbiddenError();
+      }
+      return;
+    }
+
+    case "member_view.create": {
+      const { groupId } = target as MemberViewCreateTarget;
+      if (groupId !== session.groupId) throw new ForbiddenError();
+      return;
+    }
+
+    case "member_view.view":
+    case "member_view.update":
+    case "member_view.delete":
+    case "member_view.transfer": {
+      const view = target as MemberViewTarget;
+      // Views are visible to their exact group only: ancestors and descendants get 404.
+      if (view.groupId !== session.groupId) throw new NotFoundError();
+      if (action === "member_view.update" || action === "member_view.delete") {
+        if (view.ownerId !== Number(session.id)) throw new ForbiddenError();
+      } else if (action === "member_view.transfer") {
+        if (!atLeast(session.role, "ADMIN")) throw new ForbiddenError();
+        const orphaned = !view.ownerIsActive || view.ownerGroupId !== view.groupId;
+        if (!orphaned) throw new ForbiddenError();
       }
       return;
     }

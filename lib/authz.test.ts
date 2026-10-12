@@ -524,3 +524,113 @@ describe("authorize audit.view", () => {
     expect(() => authorize(s, "audit.view")).toThrow(ForbiddenError);
   });
 });
+
+describe("authorize member_view.*", () => {
+  // Kelompok K (groupId 4) is the acting user's group; user id is 1 (see session()).
+  const userOfK = session("USER", 4, KELOMPOK);
+  const adminOfK = session("ADMIN", 4, KELOMPOK);
+  const ownerOfK = session("OWNER", 4, KELOMPOK);
+
+  const viewOfK = { groupId: 4, ownerId: 1, ownerIsActive: true, ownerGroupId: 4 };
+  const viewOfKOwnedByOther = { ...viewOfK, ownerId: 99 };
+  const orphanedByDeactivation = { ...viewOfK, ownerId: 99, ownerIsActive: false };
+  const orphanedByMove = { ...viewOfK, ownerId: 99, ownerGroupId: 5 };
+
+  describe("member_view.view", () => {
+    for (const role of ["OWNER", "ADMIN", "USER"] as const) {
+      it(`${role} can view a view of their exact group`, () => {
+        expect(() =>
+          authorize(session(role, 4, KELOMPOK), "member_view.view", viewOfKOwnedByOther),
+        ).not.toThrow();
+      });
+    }
+
+    it("root OWNER gets NotFoundError for a view of a descendant kelompok", () => {
+      expect(() =>
+        authorize(session("OWNER", 1, ROOT), "member_view.view", viewOfK),
+      ).toThrow(NotFoundError);
+    });
+
+    it("kelompok user gets NotFoundError for a view of the parent desa", () => {
+      expect(() =>
+        authorize(userOfK, "member_view.view", { ...viewOfK, groupId: 3 }),
+      ).toThrow(NotFoundError);
+    });
+
+    it("gets NotFoundError for a view of another branch", () => {
+      expect(() =>
+        authorize(userOfK, "member_view.view", { ...viewOfK, groupId: 7 }),
+      ).toThrow(NotFoundError);
+    });
+  });
+
+  describe("member_view.create", () => {
+    for (const role of ["OWNER", "ADMIN", "USER"] as const) {
+      it(`${role} can create in their own group`, () => {
+        expect(() =>
+          authorize(session(role, 4, KELOMPOK), "member_view.create", { groupId: 4 }),
+        ).not.toThrow();
+      });
+    }
+
+    it("is forbidden for any other group", () => {
+      expect(() => authorize(ownerOfK, "member_view.create", { groupId: 3 })).toThrow(ForbiddenError);
+      expect(() => authorize(ownerOfK, "member_view.create", { groupId: 5 })).toThrow(ForbiddenError);
+    });
+  });
+
+  describe("member_view.update / member_view.delete", () => {
+    for (const action of ["member_view.update", "member_view.delete"] as const) {
+      for (const role of ["OWNER", "ADMIN", "USER"] as const) {
+        it(`${role} owner can ${action} their own view`, () => {
+          expect(() => authorize(session(role, 4, KELOMPOK), action, viewOfK)).not.toThrow();
+        });
+      }
+
+      it(`ADMIN non-owner is forbidden to ${action} while the owner is active in the group`, () => {
+        expect(() => authorize(adminOfK, action, viewOfKOwnedByOther)).toThrow(ForbiddenError);
+      });
+
+      it(`USER non-owner is forbidden to ${action}`, () => {
+        expect(() => authorize(userOfK, action, viewOfKOwnedByOther)).toThrow(ForbiddenError);
+      });
+
+      it(`a former owner who moved groups gets NotFoundError for ${action}`, () => {
+        const moved = session("USER", 5, "1/2/3/5/");
+        expect(() => authorize(moved, action, viewOfK)).toThrow(NotFoundError);
+      });
+
+      it(`ancestor gets NotFoundError for ${action}`, () => {
+        expect(() => authorize(session("OWNER", 1, ROOT), action, viewOfK)).toThrow(NotFoundError);
+      });
+    }
+  });
+
+  describe("member_view.transfer", () => {
+    it("ADMIN can take over a view whose owner is deactivated", () => {
+      expect(() => authorize(adminOfK, "member_view.transfer", orphanedByDeactivation)).not.toThrow();
+    });
+
+    it("OWNER can take over a view whose owner moved to another group", () => {
+      expect(() => authorize(ownerOfK, "member_view.transfer", orphanedByMove)).not.toThrow();
+    });
+
+    it("USER is forbidden even for an orphaned view", () => {
+      expect(() => authorize(userOfK, "member_view.transfer", orphanedByDeactivation)).toThrow(
+        ForbiddenError,
+      );
+    });
+
+    it("ADMIN is forbidden for a view with an active owner still in the group", () => {
+      expect(() => authorize(adminOfK, "member_view.transfer", viewOfKOwnedByOther)).toThrow(
+        ForbiddenError,
+      );
+    });
+
+    it("ADMIN of the parent desa gets NotFoundError for an orphaned view of a child kelompok", () => {
+      expect(() =>
+        authorize(session("ADMIN", 3, DESA), "member_view.transfer", orphanedByDeactivation),
+      ).toThrow(NotFoundError);
+    });
+  });
+});
