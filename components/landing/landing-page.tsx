@@ -1,11 +1,32 @@
-import Link from "next/link";
+import { contactWhatsappUrl } from "@/lib/landing/contact";
+import { GENERIC_LANDING, type LandingContent } from "./content";
+import { CtaSection } from "./cta-section";
+import { DataProtection } from "./data-protection";
+import { landingHeading } from "./fonts";
+import { Footer } from "./footer";
+import { Hero } from "./hero";
+import { HowItWorks } from "./how-it-works";
+import { TopBar } from "./top-bar";
 
-/** Placeholder until the full landing sections are built (tasks 4.x). */
-export function LandingPage() {
+/**
+ * Public marketing page. Static copy only: it must not read the database or show any
+ * organization data (spec: landing-page). The only runtime input is `DAHAN_WHATSAPP`.
+ */
+export function LandingPage({ content = GENERIC_LANDING }: { content?: LandingContent }) {
+  const whatsappHref = contactWhatsappUrl();
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-4 p-6">
-      <h1 className="font-heading text-2xl font-semibold">Dahan</h1>
-      <Link href="/login">Masuk</Link>
-    </main>
+    // The bare app frame pads its children; cancel that so sections can run edge to edge.
+    <div
+      className={`${landingHeading.variable} landing -mx-4 -my-6 min-h-dvh overflow-x-clip bg-(--l-paper) text-(--l-ink)`}
+    >
+      <TopBar />
+      <main>
+        <Hero content={content} />
+        <HowItWorks steps={content.steps} />
+        <DataProtection protection={content.protection} />
+        {whatsappHref && <CtaSection cta={content.cta} href={whatsappHref} />}
+      </main>
+      <Footer />
+    </div>
   );
 }

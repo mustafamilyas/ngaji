@@ -2,6 +2,9 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
+vi.mock("next/font/google", () => ({
+  Bricolage_Grotesque: () => ({ variable: "", className: "" }),
+}));
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";

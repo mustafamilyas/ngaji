@@ -125,3 +125,12 @@
     @apply bg-background text-foreground font-sans;
   }
 }
+/* Public landing pages: self-contained palette so they look the same in light and dark app themes. */
+.landing {
+  --l-ink: #16241d;
+  --l-leaf: #2c6e49;
+  --l-paper: #f6f7f2;
+  --l-mist: #e4ece2;
+  --l-sap: #e9a23b;
+  --l-muted: #4c5b53;
+}

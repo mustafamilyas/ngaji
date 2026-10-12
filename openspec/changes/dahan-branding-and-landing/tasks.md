@@ -20,10 +20,10 @@
 
 ## 4. Landing pages
 
-- [ ] 4.1 Build `components/landing/*` (top bar with logo + Masuk, hero, how it works, data protection, CTA, footer) as server components with copy in constants. Verify a render test asserts the sections, the `/login` and `/pengajian` links, and no "harga" (pricing).
-- [ ] 4.2 Build the generic landing page used by `/`. Verify the render test, plus a test with a seeded org asserting that the org and group names are absent from the HTML.
-- [ ] 4.3 Build `app/pengajian/page.tsx` with pengajian copy (jamaah, pengurus, pusat/daerah/desa/kelompok, pengajian rutin) and the same CTA. Verify with a render test.
-- [ ] 4.4 Run a browser check at 360px and desktop widths: no horizontal scroll, CTA tappable, all network requests same-origin, no CSP console errors.
+- [x] 4.1 Build `components/landing/*` (top bar with logo + Masuk, hero, how it works, data protection, CTA, footer) as server components with copy in constants. Verify a render test asserts the sections, the `/login` and `/pengajian` links, and no "harga" (pricing).
+- [x] 4.2 Build the generic landing page used by `/`. Verify the render test, plus a test with a seeded org asserting that the org and group names are absent from the HTML.
+- [x] 4.3 Build `app/pengajian/page.tsx` with pengajian copy (jamaah, pengurus, pusat/daerah/desa/kelompok, pengajian rutin) and the same CTA. Verify with a render test.
+- [x] 4.4 Run a browser check at 360px and desktop widths: no horizontal scroll, CTA tappable, all network requests same-origin, no CSP console errors.
 
 ## 5. Docs & wrap-up
 
