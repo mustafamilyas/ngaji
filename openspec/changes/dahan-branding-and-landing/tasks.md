@@ -8,8 +8,8 @@
 
 ## 2. Routing
 
-- [ ] 2.1 Update `proxy.ts`: without a session, `isPublicPath` → next, otherwise redirect to `/login`; set the `x-pathname` request header; keep the forced-password-change and logged-in-on-`/login` redirects. Verify manually: `/` and `/pengajian` return 200 when logged out; `/anggota` redirects to `/login`.
-- [ ] 2.2 Update `app/page.tsx` to render the landing page when there is no session, before any DB query. Update `app/page.test.ts`: the no-session case renders the landing page and makes no DB call; the logged-in case is unchanged. Verify with `pnpm test app/page`.
+- [x] 2.1 Update `proxy.ts`: without a session, `isPublicPath` → next, otherwise redirect to `/login`; set the `x-pathname` request header; keep the forced-password-change and logged-in-on-`/login` redirects. Verify manually: `/` and `/pengajian` return 200 when logged out; `/anggota` redirects to `/login`.
+- [x] 2.2 Update `app/page.tsx` to render the landing page when there is no session, before any DB query. Update `app/page.test.ts`: the no-session case renders the landing page and makes no DB call; the logged-in case is unchanged. Verify with `pnpm test app/page`.
 
 ## 3. Branding
 

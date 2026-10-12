@@ -22,10 +22,14 @@ describe("DashboardPage", () => {
     expect(html).toContain("Dasbor");
   });
 
-  it("redirects to /login when there is no session", async () => {
+  it("renders the landing page without touching the database when there is no session", async () => {
     mockAuthSession(auth, null);
-    await expect(DashboardPage()).rejects.toMatchObject({
-      digest: expect.stringContaining("NEXT_REDIRECT"),
-    });
+    const spy = vi.spyOn(db.organization, "findFirst");
+    const html = renderToStaticMarkup(await DashboardPage());
+    expect(html).toContain("Dahan");
+    expect(html).toContain('href="/login"');
+    expect(html).not.toContain("Dasbor");
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
   });
 });

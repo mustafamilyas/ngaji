@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Bell, CalendarDays, TrendingUp, Users } from "lucide-react";
 import { auth } from "@/auth";
 import { AttendanceDonut, WeeklyAttendanceChart } from "@/app/dashboard-charts";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { LandingPage } from "@/components/landing/landing-page";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +15,7 @@ import { cn, initials } from "@/lib/utils";
 
 export default async function DashboardPage() {
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session) return <LandingPage />;
 
   const now = today();
   const statsFrom = addDays(now, -DEFAULT_STATS_RANGE_DAYS);

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { isPublicPath } from "@/lib/auth/public-paths";
 import { buildCsp } from "@/lib/security/csp";
 
 const PASSWORD_CHANGE_PATH = "/akun/password";
@@ -18,6 +19,8 @@ export default auth((req) => {
 
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-nonce", nonce);
+  // Always overwritten here, so a client-sent value never survives; display-only, never used for authz.
+  requestHeaders.set("x-pathname", req.nextUrl.pathname);
   requestHeaders.set("Content-Security-Policy", csp);
 
   function next(): NextResponse {
@@ -36,7 +39,7 @@ export default auth((req) => {
   const session = req.auth;
 
   if (!session) {
-    if (pathname === LOGIN_PATH) return next();
+    if (isPublicPath(pathname)) return next();
     return redirect(new URL(LOGIN_PATH, req.url));
   }
 
