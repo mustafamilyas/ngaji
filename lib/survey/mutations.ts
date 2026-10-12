@@ -7,6 +7,7 @@ import { resolveSurvey } from "@/lib/resolve";
 import type { QuestionType } from "@/lib/validation/enums";
 import type { SurveyForm, SurveyQuestionInput } from "@/lib/validation/survey";
 import { type CurrentForm, planFormUpdate } from "./form-plan";
+import { findAnsweredIds } from "./locks";
 
 type Tx = Parameters<Parameters<typeof db.$transaction>[0]>[0];
 
@@ -94,13 +95,10 @@ export async function updateSurvey(session: SessionUser, surveyId: number, form:
 
   return db.$transaction(async (tx) => {
     const before = await loadSnapshot(tx, survey.id);
-    const answered = await tx.surveyAnswer.findMany({
-      where: { questionId: { in: before.questions.map((q) => q.id) } },
-      select: { questionId: true, optionId: true },
-      distinct: ["questionId", "optionId"],
-    });
-    const answeredQuestionIds = new Set(answered.map((a) => a.questionId));
-    const answeredOptionIds = new Set(answered.flatMap((a) => (a.optionId === null ? [] : [a.optionId])));
+    const { questionIds: answeredQuestionIds, optionIds: answeredOptionIds } = await findAnsweredIds(
+      tx,
+      before.questions.map((q) => q.id),
+    );
 
     const current: CurrentForm = {
       questions: before.questions.map((q) => ({

@@ -2,287 +2,100 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useTransition } from "react";
-import { type Control, Controller, type UseFormRegister, useFieldArray, useForm, useWatch } from "react-hook-form";
-import { ArrowDown, ArrowUp, Plus, Save, ToggleLeft, Trash2, X } from "lucide-react";
-import { createSurveyAction } from "@/app/survei/actions";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { useFieldArray, useForm } from "react-hook-form";
+import { Plus, Save, ToggleLeft } from "lucide-react";
+import { createSurveyAction, updateSurveyAction } from "@/app/survei/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { SCALE_DEFAULT_MAX, SCALE_DEFAULT_MIN, SURVEY_MAX_QUESTIONS } from "@/lib/constants";
-import { QUESTION_TYPES, type QuestionType } from "@/lib/validation/enums";
-import { type SurveyForm, type SurveyFormInput, surveyFormSchema, yesNoQuestion } from "@/lib/validation/survey";
+import { SURVEY_MAX_QUESTIONS } from "@/lib/constants";
+import type { QuestionType } from "@/lib/validation/enums";
+import { type SurveyForm as SurveyFormValues, type SurveyFormInput, surveyFormSchema, yesNoQuestion } from "@/lib/validation/survey";
+import { blankQuestion, FieldError, isLocked, Label } from "./form-shared";
+import { type FormLocks, QuestionCard } from "./question-card";
 
-const TYPE_LABELS: Record<QuestionType, string> = {
-  SINGLE_CHOICE: "Pilihan tunggal",
-  MULTI_CHOICE: "Pilihan ganda",
-  NUMBER: "Angka",
-  SCALE: "Skala",
-  SHORT_TEXT: "Teks pendek",
-  LONG_TEXT: "Teks panjang",
+const NEW_SURVEY: SurveyFormInput = { title: "", description: "", questions: [blankQuestion("SHORT_TEXT")] };
+
+type Props = {
+  /** Present = edit this stored survey; absent = create. */
+  surveyId?: number;
+  /** Stored form (ids + archived flags) when editing. */
+  defaultValues?: SurveyFormInput;
+  lockedQuestionIds?: number[];
+  lockedOptionIds?: number[];
+  /** Everything disabled and no save button — viewers who may not edit the survey. */
+  readOnly?: boolean;
 };
 
-const TYPE_ITEMS = QUESTION_TYPES.map((value) => ({ value, label: TYPE_LABELS[value] }));
-
-function isChoice(type: QuestionType) {
-  return type === "SINGLE_CHOICE" || type === "MULTI_CHOICE";
-}
-
-type QuestionValue = SurveyFormInput["questions"][number];
-
-function blankQuestion(type: QuestionType): QuestionValue {
-  return {
-    type,
-    label: "",
-    required: false,
-    options: isChoice(type) ? [{ label: "" }, { label: "" }] : [],
-    ...(type === "SCALE" ? { scaleMin: SCALE_DEFAULT_MIN, scaleMax: SCALE_DEFAULT_MAX } : {}),
-  };
-}
-
-function FieldError({ message }: { message?: string }) {
-  if (!message) return null;
-  return (
-    <p role="alert" className="text-xs text-destructive">
-      {message}
-    </p>
-  );
-}
-
-function Label({ htmlFor, children }: { htmlFor: string; children: ReactNode }) {
-  return (
-    <label htmlFor={htmlFor} className="text-sm font-medium">
-      {children}
-    </label>
-  );
-}
-
-type FormErrors = ReturnType<typeof useForm<SurveyFormInput, unknown, SurveyForm>>["formState"]["errors"];
-
-function OptionList({
-  index,
-  control,
-  register,
-  errors,
-}: {
-  index: number;
-  control: Control<SurveyFormInput, unknown, SurveyForm>;
-  register: UseFormRegister<SurveyFormInput>;
-  errors: FormErrors;
-}) {
-  const { fields, append, remove } = useFieldArray({ control, name: `questions.${index}.options` });
-  const optionsError = errors.questions?.[index]?.options;
-  const listError = optionsError?.root?.message ?? optionsError?.message;
-
-  return (
-    <div className="flex flex-col gap-2">
-      <span className="text-sm font-medium">Pilihan</span>
-      {fields.map((field, oi) => (
-        <div key={field.id} className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <Input
-              aria-label={`Pilihan ${oi + 1}`}
-              placeholder={`Pilihan ${oi + 1}`}
-              {...register(`questions.${index}.options.${oi}.label`)}
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={`Hapus pilihan ${oi + 1}`}
-              onClick={() => remove(oi)}
-            >
-              <X />
-            </Button>
-          </div>
-          <FieldError message={optionsError?.[oi]?.label?.message} />
-        </div>
-      ))}
-      <FieldError message={listError} />
-      <Button type="button" variant="outline" size="sm" className="self-start" onClick={() => append({ label: "" })}>
-        <Plus />
-        Tambah pilihan
-      </Button>
-    </div>
-  );
-}
-
-function QuestionCard({
-  index,
-  total,
-  control,
-  register,
-  errors,
-  onMove,
-  onRemove,
-  onTypeChange,
-}: {
-  index: number;
-  total: number;
-  control: Control<SurveyFormInput, unknown, SurveyForm>;
-  register: UseFormRegister<SurveyFormInput>;
-  errors: FormErrors;
-  onMove: (from: number, to: number) => void;
-  onRemove: (index: number) => void;
-  onTypeChange: (index: number, type: QuestionType) => void;
-}) {
-  const type = useWatch({ control, name: `questions.${index}.type` });
-  const questionErrors = errors.questions?.[index];
-
-  return (
-    <Card>
-      <CardContent className="flex flex-col gap-4">
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold">Pertanyaan {index + 1}</h3>
-          <div className="flex items-center">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={`Naikkan pertanyaan ${index + 1}`}
-              disabled={index === 0}
-              onClick={() => onMove(index, index - 1)}
-            >
-              <ArrowUp />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={`Turunkan pertanyaan ${index + 1}`}
-              disabled={index === total - 1}
-              onClick={() => onMove(index, index + 1)}
-            >
-              <ArrowDown />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={`Hapus pertanyaan ${index + 1}`}
-              onClick={() => onRemove(index)}
-            >
-              <Trash2 />
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <Label htmlFor={`q-${index}-type`}>Jenis</Label>
-          <Controller
-            control={control}
-            name={`questions.${index}.type`}
-            render={({ field }) => (
-              <Select
-                items={TYPE_ITEMS}
-                value={field.value}
-                onValueChange={(value) => onTypeChange(index, value as QuestionType)}
-              >
-                <SelectTrigger id={`q-${index}-type`} className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TYPE_ITEMS.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <Label htmlFor={`q-${index}-label`}>Pertanyaan</Label>
-          <Input id={`q-${index}-label`} {...register(`questions.${index}.label`)} />
-          <FieldError message={questionErrors?.label?.message} />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <Label htmlFor={`q-${index}-help`}>Keterangan (opsional)</Label>
-          <Input id={`q-${index}-help`} {...register(`questions.${index}.helpText`)} />
-          <FieldError message={questionErrors?.helpText?.message} />
-        </div>
-
-        {isChoice(type) && <OptionList index={index} control={control} register={register} errors={errors} />}
-
-        {type === "SCALE" && (
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
-              <Label htmlFor={`q-${index}-min`}>Skala dari</Label>
-              <Input
-                id={`q-${index}-min`}
-                type="number"
-                {...register(`questions.${index}.scaleMin`, { valueAsNumber: true })}
-              />
-              <FieldError message={questionErrors?.scaleMin?.message} />
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor={`q-${index}-max`}>Sampai</Label>
-              <Input
-                id={`q-${index}-max`}
-                type="number"
-                {...register(`questions.${index}.scaleMax`, { valueAsNumber: true })}
-              />
-              <FieldError message={questionErrors?.scaleMax?.message} />
-            </div>
-          </div>
-        )}
-
-        <Controller
-          control={control}
-          name={`questions.${index}.required`}
-          render={({ field }) => (
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox checked={field.value} onCheckedChange={(checked) => field.onChange(checked === true)} />
-              Wajib diisi
-            </label>
-          )}
-        />
-      </CardContent>
-    </Card>
-  );
-}
-
-export function SurveyForm() {
+export function SurveyForm({
+  surveyId,
+  defaultValues = NEW_SURVEY,
+  lockedQuestionIds = [],
+  lockedOptionIds = [],
+  readOnly = false,
+}: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const {
-    register,
-    handleSubmit,
-    control,
-    setValue,
-    getValues,
-    setError,
-    formState: { errors },
-  } = useForm<SurveyFormInput, unknown, SurveyForm>({
+  const [saved, setSaved] = useState(false);
+  const form = useForm<SurveyFormInput, unknown, SurveyFormValues>({
     resolver: zodResolver(surveyFormSchema),
-    defaultValues: { title: "", description: "", questions: [blankQuestion("SHORT_TEXT")] },
+    defaultValues,
   });
+  const { register, handleSubmit, control, setValue, getValues, setError, reset, formState } = form;
+  const { errors } = formState;
   const { fields, append, remove, move } = useFieldArray({ control, name: "questions" });
+
+  // After a save the page re-renders with the stored form; reload it so new
+  // questions/options carry their ids and a second save updates, not duplicates.
+  const signature = JSON.stringify(defaultValues);
+  useEffect(() => {
+    reset(JSON.parse(signature) as SurveyFormInput);
+  }, [signature, reset]);
+
+  const locks = useMemo<FormLocks>(
+    () => ({ questions: new Set(lockedQuestionIds), options: new Set(lockedOptionIds) }),
+    [lockedQuestionIds, lockedOptionIds],
+  );
 
   function changeType(index: number, type: QuestionType) {
     const current = getValues(`questions.${index}`);
     setValue(`questions.${index}`, {
       ...blankQuestion(type),
+      id: current.id,
       label: current.label,
       helpText: current.helpText,
       required: current.required,
     });
   }
 
-  function onSubmit(values: SurveyForm) {
+  function removeQuestion(index: number) {
+    // An answered question can only be archived; an unanswered one never held data.
+    if (isLocked(locks.questions, getValues(`questions.${index}.id`))) {
+      setValue(`questions.${index}.archived`, true, { shouldDirty: true });
+    } else {
+      remove(index);
+    }
+  }
+
+  function restoreQuestion(index: number) {
+    setValue(`questions.${index}.archived`, false, { shouldDirty: true });
+  }
+
+  function onSubmit(values: SurveyFormValues) {
+    setSaved(false);
     startTransition(async () => {
-      const result = await createSurveyAction(values);
+      const result = surveyId === undefined ? await createSurveyAction(values) : await updateSurveyAction(surveyId, values);
       if (!result.ok) {
         setError("root", { message: result.error });
         return;
       }
-      router.push(`/survei/${result.data.id}`);
+      if (surveyId === undefined) {
+        router.push(`/survei/${result.data.id}`);
+      } else {
+        setSaved(true);
+      }
       router.refresh();
     });
   }
@@ -296,12 +109,12 @@ export function SurveyForm() {
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
             <Label htmlFor="title">Judul</Label>
-            <Input id="title" {...register("title")} />
+            <Input id="title" readOnly={readOnly} {...register("title")} />
             <FieldError message={errors.title?.message} />
           </div>
           <div className="flex flex-col gap-1">
             <Label htmlFor="description">Deskripsi (opsional)</Label>
-            <Textarea id="description" {...register("description")} />
+            <Textarea id="description" readOnly={readOnly} {...register("description")} />
             <FieldError message={errors.description?.message} />
           </div>
         </CardContent>
@@ -312,40 +125,55 @@ export function SurveyForm() {
           key={field.id}
           index={index}
           total={fields.length}
-          control={control}
-          register={register}
-          errors={errors}
+          form={form}
+          locks={locks}
+          readOnly={readOnly}
           onMove={move}
-          onRemove={remove}
+          onRemove={removeQuestion}
+          onRestore={restoreQuestion}
           onTypeChange={changeType}
         />
       ))}
 
       <FieldError message={questionsError} />
 
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" disabled={atLimit} onClick={() => append(blankQuestion("SHORT_TEXT"))}>
-          <Plus />
-          Tambah pertanyaan
-        </Button>
-        <Button type="button" variant="outline" disabled={atLimit} onClick={() => append(yesNoQuestion(""))}>
-          <ToggleLeft />
-          Tambah Ya/Tidak
-        </Button>
-      </div>
+      {!readOnly && (
+        <>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={atLimit}
+              onClick={() => append(blankQuestion("SHORT_TEXT"))}
+            >
+              <Plus />
+              Tambah pertanyaan
+            </Button>
+            <Button type="button" variant="outline" disabled={atLimit} onClick={() => append(yesNoQuestion(""))}>
+              <ToggleLeft />
+              Tambah Ya/Tidak
+            </Button>
+          </div>
 
-      {errors.root?.message && (
-        <p role="alert" className="text-sm text-destructive">
-          {errors.root.message}
-        </p>
+          {errors.root?.message && (
+            <p role="alert" className="text-sm text-destructive">
+              {errors.root.message}
+            </p>
+          )}
+          {saved && (
+            <p role="status" className="text-sm text-muted-foreground">
+              Perubahan tersimpan.
+            </p>
+          )}
+
+          <div className="flex justify-end border-t pt-4">
+            <Button type="submit" size="lg" disabled={pending} className="w-full sm:w-auto">
+              <Save />
+              {pending ? "Menyimpan…" : surveyId === undefined ? "Simpan survei" : "Simpan perubahan"}
+            </Button>
+          </div>
+        </>
       )}
-
-      <div className="flex justify-end border-t pt-4">
-        <Button type="submit" size="lg" disabled={pending} className="w-full sm:w-auto">
-          <Save />
-          {pending ? "Menyimpan…" : "Simpan survei"}
-        </Button>
-      </div>
     </form>
   );
 }
