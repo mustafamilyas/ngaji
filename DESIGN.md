@@ -218,6 +218,98 @@ model Attendance {
   @@index([memberId])
 }
 
+/// Formulir survei. Dimiliki satu grup; otomatis berlaku ke semua turunannya (pewarisan seperti Activity, §3.3).
+/// Tidak ada status buka/tutup: menerima jawaban selama belum dihapus (soft).
+model Survey {
+  id          Int       @id @default(autoincrement())
+  groupId     Int
+  title       String
+  description String?
+  createdById Int
+  deletedAt   DateTime?                 // soft delete; pertanyaan, respons, dan jawaban tetap tersimpan
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  group     Group            @relation(fields: [groupId], references: [id])
+  createdBy User             @relation("surveyCreatedBy", fields: [createdById], references: [id])
+  questions SurveyQuestion[]
+  responses SurveyResponse[]
+
+  @@index([groupId])
+}
+
+/// Terkunci setelah dijawab (tipe, rentang skala, hapus permanen): kunci diturunkan dari baris SurveyAnswer, tidak disimpan.
+model SurveyQuestion {
+  id         Int       @id @default(autoincrement())
+  surveyId   Int
+  order      Int
+  type       String                     // QuestionType (lib/validation/enums.ts)
+  label      String
+  helpText   String?
+  required   Boolean   @default(false)
+  scaleMin   Int?                       // hanya SCALE
+  scaleMax   Int?                       // hanya SCALE; scaleMin < scaleMax, maksimal 11 langkah
+  archivedAt DateTime?                  // disembunyikan dari form isi, tetap tampil di hasil
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  survey  Survey         @relation(fields: [surveyId], references: [id])
+  options SurveyOption[]
+  answers SurveyAnswer[]
+
+  @@index([surveyId, order])
+}
+
+/// Opsi pilihan dengan id stabil: ganti label = melabeli ulang jawaban lama, arsip = hitungan tetap.
+model SurveyOption {
+  id         Int       @id @default(autoincrement())
+  questionId Int
+  order      Int
+  label      String
+  archivedAt DateTime?
+
+  question SurveyQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answers  SurveyAnswer[]
+
+  @@index([questionId, order])
+}
+
+/// Paling banyak satu per anggota per survei; menyimpan lagi = menimpa. Dihapus permanen (seperti Attendance), tercatat di audit.
+model SurveyResponse {
+  id           Int      @id @default(autoincrement())
+  surveyId     Int
+  memberId     Int
+  recordedById Int                      // penyimpan terakhir
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  survey     Survey         @relation(fields: [surveyId], references: [id])
+  member     Member         @relation(fields: [memberId], references: [id])
+  recordedBy User           @relation("surveyResponseRecordedBy", fields: [recordedById], references: [id])
+  answers    SurveyAnswer[]
+
+  @@unique([surveyId, memberId])
+  @@index([memberId])
+}
+
+/// Satu baris per pertanyaan terjawab; MULTI_CHOICE satu baris per opsi terpilih.
+/// Tepat satu dari optionId / numberValue / textValue terisi, sesuai tipe pertanyaan.
+model SurveyAnswer {
+  id          Int     @id @default(autoincrement())
+  responseId  Int
+  questionId  Int
+  optionId    Int?
+  numberValue Float?
+  textValue   String?
+
+  response SurveyResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  question SurveyQuestion @relation(fields: [questionId], references: [id])
+  option   SurveyOption?  @relation(fields: [optionId], references: [id])
+
+  @@index([responseId])
+  @@index([questionId, optionId])
+}
+
 /// Jejak audit. Ditulis di transaksi yang sama dengan mutasinya. Append-only (tidak ada update/delete).
 model AuditLog {
   id        Int      @id @default(autoincrement())
@@ -251,7 +343,8 @@ model AuditLog {
 - `createdById` / `recordedById` punya relasi ke `User` (FK), bukan integer lepas.
 - Semua **tanggal** — di kode aplikasi maupun kolom Prisma — berbentuk string `YYYY-MM-DD` (SQLite tidak punya tipe DATE native, jadi kolom tanggal didefinisikan `String`, bukan `DateTime`). Tidak ada konversi Date↔string di perbatasan Prisma untuk tanggal murni; `lib/dates.ts` hanya berisi util kalkulasi (tambah hari, cari Minggu terdekat, dst.) yang beroperasi langsung di atas string `YYYY-MM-DD` dan `Intl`/`Date` sesekali secara internal untuk itu. Perbandingan/urutan tanggal tetap valid karena string ISO `YYYY-MM-DD` terurut secara leksikografis sama dengan urutan kronologisnya. Kolom non-tanggal (`createdAt`, `updatedAt`, `recordedAt`) tetap `DateTime` biasa.
 - `weekdays` pada `Activity` disimpan sebagai kolom `Json` (array angka), karena SQLite tidak mendukung scalar list (`Int[]`) di Prisma. Validasi bentuk & isi array tetap di zod (`lib/validation/activity.ts`).
-- Enum domain (`Role`, `Sex`, `MaritalStatus`, `WorkStatus`, `MemberStatus`, `Freq`, `OccurrenceStatus`, `AttendanceStatus`) bukan Prisma `enum` (tidak didukung SQLite) — kolomnya `String`, nilai valid ditegakkan oleh TS union + zod di `lib/validation/enums.ts`, bukan oleh database.
+- **Survei** (§11): `Survey` soft delete (`deletedAt: null` wajib di setiap query, seperti `Activity`). `SurveyResponse`/`SurveyAnswer` dihapus permanen (seperti `Attendance`), isi yang dihapus ada di audit. Jawaban adalah PII anggota: hanya terbaca lewat query yang terfilter scope dan viewer audit OWNER.
+- Enum domain (`Role`, `Sex`, `MaritalStatus`, `WorkStatus`, `MemberStatus`, `Freq`, `OccurrenceStatus`, `AttendanceStatus`, `QuestionType`) bukan Prisma `enum` (tidak didukung SQLite) — kolomnya `String`, nilai valid ditegakkan oleh TS union + zod di `lib/validation/enums.ts`, bukan oleh database.
 
 ---
 
@@ -261,7 +354,7 @@ model AuditLog {
 Setiap user punya satu `UserGroupRole (groupId, role)`. **Scope** = grup itu + semua turunannya
 (`group.path startsWith scopeGroup.path`). Semua query list wajib difilter scope di server.
 
-**Setiap ID yang datang dari client** (`groupId`, `memberId`, `activityId`, `occurrenceId`, `userId`, tanggal absensi) **wajib di-resolve ke entitasnya di server lalu dicek terhadap scope dan aturan di bawah**. `authorize` menerima entitas hasil resolve, bukan ID mentah.
+**Setiap ID yang datang dari client** (`groupId`, `memberId`, `activityId`, `occurrenceId`, `userId`, `surveyId`, `questionId`, `optionId`, tanggal absensi) **wajib di-resolve ke entitasnya di server lalu dicek terhadap scope dan aturan di bawah**. `authorize` menerima entitas hasil resolve, bukan ID mentah.
 
 ### 3.2 Matriks izin
 
@@ -274,6 +367,9 @@ Setiap user punya satu `UserGroupRole (groupId, role)`. **Scope** = grup itu + s
 | Buat / rename / hapus (soft) sub-grup dalam scope | ✅ | ✅ | ❌ |
 | Buat / ubah / hapus (soft) kegiatan **milik grup user sendiri** | ✅ | ✅ | ❌ |
 | Batalkan / geser occurrence kegiatan **milik grup user sendiri** | ✅ | ✅ | ❌ |
+| Lihat survei & hasilnya (§11): leluhur / grup user / dalam scope; data dibatasi scope | ✅ | ✅ | ✅ |
+| Buat / ubah / hapus (soft) survei **milik grup user sendiri** | ✅ | ✅ | ❌ |
+| Isi / ubah / hapus respons survei untuk anggota aktif di grup daun dalam scope (user di grup pemilik survei atau di bawahnya) | ✅ | ✅ | ✅ |
 | Buat user USER / ADMIN untuk grup dalam scope | ✅ | ✅ | ❌ |
 | Reset password user lain | ✅ semua dalam scope | ✅ hanya USER **di grup yang sama** | ❌ |
 | Buat user OWNER (grup dalam scope) | ✅ | ❌ | ❌ |
@@ -319,6 +415,8 @@ type Action =
   | 'activity.view' | 'activity.create' | 'activity.update' | 'activity.delete' | 'activity.split'
   | 'occurrence.override'          // batalkan / geser satu / ganti jam-lokasi
   | 'attendance.record'
+  | 'survey.view' | 'survey.create' | 'survey.update' | 'survey.delete'
+  | 'survey_response.record' | 'survey_response.delete'
   | 'stats.view'
   | 'user.view' | 'user.create' | 'user.updateRole' | 'user.move'
   | 'user.setActive' | 'user.resetPassword'
@@ -339,6 +437,10 @@ function visibleGroupsWhere(session: Session): Prisma.GroupWhereInput   // { pat
 | `activity.create` | peran ≥ ADMIN; `groupId === session.groupId` |
 | `activity.update/delete/split`, `occurrence.override` | peran ≥ ADMIN; `activity.groupId === session.groupId` |
 | `attendance.record` | §3.3 |
+| `survey.view` | target `{ surveyGroupPath }`: sama dengan `activity.view` (leluhur/grup user atau dalam scope; selain itu 404) |
+| `survey.create` | peran ≥ ADMIN; `groupId === session.groupId` |
+| `survey.update/delete` | peran ≥ ADMIN; `survey.groupId === session.groupId` |
+| `survey_response.record/delete` | target `{ surveyGroupPath, memberGroupPath, memberIsLeaf }`: user di grup pemilik survei atau di bawahnya; grup anggota daun dalam scope (di luar scope → 404, di atas pemilik → 403). `record` juga mensyaratkan anggota `AKTIF` — aturan data, dicek di action, bukan di `authorize` |
 | `user.create` | peran ≥ ADMIN; grup target dalam scope; peran baru OWNER hanya oleh OWNER |
 | `user.resetPassword` | §3.4 |
 | `user.updateRole/move/setActive` | OWNER; target dalam scope; bukan diri sendiri; bukan OWNER root terakhir |
@@ -387,6 +489,9 @@ Helper `audit(tx, { action, entity, entityId, groupId, before, after, meta })` d
 | `activity.create/update/delete/split` | template kegiatan | snapshot; `split` mencatat `{ fromActivityId, toActivityId, fromDate }` |
 | `occurrence.override` | batal/geser/jam/lokasi | snapshot baris occurrence |
 | `attendance.save` | simpan massal absensi | `meta: { date, groupId, set: [{memberId,status}], removed: [memberId] }` |
+| `survey.create/update/delete` | formulir survei | snapshot survei + pertanyaan + opsi; `groupId` = grup pemilik; ubah formulir = satu `survey.update` per simpan |
+| `survey_response.save` | simpan/timpa respons | `before` = jawaban lama (null jika baru), `after` = jawaban baru; `groupId` = grup anggota; `meta: { surveyId, memberId }` |
+| `survey_response.delete` | hapus respons | `before` = jawaban yang dihapus; `groupId` = grup anggota; `meta: { surveyId, memberId }` |
 
 Halaman `/audit` (OWNER): terbaru dulu, filter grup (multi, termasuk turunan; memilih grup menyembunyikan entri `auth.*` tanpa grup) / rentang tanggal (default semua waktu) / aksi / aktor, paginasi (§7.1).
 
@@ -498,6 +603,9 @@ Rentang default "30 hari terakhir" = 30 hari inklusif (today−29 .. today). Sta
 | `/kegiatan` | Daftar **atau** kalender (toggle) per rentang tanggal — preset Hari ini/Minggu ini/Bulan ini/pilih tanggal (default Minggu ini) dengan tombol ‹ › per rentang, badge *warisan*, *konflik*, *dipindah*, *batal*; cari nama kegiatan (badge konflik tetap dihitung dari semua kegiatan); filter grup multi-select (dengan pintasan "pilih dengan turunannya") atas union §5.3; daftar dipaginasi 50/hal; semua state (grup, rentang, tampilan, cari) di URL |
 | `/kegiatan/baru`, `/kegiatan/[id]` | Form template; detail (§7.2) tab absensi per rentang (preset 7/30/90 hari, bulan ini, pilih tanggal; default 30 hari) dengan tabel per-occurrence & per-anggota (10/hal), jadwal 90 hari ke depan (`?jadwal=`, 10/hal; ubah satu tanggal lewat dialog, hanya `canEdit`), pengaturan (hanya `canEdit`: form, geser, zona berbahaya akhiri/hapus); aksi "Isi absensi hari ini" bila ada occurrence hari ini |
 | `/kegiatan/[id]/[tanggal]` | Absensi occurrence (+ batalkan / override / geser satu kali) — **tidak** dipaginasi (semua anggota perlu terlihat saat mengisi; ada pencarian) |
+| `/survei` | Daftar survei yang terlihat (milik leluhur atau grup dalam scope): judul, grup pemilik, jumlah respons, badge *warisan*; cari judul + filter grup (survei yang berlaku untuk grup terpilih); `PAGE_SIZE`; "Buat survei" hanya ADMIN+ (§11) |
+| `/survei/baru`, `/survei/[id]` | Pembuat formulir; detail (§7.2) tab `?tab=hasil` (default) / `responden` / `formulir` — hasil: satu grup (`?grup=`) + filter demografi (`jk`, `umur`, `kerja`, `nikah`), tingkat respons, "Belum mengisi", grafik per pertanyaan, rincian per sub-grup; responden: daftar respons dalam scope (cari, filter grup, hapus); formulir: hanya pemilik yang bisa mengubah, lainnya baca saja; teks panjang dipaginasi lewat `?teks=<idPertanyaan>:<halaman>` |
+| `/survei/[id]/isi` | Isi / ubah jawaban satu anggota (autocomplete nama, `?anggota=` untuk prefill, "Simpan & anggota berikutnya"); hanya yang boleh mengisi, mobile-first |
 | `/statistik` | Tab: anggota, kegiatan, partisipasi; filter satu grup + rentang tanggal (tidak di tab anggota); tab partisipasi bisa cari nama dan dipaginasi 50/hal |
 | `/pengguna` | OWNER & ADMIN: buat user (dialog "Tambah pengguna"); OWNER: ubah peran, pindah grup, nonaktifkan; reset password sesuai §3.4; cari nama/username + filter grup (multi, termasuk turunan); paginasi 50/hal; kontrol per user di dialog "Kelola", hanya tampil bila ada aksi yang diizinkan |
 | `/pengaturan/jenjang` | OWNER root: rename level |
@@ -584,3 +692,36 @@ Rentang default "30 hari terakhir" = 30 hari inklusif (today−29 .. today). Sta
 | Riwayat pindah grup anggota | Tabel `MemberGroupHistory`; `PINDAH` saat ini membuat baris baru. |
 | Ekspor data / cetak | Perlu keputusan kebijakan PII dulu; audit `export.*`. |
 | Multi-organisasi | `organizationId` sudah ada di Level/Group. |
+
+---
+
+## 11. Survei
+
+Formulir isian khusus per grup yang diisi per anggota oleh admin/user (tanpa tautan publik), dengan statistik hasil. Spesifikasi & skenario uji: `openspec/changes/member-surveys/`.
+
+### 11.1 Kepemilikan & izin
+- Survei milik satu grup X dan berlaku untuk X + semua turunan; tidak ada opt-out. Izin meniru kegiatan (§3.3): **lihat** = X leluhur/grup user atau dalam scope (selain itu 404); **ubah/hapus** = ≥ ADMIN dan `groupId === X` persis (OWNER root pun tidak bisa mengubah survei kelompok); **isi respons** = user di X atau di bawah X, untuk anggota `AKTIF` di grup daun dalam scope. User di atas X hanya melihat.
+- `resolveSurvey` (`lib/resolve.ts`) memuat survei (`deletedAt: null`) dan menerapkan `survey.view`; setiap halaman dan action berawal dari survei hasil resolve. `groupId` pemilik tidak pernah diambil dari client saat membuat survei.
+
+### 11.2 Formulir
+- Tipe pertanyaan (`QuestionType`): `SINGLE_CHOICE`, `MULTI_CHOICE`, `NUMBER`, `SCALE` (default 1–5, maksimal 11 langkah), `SHORT_TEXT` (≤ 200), `LONG_TEXT` (≤ 2000). Pilihan minimal dua opsi berlabel unik; preset "Ya/Tidak" = `SINGLE_CHOICE` dengan opsi Ya dan Tidak. Batas (`SURVEY_*`, `SCALE_MAX_STEPS`, dll.) ada di `lib/constants.ts`.
+- Tanpa status buka/tutup/draf: survei menerima jawaban selama belum dihapus (soft).
+- **Terkunci setelah dijawab, bukan versi.** Kunci diturunkan dari data (ada `SurveyAnswer` untuk pertanyaan/opsi), tidak disimpan. Pertanyaan terjawab: tipe dan rentang skala tidak bisa berubah; tidak bisa dihapus, hanya diarsipkan (`archivedAt`); opsi terjawab juga hanya diarsipkan. Label, teks bantuan, wajib-isi, dan urutan tetap bisa diubah; pertanyaan/opsi baru selalu boleh; arsip bisa dipulihkan. Yang belum pernah dijawab dihapus permanen.
+- Mengganti label opsi terjawab melabeli ulang jawaban lama (disengaja untuk koreksi salah ketik; formulir memberi peringatan, audit menyimpan label lama).
+- Satu simpan = satu payload formulir utuh = satu audit `survey.update` (before/after). Fungsi murni `planFormUpdate` (`lib/survey/form-plan.ts`) membandingkan payload dengan formulir saat ini dan mengembalikan operasi (buat/ubah/arsip/hapus) atau daftar pelanggaran.
+
+### 11.3 Respons
+- Satu respons per (survei, anggota); menyimpan lagi **menimpa semua jawaban** kecuali jawaban untuk pertanyaan/opsi yang sudah diarsipkan (dipertahankan, tampil read-only di form). Konkurensi ditangani indeks unik.
+- Validasi server (`validateAnswers`, `lib/survey/answers.ts`): id pertanyaan/opsi harus milik survei dan tidak diarsip; aturan per tipe; pertanyaan wajib harus terjawab; opsional boleh kosong (tidak ada baris). Error dilaporkan per pertanyaan; satu salah = tidak ada yang tertulis.
+- Hapus respons = permanen (seperti absensi); anggota yang sudah `KELUAR` masih boleh dihapus responsnya tapi tidak bisa diisi.
+- Tidak ada baris "belum mengisi": belum mengisi = anggota *expected* tanpa `SurveyResponse` (seperti absen, §2).
+
+### 11.4 Statistik
+- Satu grup terpilih G (`?grup=`, harus dalam scope, selain itu 404). Default: X bila dalam scope, jika tidak grup user. **Populasi** = anggota yang belum dihapus di subtree(G) ∩ subtree(X), dipersempit filter demografi (jenis kelamin, kelompok umur dari `AGE_BRACKETS` dihitung per hari ini di Asia/Jakarta, status kerja, status nikah; nilai tidak valid diabaikan).
+- Tingkat respons: *expected* = populasi berstatus `AKTIF`; *terjawab* = expected yang punya respons; daftar "Belum mengisi" dipaginasi dengan tautan isi. Respons anggota yang sudah tidak `AKTIF` tetap dihitung di hasil per pertanyaan tetapi tidak di expected/terjawab.
+- Per pertanyaan (termasuk yang diarsip, ditandai): jumlah terjawab; pilihan = jumlah & % per opsi relatif terhadap jumlah terjawab (multi-pilihan bisa > 100%); angka = jumlah/rata-rata/min/maks; skala = rata-rata + sebaran semua nilai (nol ditampilkan); teks = daftar terbaru dulu, hanya satu daftar yang dipaginasi lewat `?teks=`.
+- Rincian per anak langsung G (yang beririsan dengan subtree X): tingkat respons dan hitungan opsi/nilai per anak.
+- Hasil selalu dibatasi scope viewer, walau survei terlihat karena pewarisan: jawaban anggota di luar scope tidak pernah masuk angka maupun daftar. Query berupa `groupBy` terfilter populasi (`lib/survey/stats.ts`); helper murni (`summarizeChoice`, `summarizeScale`, `ageBracketRange`) di `lib/survey/summary.ts`.
+
+### 11.5 Tidak termasuk (non-MVP)
+Tautan survei publik / isian mandiri, status buka-tutup, respons berulang per anggota, pertanyaan bersyarat, unggah berkas, ekspor hasil (butuh kebijakan PII, §10), dan "duplikat survei" untuk putaran berikutnya.

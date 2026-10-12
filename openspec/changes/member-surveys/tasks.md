@@ -40,5 +40,5 @@
 
 ## 7. Docs & wrap-up
 
-- [ ] 7.1 Update DESIGN.md: §2 schema, §3.2 matrix, §3.5 actions, §4.5 audit table, §7 pages, new §11 Survei (decisions from this change); verify sections match the specs
+- [x] 7.1 Update DESIGN.md: §2 schema, §3.2 matrix, §3.5 actions, §4.5 audit table, §7 pages, new §11 Survei (decisions from this change); verify sections match the specs
 - [ ] 7.2 Run `pnpm test && pnpm tsc --noEmit && pnpm lint` and `openspec validate member-surveys`; verify all pass (note any pre-existing lint failure)
