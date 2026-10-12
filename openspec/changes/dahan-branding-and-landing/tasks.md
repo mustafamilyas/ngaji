@@ -13,10 +13,10 @@
 
 ## 3. Branding
 
-- [ ] 3.1 Add the Dahan logo (`components/brand/logo.tsx` inline SVG) and `app/icon.svg`; remove the "N" tile and `favicon.ico`. Verify the favicon in the browser tab.
-- [ ] 3.2 Pass the org name from `app/layout.tsx` to `NavShell`/`BrandMark` (org name plus "oleh Dahan"; collapsed rail shows the logo with the org name as `aria-label`). Verify with a render test that the sidebar contains the org name and no "Ngaji".
-- [ ] 3.3 Show the org name and "oleh Dahan" on `app/login/page.tsx`. Verify with a render test, including the empty-org fallback.
-- [ ] 3.4 Title metadata: public pages use `%s · Dahan`; app pages and login use the org name (`generateMetadata`). Verify the tab titles for `/` (logged out), `/login` and the dashboard in the browser.
+- [x] 3.1 Add the Dahan logo (`components/brand/logo.tsx` inline SVG) and `app/icon.svg`; remove the "N" tile and `favicon.ico`. Verify the favicon in the browser tab.
+- [x] 3.2 Pass the org name from `app/layout.tsx` to `NavShell`/`BrandMark` (org name plus "oleh Dahan"; collapsed rail shows the logo with the org name as `aria-label`). Verify with a render test that the sidebar contains the org name and no "Ngaji".
+- [x] 3.3 Show the org name and "oleh Dahan" on `app/login/page.tsx`. Verify with a render test, including the empty-org fallback.
+- [x] 3.4 Title metadata: public pages use `%s · Dahan`; app pages and login use the org name (`generateMetadata`). Verify the tab titles for `/` (logged out), `/login` and the dashboard in the browser.
 
 ## 4. Landing pages
 

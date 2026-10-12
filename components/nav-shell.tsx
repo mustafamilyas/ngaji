@@ -16,9 +16,11 @@ import { cn } from "@/lib/utils";
 export function NavShell({
   children,
   user,
+  organizationName = "Dahan",
   initialCollapsed = false,
 }: {
   children: React.ReactNode;
+  organizationName?: string;
   user?: Pick<SessionUser, "name" | "role">;
   initialCollapsed?: boolean;
 }) {
@@ -63,6 +65,7 @@ export function NavShell({
   return (
     <div className="flex h-dvh overflow-hidden bg-background">
       <AppSidebar
+        organizationName={organizationName}
         userName={user.name}
         userRole={user.role}
         collapsed={collapsed}
@@ -71,7 +74,7 @@ export function NavShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center justify-between border-b bg-background px-4 lg:hidden">
-          <BrandMark />
+          <BrandMark organizationName={organizationName} />
           <button
             type="button"
             aria-label="Buka menu"
@@ -115,7 +118,7 @@ export function NavShell({
           )}
         >
           <div className="flex items-center justify-between">
-            <BrandMark />
+            <BrandMark organizationName={organizationName} />
             <button
               type="button"
               aria-label="Tutup menu"

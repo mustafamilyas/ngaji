@@ -19,6 +19,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { signOutAction } from "@/app/dashboard-actions";
+import { Logo } from "@/components/brand/logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { NAV_ITEMS } from "@/lib/nav";
 import { cn, initials } from "@/lib/utils";
@@ -35,13 +36,16 @@ const ICONS: Record<string, LucideIcon> = {
   "/audit": ScrollText,
 };
 
-export function BrandMark({ withLabel = true }: { withLabel?: boolean }) {
+export function BrandMark({ organizationName, withLabel = true }: { organizationName: string; withLabel?: boolean }) {
   return (
-    <Link href="/" aria-label="Ngaji" className="flex items-center gap-2 px-2">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary font-heading text-sm font-bold text-primary-foreground">
-        N
-      </span>
-      {withLabel && <span className="font-heading text-lg font-semibold">Ngaji</span>}
+    <Link href="/" aria-label={organizationName} className="flex min-w-0 items-center gap-2 px-2">
+      <Logo />
+      {withLabel && (
+        <span className="flex min-w-0 flex-col leading-tight">
+          <span className="truncate font-heading text-base font-semibold">{organizationName}</span>
+          <span className="text-xs text-muted-foreground">oleh Dahan</span>
+        </span>
+      )}
     </Link>
   );
 }
@@ -156,11 +160,13 @@ function SectionLabel({ collapsed, children }: { collapsed: boolean; children: R
 
 /** Docked left sidebar, visible on every page at `lg` and up; collapsible to an icon rail. */
 export function AppSidebar({
+  organizationName,
   userName,
   userRole,
   collapsed,
   onToggleCollapsed,
 }: {
+  organizationName: string;
   userName: string;
   userRole: string;
   collapsed: boolean;
@@ -175,7 +181,7 @@ export function AppSidebar({
       )}
     >
       <div className={cn("flex items-center", collapsed ? "flex-col gap-3" : "justify-between")}>
-        <BrandMark withLabel={!collapsed} />
+        <BrandMark organizationName={organizationName} withLabel={!collapsed} />
         <button
           type="button"
           onClick={onToggleCollapsed}
