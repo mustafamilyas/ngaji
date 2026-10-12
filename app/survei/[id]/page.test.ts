@@ -95,8 +95,75 @@ describe("SurveyDetailPage", () => {
     expect(html).toContain("Kesiapan Ramadhan");
     expect(html).toContain("Survei awal");
     for (const label of ["Hasil", "Responden", "Formulir"]) expect(html).toContain(label);
-    expect(html).toContain("Segera hadir");
+    expect(html).not.toContain("Segera hadir");
     expect(html).not.toContain("Simpan perubahan");
+  });
+
+  describe("Hasil tab", () => {
+    const renderHasil = (query: Record<string, string> = {}) =>
+      SurveyDetailPage({
+        params: Promise.resolve({ id: String(surveyId) }),
+        searchParams: Promise.resolve(query),
+      });
+
+    it("shows the response rate, non-respondents and per-question results to the owner admin", async () => {
+      mockAuthSession(auth, { user: sessionFor(fx.actorId, "ADMIN", fx.branch) });
+
+      const html = renderToStaticMarkup(await renderHasil());
+
+      expect(html).toContain("Tingkat respons");
+      expect(html).toContain("Belum mengisi");
+      expect(html).toContain("Siap berpuasa?");
+      expect(html).toContain("Pertanyaan lama");
+      expect(html).toContain("Diarsipkan");
+      expect(html).toContain("Belum ada jawaban");
+      expect(html).toContain("Data dalam cakupan Anda");
+    });
+
+    it("counts only the viewer's own group for a USER below the owner", async () => {
+      mockAuthSession(auth, { user: sessionFor(fx.actorId, "USER", fx.leaf) });
+
+      const html = renderToStaticMarkup(await renderHasil());
+
+      expect(html).toContain("Tingkat respons");
+      expect(html).not.toContain("Warga Cabang");
+    });
+
+    it("narrows every figure with a demographic filter", async () => {
+      mockAuthSession(auth, { user: sessionFor(fx.actorId, "ADMIN", fx.branch) });
+
+      const html = renderToStaticMarkup(await renderHasil({ jk: "P" }));
+
+      // Only "Warga Cabang" (P) remains; the male fixture member is filtered out of the population.
+      expect(html).toContain("1 dari 1 anggota aktif");
+      expect(html).not.toContain("2 dari 2 anggota aktif");
+    });
+
+    it("ignores an invalid filter value", async () => {
+      mockAuthSession(auth, { user: sessionFor(fx.actorId, "ADMIN", fx.branch) });
+
+      const plain = renderToStaticMarkup(await renderHasil());
+      const invalid = renderToStaticMarkup(await renderHasil({ jk: "X" }));
+
+      expect(invalid).toContain("Tingkat respons");
+      expect(invalid.match(/\d+ dari \d+ anggota aktif/)?.[0]).toBe(plain.match(/\d+ dari \d+ anggota aktif/)?.[0]);
+    });
+
+    it("responds 404 when the selected group is outside the viewer's scope", async () => {
+      mockAuthSession(auth, { user: sessionFor(fx.actorId, "USER", fx.leaf) });
+
+      await expect(renderHasil({ grup: String(fx.otherLeaf.id) })).rejects.toMatchObject({
+        digest: expect.stringContaining("NEXT_HTTP_ERROR_FALLBACK;404"),
+      });
+    });
+
+    it("breaks results down per direct sub-group when the group has children", async () => {
+      mockAuthSession(auth, { user: sessionFor(fx.actorId, "ADMIN", fx.branch) });
+
+      const html = renderToStaticMarkup(await renderHasil());
+
+      expect(html).toContain("Per sub-grup");
+    });
   });
 
   it("shows the editable form to the owner admin, with answered questions locked and archived ones restorable", async () => {

@@ -36,7 +36,7 @@
 ## 6. Statistics
 
 - [x] 6.1 `lib/survey/stats.ts` population (G ∩ X subtree, demographics), response rate, non-respondents, per-question aggregates, text pagination, sub-group breakdown; verify DB tests for every "survey-statistics" scenario
-- [ ] 6.2 "Hasil" tab: single group filter (default per spec), demographic filters, rate + "Belum mengisi", per-question charts (Recharts) and text lists, breakdown table; verify page test and visually in the preview
+- [x] 6.2 "Hasil" tab: single group filter (default per spec), demographic filters, rate + "Belum mengisi", per-question charts (Recharts) and text lists, breakdown table; verify page test and visually in the preview
 
 ## 7. Docs & wrap-up
 

@@ -4,16 +4,17 @@ import { auth } from "@/auth";
 import { MetaItem, PageHeader } from "@/components/page-header";
 import { TabNav, type TabItem } from "@/components/tab-nav";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { visibleGroupsWhere } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
 import { parseGroupIds, parsePage, parseSearch } from "@/lib/filters";
 import { loadSurveyDetail } from "@/lib/survey/detail";
 import { listRespondents } from "@/lib/survey/respondents";
+import { parseSurveyDemographics, surveyStatistics } from "@/lib/survey/stats";
 import { parseTab } from "@/lib/tabs";
 import { SurveyForm } from "../survey-form";
 import { RespondentsTab } from "./respondents-tab";
+import { ResultsTab } from "./results-tab";
 
 const TABS = ["hasil", "responden", "formulir"] as const;
 type Tab = (typeof TABS)[number];
@@ -61,8 +62,31 @@ export default async function SurveyDetailPage({
       throw error;
     }
   }
+
+  const demographics = parseSurveyDemographics({
+    jk: firstParam(query.jk),
+    umur: firstParam(query.umur),
+    kerja: firstParam(query.kerja),
+    nikah: firstParam(query.nikah),
+  });
+  const statsGroupId = groupIds?.[0];
+  let stats;
+  if (tab === "hasil") {
+    try {
+      stats = await surveyStatistics(session.user, surveyId, {
+        groupId: statsGroupId,
+        demographics,
+        search,
+        nonRespondentPage: parsePage(query.page),
+        text: parseTextPage(query.teks),
+      });
+    } catch (error) {
+      if (error instanceof NotFoundError) notFound();
+      throw error;
+    }
+  }
   const visibleGroups =
-    tab === "responden"
+    tab === "responden" || tab === "hasil"
       ? await db.group.findMany({
           where: visibleGroupsWhere(session.user),
           orderBy: [{ depth: "asc" }, { name: "asc" }],
@@ -84,7 +108,17 @@ export default async function SurveyDetailPage({
       <div className="flex flex-col gap-4">
         <TabNav path={path} tabs={tabs} current={tab} defaultTab="hasil" />
 
-        {tab === "hasil" && <ComingSoon>Ringkasan hasil survei akan tampil di sini.</ComingSoon>}
+        {stats && (
+          <ResultsTab
+            surveyId={survey.id}
+            stats={stats}
+            groups={visibleGroups}
+            params={query}
+            search={search}
+            groupActive={statsGroupId !== undefined}
+            demographics={demographics}
+          />
+        )}
         {respondents && (
           <RespondentsTab
             surveyId={survey.id}
@@ -124,15 +158,15 @@ export default async function SurveyDetailPage({
   );
 }
 
-/** Stand-in for the statistics tab, built in a later slice. */
-function ComingSoon({ children }: { children: React.ReactNode }) {
-  return (
-    <Card>
-      <CardContent>
-        <p role="status" className="py-6 text-center text-sm text-muted-foreground">
-          Segera hadir. {children}
-        </p>
-      </CardContent>
-    </Card>
-  );
+function firstParam(param: string | string[] | undefined): string | undefined {
+  return Array.isArray(param) ? param[0] : param;
+}
+
+/** `?teks=<questionId>:<page>` — the one text list that paginates; anything malformed is ignored. */
+function parseTextPage(param: string | string[] | undefined): { questionId: number; page: number } | undefined {
+  const match = /^(\d+):(\d+)$/.exec(firstParam(param) ?? "");
+  if (!match) return undefined;
+  const questionId = Number(match[1]);
+  const page = Number(match[2]);
+  return questionId > 0 && page >= 1 ? { questionId, page } : undefined;
 }
