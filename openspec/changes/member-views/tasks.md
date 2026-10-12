@@ -22,7 +22,7 @@
 
 ## 4. Queries & mutations
 
-- [ ] 4.1 `lib/member-view/results.ts` scoped list (`deletedAt: null` + scope AND `buildWhere`), total count, `PAGE_SIZE` pagination; verify DB tests for "Results are scope-limited" and age/AND/OR scenarios against seeded members
+- [x] 4.1 `lib/member-view/results.ts` scoped list (`deletedAt: null` + scope AND `buildWhere`), total count, `PAGE_SIZE` pagination; verify DB tests for "Results are scope-limited" and age/AND/OR scenarios against seeded members
 - [ ] 4.2 `lib/member-view/sections.ts` section counts + per-section pages for property, age buckets (+ "Lainnya") and org level (roll-up by path, level bounds); verify DB tests for every "Group by" and "Grouped and ungrouped result display" scenario
 - [ ] 4.3 `lib/member-view/mutations.ts` create (group from session) / update / soft delete / transfer, each with `audit()` in the same transaction; verify DB tests: owner ok, non-owner 403, duplicate name rejected, deleted name reusable, takeover rules, audit before/after/meta, audit failure rolls back
 - [ ] 4.4 `lib/member-view/list.ts` views of the user's exact group with search and pagination; verify DB test that ancestor/descendant views are never listed
