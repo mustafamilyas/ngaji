@@ -5,7 +5,7 @@ vi.mock("@/auth", () => ({ auth: vi.fn() }));
 // The toolbar is a client component that calls useRouter(); there is no app router when rendering to static markup.
 vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("next/navigation")>()),
-  useRouter: () => ({ replace: vi.fn() }),
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn(), refresh: vi.fn() }),
 }));
 
 import { auth } from "@/auth";
@@ -53,5 +53,15 @@ describe("NewMemberViewPage", () => {
     await expect(NewMemberViewPage({ searchParams: Promise.resolve({}) })).rejects.toMatchObject({
       digest: expect.stringContaining("NEXT_REDIRECT"),
     });
+  });
+
+  it("offers only Simpan sebagai baru on an unsaved new view", async () => {
+    const fixture = await buildPageFixture("tampilan-baru-actions");
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "OWNER", fixture.leaf) });
+    const html = renderToStaticMarkup(await NewMemberViewPage({ searchParams: Promise.resolve({}) }));
+    expect(html).toContain("Simpan sebagai baru");
+    expect(html).not.toContain("Ubah nama");
+    expect(html).not.toContain("Zona berbahaya");
+    expect(html).not.toContain("Ambil alih");
   });
 });

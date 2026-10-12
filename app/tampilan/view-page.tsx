@@ -1,18 +1,23 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { DangerZone, DangerZoneItem } from "@/components/danger-zone";
 import { TableCard } from "@/components/data-table";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { Badge } from "@/components/ui/badge";
+import { authorize } from "@/lib/authz";
 import { today } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
 import { formatDate, parsePage } from "@/lib/filters";
 import { dateOf } from "@/lib/dates";
 import { loadEditorOptions } from "@/lib/member-view/editor-options";
 import { listViewMembers } from "@/lib/member-view/results";
-import { loadViewDefinition } from "@/lib/member-view/load";
+import { loadViewDefinition, type LoadedView } from "@/lib/member-view/load";
+import type { SessionUser } from "@/lib/auth/session-user";
 import { listViewSections } from "@/lib/member-view/sections";
 import { pageHref } from "@/lib/pagination";
+import { DeleteViewButton } from "./delete-view-button";
+import { ViewActions } from "./view-actions";
 import { ViewToolbar } from "./view-toolbar";
 import { ViewSections } from "./view-sections";
 import { ViewMembersTable, type ViewMemberRow } from "./view-table";
@@ -25,6 +30,15 @@ function Notice({ children }: { children: React.ReactNode }) {
       {children}
     </p>
   );
+}
+
+function canTakeOver(user: SessionUser, view: NonNullable<LoadedView["view"]>): boolean {
+  try {
+    authorize(user, "member_view.transfer", view);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -46,6 +60,8 @@ export async function ViewPage({ viewId, searchParams }: { viewId: number | null
   }
   const { view, definition, isDraft, draftUnreadable, warnings } = loaded;
   const asOf = today();
+  const isOwner = view !== null && view.ownerId === Number(session.user.id);
+  const canTransfer = view !== null && canTakeOver(session.user, view);
   const basePath = viewId === null ? "/tampilan/baru" : `/tampilan/${viewId}`;
 
   const options = await loadEditorOptions(session.user);
@@ -65,6 +81,17 @@ export async function ViewPage({ viewId, searchParams }: { viewId: number | null
         breadcrumb={[{ label: "Tampilan", href: "/tampilan" }, { label: view?.name ?? "Tampilan baru" }]}
         title={view?.name ?? "Tampilan baru"}
         badges={isDraft ? <Badge variant="secondary">Belum disimpan</Badge> : undefined}
+        actions={
+          <ViewActions
+            viewId={viewId}
+            viewName={view?.name ?? ""}
+            definition={definition}
+            basePath={basePath}
+            isDraft={isDraft}
+            isOwner={isOwner}
+            canTransfer={canTransfer}
+          />
+        }
         meta={
           view ? (
             <>
@@ -117,6 +144,17 @@ export async function ViewPage({ viewId, searchParams }: { viewId: number | null
             <p className="px-4 py-10 text-center text-sm text-muted-foreground">Tidak ada anggota yang cocok.</p>
           )}
         </TableCard>
+      )}
+
+      {isOwner && view && (
+        <DangerZone>
+          <DangerZoneItem
+            title="Hapus tampilan"
+            description="Tampilan disembunyikan dari daftar; anggota tidak terpengaruh."
+          >
+            <DeleteViewButton viewId={view.id} viewName={view.name} />
+          </DangerZoneItem>
+        </DangerZone>
       )}
     </div>
   );

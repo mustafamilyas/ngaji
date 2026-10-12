@@ -1,13 +1,20 @@
 import { afterAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { buildPageFixture, mockAuthSession, sessionFor } from "@/lib/test/fixtures";
 import { emptyDefinition } from "@/lib/validation/member-view";
-import { loadSectionAction } from "./actions";
+import {
+  createMemberViewAction,
+  deleteMemberViewAction,
+  loadSectionAction,
+  transferMemberViewAction,
+  updateMemberViewAction,
+} from "./actions";
 
 describe("loadSectionAction", () => {
   afterAll(async () => {
@@ -58,5 +65,73 @@ describe("loadSectionAction", () => {
     expect((await loadSectionAction({ viewId: view.id, key: "p:HILANG", offset: 0 })).ok).toBe(false);
     expect((await loadSectionAction({ viewId: view.id, key: "p:L", offset: -1 })).ok).toBe(false);
     expect((await loadSectionAction({ viewId: "x", key: "p:L", offset: 0 })).ok).toBe(false);
+  });
+});
+
+describe("view mutation actions", () => {
+  async function setup(label: string) {
+    const fixture = await buildPageFixture(label);
+    const owner = await db.user.create({ data: { username: `${label}-owner`, passwordHash: "x", name: "Pemilik" } });
+    await db.userGroupRole.create({ data: { userId: owner.id, groupId: fixture.leaf.id, role: "USER" } });
+    const view = await db.memberView.create({
+      data: {
+        groupId: fixture.leaf.id,
+        ownerId: owner.id,
+        createdById: owner.id,
+        name: "Awal",
+        definition: emptyDefinition() as unknown as Prisma.InputJsonValue,
+      },
+    });
+    return { fixture, owner, view };
+  }
+
+  it("creates a view in the caller's group and ignores a client groupId", async () => {
+    const { fixture, owner } = await setup("tampilan-create");
+    mockAuthSession(auth, { user: sessionFor(owner.id, "USER", fixture.leaf) });
+
+    const result = await createMemberViewAction({
+      name: "Baru",
+      definition: emptyDefinition(),
+      groupId: fixture.otherLeaf.id,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const saved = await db.memberView.findUniqueOrThrow({ where: { id: result.data.id } });
+    expect(saved.groupId).toBe(fixture.leaf.id);
+    expect(saved.ownerId).toBe(owner.id);
+  });
+
+  it("rejects an invalid name and an invalid definition", async () => {
+    const { fixture, owner } = await setup("tampilan-create-bad");
+    mockAuthSession(auth, { user: sessionFor(owner.id, "USER", fixture.leaf) });
+
+    expect((await createMemberViewAction({ name: "  ", definition: emptyDefinition() })).ok).toBe(false);
+    expect((await createMemberViewAction({ name: "X", definition: { version: 1, bogus: true } })).ok).toBe(false);
+    expect((await createMemberViewAction({ name: "Unik", definition: emptyDefinition() })).ok).toBe(true);
+    expect((await createMemberViewAction({ name: "unik", definition: emptyDefinition() })).ok).toBe(false);
+  });
+
+  it("lets the owner rename and delete, and refuses a non-owner ADMIN", async () => {
+    const { fixture, owner, view } = await setup("tampilan-owner-only");
+
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "ADMIN", fixture.leaf) });
+    expect((await updateMemberViewAction({ viewId: view.id, name: "Dibajak" })).ok).toBe(false);
+    expect((await deleteMemberViewAction({ viewId: view.id })).ok).toBe(false);
+
+    mockAuthSession(auth, { user: sessionFor(owner.id, "USER", fixture.leaf) });
+    expect((await updateMemberViewAction({ viewId: view.id, name: "Diganti" })).ok).toBe(true);
+    expect((await db.memberView.findUniqueOrThrow({ where: { id: view.id } })).name).toBe("Diganti");
+    expect((await deleteMemberViewAction({ viewId: view.id })).ok).toBe(true);
+    expect((await db.memberView.findUniqueOrThrow({ where: { id: view.id } })).deletedAt).not.toBeNull();
+  });
+
+  it("transfers an orphaned view to an ADMIN of the group, but not an active owner's", async () => {
+    const { fixture, owner, view } = await setup("tampilan-transfer");
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "ADMIN", fixture.leaf) });
+    expect((await transferMemberViewAction({ viewId: view.id })).ok).toBe(false);
+
+    await db.user.update({ where: { id: owner.id }, data: { isActive: false } });
+    expect((await transferMemberViewAction({ viewId: view.id })).ok).toBe(true);
+    expect((await db.memberView.findUniqueOrThrow({ where: { id: view.id } })).ownerId).toBe(fixture.actorId);
   });
 });

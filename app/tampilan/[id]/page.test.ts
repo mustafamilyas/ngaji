@@ -5,7 +5,7 @@ vi.mock("@/auth", () => ({ auth: vi.fn() }));
 // The toolbar is a client component that calls useRouter(); there is no app router when rendering to static markup.
 vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("next/navigation")>()),
-  useRouter: () => ({ replace: vi.fn() }),
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn(), refresh: vi.fn() }),
 }));
 
 import { auth } from "@/auth";
@@ -186,5 +186,51 @@ describe("MemberViewPage", () => {
     const html = await render(view.id);
     expect(html).toContain("Beberapa aturan diabaikan karena tidak berlaku lagi");
     expect(html).toContain("Anggota Uji");
+  });
+  describe("header actions", () => {
+    const draft = () => encodeDraft({ ...emptyDefinition(), columns: ["status"] })!;
+
+    it("shows the owner every control, and Simpan/Batalkan only on a draft", async () => {
+      const fixture = await buildPageFixture("tampilan-act-owner");
+      const { view, owner } = await makeView(fixture, "Milik Saya", emptyDefinition());
+      mockAuthSession(auth, { user: sessionFor(owner.id, "USER", fixture.leaf) });
+
+      const clean = await render(view.id);
+      expect(clean).toContain("Ubah nama");
+      expect(clean).toContain("Simpan sebagai baru");
+      expect(clean).toContain("Zona berbahaya");
+      expect(clean).not.toContain("Batalkan");
+      expect(clean).not.toContain("Ambil alih");
+
+      const edited = await render(view.id, { d: draft() });
+      expect(edited).toContain("Batalkan");
+    });
+
+    it("hides owner controls from another user, even an ADMIN, but keeps Simpan sebagai baru", async () => {
+      const fixture = await buildPageFixture("tampilan-act-other");
+      const { view } = await makeView(fixture, "Milik Orang", emptyDefinition());
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "ADMIN", fixture.leaf) });
+
+      const html = await render(view.id, { d: draft() });
+      expect(html).toContain("Simpan sebagai baru");
+      expect(html).not.toContain("Ubah nama");
+      expect(html).not.toContain("Batalkan");
+      expect(html).not.toContain("Zona berbahaya");
+      expect(html).not.toContain("Ambil alih");
+    });
+
+    it("offers Ambil alih to an ADMIN only when the owner is orphaned", async () => {
+      const fixture = await buildPageFixture("tampilan-act-orphan");
+      const { view, owner } = await makeView(fixture, "Yatim", emptyDefinition());
+
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "ADMIN", fixture.leaf) });
+      expect(await render(view.id)).not.toContain("Ambil alih");
+
+      await db.user.update({ where: { id: owner.id }, data: { isActive: false } });
+      expect(await render(view.id)).toContain("Ambil alih");
+
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "USER", fixture.leaf) });
+      expect(await render(view.id)).not.toContain("Ambil alih");
+    });
   });
 });

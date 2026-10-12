@@ -96,7 +96,7 @@ The draft definition is serialized as compact JSON → base64url in `?d=`. Absen
 
 ### 8. Pages (`app/tampilan/*`)
 - `/tampilan`: server component list following §7.1 list conventions (search `q`, `PAGE_SIZE`, row menu).
-- `/tampilan/[id]` and `/tampilan/baru`: server component renders results; a client filter bar edits the draft and pushes `?d=` via the router. Filter bar shows rule groups as chips (mobile: a sheet with the rule editor). "Tampilan" popover: group-by, sort, columns. Header actions: "Simpan" (owner, when draft), "Simpan sebagai baru" (dialog with name), "Ambil alih" (ADMIN+, orphaned). Danger zone (owner): rename is in the header dialog; delete in the danger zone with `confirm()`.
+- `/tampilan/[id]` and `/tampilan/baru`: server component renders results; a client filter bar edits the draft and pushes `?d=` via the router. Filter bar shows rule groups as chips (mobile: a sheet with the rule editor). "Tampilan" popover: group-by, sort, columns. Header actions: "Simpan" (owner, when draft), "Simpan sebagai baru" (dialog with name), "Ambil alih" (ADMIN+, orphaned). "Ubah nama" (owner) and "Simpan sebagai baru" are header dialogs; "Simpan sebagai baru" is shown to every group user and redirects to the new view. Danger zone (owner): delete asks for confirmation in a dialog (not `confirm()`), then returns to `/tampilan`.
 
 ## Risks / Trade-offs
 
