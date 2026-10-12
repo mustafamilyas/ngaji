@@ -27,5 +27,5 @@
 
 ## 5. Docs & wrap-up
 
-- [ ] 5.1 Update DESIGN.md (title → Dahan, §7 table rows for `/` logged out and `/pengajian`, public-route note in §4), CLAUDE.md product line, README.md, and `DAHAN_WHATSAPP` in DEPLOYMENT.md. Verify `grep -rn "Ngaji" app components` returns nothing user-facing.
-- [ ] 5.2 Run `pnpm lint && pnpm tsc --noEmit && pnpm test`; all pass.
+- [x] 5.1 Update DESIGN.md (title → Dahan, §7 table rows for `/` logged out and `/pengajian`, public-route note in §4), CLAUDE.md product line, README.md, and `DAHAN_WHATSAPP` in DEPLOYMENT.md. Verify `grep -rn "Ngaji" app components` returns nothing user-facing.
+- [x] 5.2 Run `pnpm lint && pnpm tsc --noEmit && pnpm test`; all pass.
