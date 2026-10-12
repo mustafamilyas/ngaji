@@ -1,7 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
-import { NotFoundError } from "@/lib/errors";
+import { NotFoundError, ValidationError } from "@/lib/errors";
+import { emptyDefinition, type Definition } from "@/lib/validation/member-view";
 import {
+  resolveDefinitionGroupsLenient,
+  resolveDefinitionGroupsStrict,
+  resolveMemberView,
   resolveActivity,
   resolveGroup,
   resolveMember,
@@ -26,7 +30,7 @@ function sessionAt(groupId: number, groupPath: string): SessionUser {
 describe("lib/resolve", () => {
   let root: { id: number; path: string };
   let branchA: { id: number; path: string }; // under root
-  let leafA: { id: number; path: string }; // under branchA
+  let leafA: { id: number; path: string; organizationId: number }; // under branchA
   let branchB: { id: number; path: string }; // sibling of branchA, under root
   let owner: { id: number };
 
@@ -310,6 +314,189 @@ describe("lib/resolve", () => {
       });
       const session = sessionAt(root.id, root.path);
       await expect(resolveUser(session, roleless.id)).rejects.toBeInstanceOf(NotFoundError);
+    });
+  });
+
+  describe("resolveMemberView", () => {
+    async function createView(groupId: number, ownerId: number, extra: { deletedAt?: Date } = {}) {
+      return db.memberView.create({
+        data: {
+          groupId,
+          ownerId,
+          createdById: ownerId,
+          name: `View ${Math.random()}`,
+          definition: JSON.parse(JSON.stringify(emptyDefinition())),
+          ...extra,
+        },
+      });
+    }
+
+    it("resolves a view with its owner's current state", async () => {
+      await db.userGroupRole.create({ data: { userId: owner.id, groupId: branchA.id, role: "USER" } });
+      const view = await createView(branchA.id, owner.id);
+
+      const resolved = await resolveMemberView(sessionAt(branchA.id, branchA.path), view.id);
+      expect(resolved).toMatchObject({
+        id: view.id,
+        groupId: branchA.id,
+        ownerId: owner.id,
+        ownerIsActive: true,
+        ownerGroupId: branchA.id,
+      });
+    });
+
+    it("reports a deactivated owner as inactive", async () => {
+      const inactive = await db.user.create({
+        data: { username: `inactive-${root.id}`, passwordHash: "x", name: "Inactive", isActive: false },
+      });
+      await db.userGroupRole.create({ data: { userId: inactive.id, groupId: branchA.id, role: "ADMIN" } });
+      const view = await createView(branchA.id, inactive.id);
+
+      const resolved = await resolveMemberView(sessionAt(branchA.id, branchA.path), view.id);
+      expect(resolved.ownerIsActive).toBe(false);
+    });
+
+    it("reports a null owner group when the owner has no role assignment", async () => {
+      const roleless = await db.user.create({
+        data: { username: `view-roleless-${root.id}`, passwordHash: "x", name: "Roleless" },
+      });
+      const view = await createView(branchA.id, roleless.id);
+
+      const resolved = await resolveMemberView(sessionAt(branchA.id, branchA.path), view.id);
+      expect(resolved.ownerGroupId).toBeNull();
+    });
+
+    it("throws NotFoundError for a soft-deleted view", async () => {
+      const view = await createView(branchA.id, owner.id, { deletedAt: new Date() });
+      await expect(resolveMemberView(sessionAt(branchA.id, branchA.path), view.id)).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
+    });
+
+    it("throws NotFoundError for an unknown id", async () => {
+      await expect(resolveMemberView(sessionAt(branchA.id, branchA.path), 999_999_999)).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
+    });
+  });
+
+  describe("definition group resolution", () => {
+    function definitionWith(...ruleValues: number[][]): Definition {
+      const definition = emptyDefinition();
+      definition.filter.groups = ruleValues.map((value) => ({
+        op: "AND" as const,
+        rules: [{ field: "group" as const, operator: "inSubtreeOf" as const, value }],
+      }));
+      return definition;
+    }
+
+    describe("strict", () => {
+      it("accepts group ids in the viewer's scope", async () => {
+        const session = sessionAt(branchA.id, branchA.path);
+        await expect(
+          resolveDefinitionGroupsStrict(session, definitionWith([branchA.id, leafA.id])),
+        ).resolves.toBeUndefined();
+      });
+
+      it("accepts a definition without group rules", async () => {
+        const session = sessionAt(branchA.id, branchA.path);
+        await expect(resolveDefinitionGroupsStrict(session, emptyDefinition())).resolves.toBeUndefined();
+      });
+
+      it("rejects a group outside the viewer's scope with ValidationError", async () => {
+        const session = sessionAt(branchA.id, branchA.path);
+        await expect(resolveDefinitionGroupsStrict(session, definitionWith([branchB.id]))).rejects.toBeInstanceOf(
+          ValidationError,
+        );
+      });
+
+      it("rejects an ancestor of the viewer's group", async () => {
+        const session = sessionAt(branchA.id, branchA.path);
+        await expect(resolveDefinitionGroupsStrict(session, definitionWith([root.id]))).rejects.toBeInstanceOf(
+          ValidationError,
+        );
+      });
+
+      it("rejects a nonexistent group", async () => {
+        const session = sessionAt(root.id, root.path);
+        await expect(resolveDefinitionGroupsStrict(session, definitionWith([999_999_999]))).rejects.toBeInstanceOf(
+          ValidationError,
+        );
+      });
+
+      it("rejects a soft-deleted group", async () => {
+        const created = await db.group.create({
+          data: { organizationId: leafA.organizationId, parentId: branchA.id, depth: 2, name: "Gone", path: "" },
+        });
+        const deleted = await db.group.update({
+          where: { id: created.id },
+          data: { path: `${branchA.path}${created.id}/`, deletedAt: new Date() },
+        });
+        const session = sessionAt(branchA.id, branchA.path);
+        await expect(resolveDefinitionGroupsStrict(session, definitionWith([deleted.id]))).rejects.toBeInstanceOf(
+          ValidationError,
+        );
+      });
+
+      it("rejects when only one id of a rule is invalid", async () => {
+        const session = sessionAt(branchA.id, branchA.path);
+        await expect(
+          resolveDefinitionGroupsStrict(session, definitionWith([leafA.id, branchB.id])),
+        ).rejects.toBeInstanceOf(ValidationError);
+      });
+    });
+
+    describe("lenient", () => {
+      it("keeps valid group rules untouched and reports nothing dropped", async () => {
+        const session = sessionAt(branchA.id, branchA.path);
+        const definition = definitionWith([leafA.id]);
+        const result = await resolveDefinitionGroupsLenient(session, definition);
+        expect(result.definition).toEqual(definition);
+        expect(result.dropped).toBe(false);
+      });
+
+      it("drops a rule whose group is out of scope and reports it", async () => {
+        const session = sessionAt(branchA.id, branchA.path);
+        const result = await resolveDefinitionGroupsLenient(session, definitionWith([branchB.id], [leafA.id]));
+        expect(result.dropped).toBe(true);
+        expect(result.definition.filter.groups).toEqual([
+          { op: "AND", rules: [{ field: "group", operator: "inSubtreeOf", value: [leafA.id] }] },
+        ]);
+      });
+
+      it("drops the whole rule when only some of its ids are invalid", async () => {
+        const session = sessionAt(branchA.id, branchA.path);
+        const result = await resolveDefinitionGroupsLenient(session, definitionWith([leafA.id, branchB.id]));
+        expect(result.dropped).toBe(true);
+        expect(result.definition.filter.groups).toEqual([]);
+      });
+
+      it("keeps other rules in a group and removes only the group rule", async () => {
+        const session = sessionAt(branchA.id, branchA.path);
+        const definition = emptyDefinition();
+        definition.filter.groups = [
+          {
+            op: "OR",
+            rules: [
+              { field: "sex", operator: "isAnyOf", value: ["L"] },
+              { field: "group", operator: "inSubtreeOf", value: [branchB.id] },
+            ],
+          },
+        ];
+        const result = await resolveDefinitionGroupsLenient(session, definition);
+        expect(result.dropped).toBe(true);
+        expect(result.definition.filter.groups).toEqual([
+          { op: "OR", rules: [{ field: "sex", operator: "isAnyOf", value: ["L"] }] },
+        ]);
+      });
+
+      it("does not mutate its input", async () => {
+        const session = sessionAt(branchA.id, branchA.path);
+        const definition = definitionWith([branchB.id]);
+        const snapshot = structuredClone(definition);
+        await resolveDefinitionGroupsLenient(session, definition);
+        expect(definition).toEqual(snapshot);
+      });
     });
   });
 });

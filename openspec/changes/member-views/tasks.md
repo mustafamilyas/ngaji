@@ -16,7 +16,7 @@
 ## 3. Authorization & resolution
 
 - [x] 3.1 Add `member_view.*` actions and the resolved view target (`groupId`, `ownerId`, `ownerIsActive`, `ownerGroupId`) to `lib/authz.ts`; verify `lib/authz.test.ts` covers every scenario in the authorization delta (404 for ancestor/descendant/other branch, 403 for non-owner and non-orphan transfer)
-- [ ] 3.2 Add `resolveMemberView` to `lib/resolve.ts` and group-ID resolution for definitions (strict reject / lenient drop); verify tests: deleted view → 404, deleted or out-of-scope group handled per mode
+- [x] 3.2 Add `resolveMemberView` to `lib/resolve.ts` and group-ID resolution for definitions (strict reject / lenient drop); verify tests: deleted view → 404, deleted or out-of-scope group handled per mode
 
 **Checkpoint**: `pnpm test` green; cross-group view access fails closed.
 

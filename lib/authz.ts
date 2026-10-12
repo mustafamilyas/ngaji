@@ -55,7 +55,8 @@ type MemberViewTarget = {
   groupId: number;
   ownerId: number;
   ownerIsActive: boolean;
-  ownerGroupId: number;
+  /** null when the owner has no role assignment (always orphaned). */
+  ownerGroupId: number | null;
 };
 
 const ROLE_RANK: Record<Role, number> = { USER: 0, ADMIN: 1, OWNER: 2 };
