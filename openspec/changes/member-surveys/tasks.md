@@ -29,7 +29,7 @@
 
 ## 5. Responses
 
-- [ ] 5.1 `lib/survey/responses.ts` save (replace-all except archived, upsert, `survey_response.save` audit with before/after) and delete (`survey_response.delete`); verify DB tests for every "survey-responses" scenario (inactive member rejected, ancestor denied, overwrite, delete audited)
+- [x] 5.1 `lib/survey/responses.ts` save (replace-all except archived, upsert, `survey_response.save` audit with before/after) and delete (`survey_response.delete`); verify DB tests for every "survey-responses" scenario (inactive member rejected, ancestor denied, overwrite, delete audited)
 - [ ] 5.2 `/survei/[id]/isi` entry page with member autocomplete (reuse/extract from check-in), prefill via `?anggota=`, "Simpan & anggota berikutnya"; verify page test and in the preview at mobile width
 - [ ] 5.3 "Responden" tab (scope-filtered list, search, group filter, pagination, edit link, delete with confirm); verify page test shows only in-scope respondents
 

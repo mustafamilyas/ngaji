@@ -118,3 +118,27 @@ export function yesNoQuestion(label: string): SurveyFormInput["questions"][numbe
     options: [{ label: "Ya" }, { label: "Tidak" }],
   };
 }
+
+/**
+ * One member's answers to a survey. Shape-only: per-type rules (ranges,
+ * required, archived ids) are enforced against the stored form by
+ * `validateAnswers`, so no length limits are duplicated here beyond a sanity cap.
+ */
+export const surveyResponseSaveSchema = z.object({
+  surveyId: idSchema,
+  memberId: idSchema,
+  answers: z
+    .array(
+      z.object({
+        questionId: idSchema,
+        optionIds: z.array(idSchema).max(SURVEY_MAX_OPTIONS).optional(),
+        number: z.number().optional(),
+        text: z.string().optional(),
+      }),
+    )
+    .max(SURVEY_MAX_QUESTIONS),
+});
+export type SurveyResponseSaveInput = z.infer<typeof surveyResponseSaveSchema>;
+
+export const surveyResponseDeleteSchema = z.object({ surveyId: idSchema, memberId: idSchema });
+export type SurveyResponseDeleteInput = z.infer<typeof surveyResponseDeleteSchema>;
