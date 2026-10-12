@@ -69,7 +69,7 @@ One entry per queryable field: key, label (Indonesian), type (`text` | `choice` 
 
 ### 4. Definition → Prisma (`lib/member-view/query.ts`, pure)
 `buildWhere(definition, today)` returns a Prisma `MemberWhereInput`; the caller ANDs it with `{ deletedAt: null, group: { path: { startsWith: viewer.groupPath } } }` so scope can never be bypassed.
-- Text: `contains` / `equals` on trimmed value (ASCII case-insensitive is accepted; noted in risks).
+- Text: `contains` / `equals` on trimmed value. `contains` is LIKE (ASCII case-insensitive); `equals` is Prisma `equals`, which is case-sensitive on SQLite (decided during implementation; noted in risks).
 - Choice: `in` / `notIn`.
 - Dates: string comparisons (`lt`, `lte`, `gt`, `gte`); "within the last N days" → `gte: addDays(today, -N), lte: today`.
 - **Age → birth date**: with `cut(N) = (todayYear − N) + "-" + MM-DD of today` as a plain string, `age ≥ N ⇔ birthDate ≤ cut(N)` and `age ≤ N ⇔ birthDate > cut(N + 1)`; `=`, `≠`, `>`, `<`, `between` derive from these. Comparing strings avoids Date math and matches `ageInYears` exactly, including Feb 29 (a non-existent string like `2023-02-29` still sorts correctly). Property-tested against `ageInYears`.
@@ -100,7 +100,7 @@ The draft definition is serialized as compact JSON → base64url in `?d=`. Absen
 
 ## Risks / Trade-offs
 
-- [SQLite `LIKE` is ASCII-only case-insensitive] → acceptable for Indonesian names (mostly ASCII); documented.
+- [SQLite `LIKE` is ASCII-only case-insensitive; `equals` is case-sensitive] → acceptable for Indonesian names (mostly ASCII); users wanting case-insensitive matching use `contains`.
 - [Saved definitions drift as enums/fields change] → `version` + lenient load with warnings; a future breaking change adds a migration function `v1 → v2` in `definition.ts`.
 - [Long URL drafts] → `VIEW_MAX_DRAFT_LENGTH` + rule limits keep drafts well below URL limits; beyond it the draft is rejected with a notice.
 - [Many sections in org-level grouping (e.g. 200 kelompok)] → counts come from one `groupBy`; only the first few sections load members initially.

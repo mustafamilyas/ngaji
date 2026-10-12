@@ -30,7 +30,7 @@ Rules SHALL only reference these fields, with these operators:
 
 | Field | Type | Operators |
 |---|---|---|
-| name, birthPlace | text | contains, equals (case-insensitive, trimmed) |
+| name, birthPlace | text | contains (case-insensitive for ASCII), equals (exact match, case-sensitive on SQLite); values trimmed |
 | sex, status, maritalStatus, workStatus | choice | is any of, is none of (values must be valid enum values) |
 | birthDate, joinedAt | date | before, on or before, after, on or after, between (inclusive), within the last N days |
 | exitedAt | date (nullable) | the date operators, plus is empty / is not empty |
