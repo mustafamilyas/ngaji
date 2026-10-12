@@ -2,6 +2,11 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
+// The toolbar is a client component that calls useRouter(); there is no app router when rendering to static markup.
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
+  useRouter: () => ({ replace: vi.fn() }),
+}));
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
@@ -61,6 +66,21 @@ describe("MemberViewPage", () => {
     expect(html).toContain("Siswa Satu");
     expect(html).toContain("Anggota Uji");
     expect(html).toContain("2 anggota");
+  });
+
+  it("renders the filter bar with a chip per rule group and the Tampilan menu", async () => {
+    const fixture = await buildPageFixture("tampilan-toolbar");
+    const { view, owner } = await makeView(fixture, "Dengan Filter", {
+      ...emptyDefinition(),
+      columns: ["status"],
+      filter: { op: "AND", groups: [{ op: "AND", rules: [{ field: "age", operator: "between", value: [13, 17] }] }] },
+    });
+    mockAuthSession(auth, { user: sessionFor(owner.id, "USER", fixture.leaf) });
+
+    const html = await render(view.id);
+    expect(html).toContain("Usia antara 13 dan 17");
+    expect(html).toContain("Tambah filter");
+    expect(html).toContain("Tampilan");
   });
 
   it("never sends a hidden PII column to the browser", async () => {

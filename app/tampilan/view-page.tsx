@@ -8,10 +8,12 @@ import { today } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
 import { formatDate, parsePage } from "@/lib/filters";
 import { dateOf } from "@/lib/dates";
+import { loadEditorOptions } from "@/lib/member-view/editor-options";
 import { listViewMembers } from "@/lib/member-view/results";
 import { loadViewDefinition } from "@/lib/member-view/load";
 import { listViewSections } from "@/lib/member-view/sections";
 import { pageHref } from "@/lib/pagination";
+import { ViewToolbar } from "./view-toolbar";
 import { ViewSections } from "./view-sections";
 import { ViewMembersTable, type ViewMemberRow } from "./view-table";
 
@@ -46,6 +48,7 @@ export async function ViewPage({ viewId, searchParams }: { viewId: number | null
   const asOf = today();
   const basePath = viewId === null ? "/tampilan/baru" : `/tampilan/${viewId}`;
 
+  const options = await loadEditorOptions(session.user);
   const sectionResult = definition.groupBy ? await listViewSections(session.user, definition, { today: asOf }) : null;
   const grouped = sectionResult?.grouped ? sectionResult : null;
   const flat = grouped
@@ -71,6 +74,8 @@ export async function ViewPage({ viewId, searchParams }: { viewId: number | null
           ) : undefined
         }
       />
+
+      <ViewToolbar definition={definition} options={options} basePath={basePath} />
 
       {draftUnreadable && <Notice>Perubahan pada tautan tidak dapat dibaca. Menampilkan tampilan tersimpan.</Notice>}
       {dropped && <Notice>Beberapa aturan diabaikan karena tidak berlaku lagi.</Notice>}

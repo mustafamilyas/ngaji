@@ -2,6 +2,11 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
+// The toolbar is a client component that calls useRouter(); there is no app router when rendering to static markup.
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
+  useRouter: () => ({ replace: vi.fn() }),
+}));
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";

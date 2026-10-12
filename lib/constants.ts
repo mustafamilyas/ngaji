@@ -65,6 +65,8 @@ export const VIEW_MAX_GROUP_LEVEL = 20;
 export const VIEW_SECTION_PAGE_SIZE = 25;
 /** Sections that start expanded; the rest start collapsed. */
 export const VIEW_EXPANDED_SECTIONS = 5;
+/** Most in-scope groups offered in the view editor's group picker. */
+export const VIEW_GROUP_OPTIONS_LIMIT = 500;
 /** Max length (characters) of the base64url `?d=` URL draft. */
 export const VIEW_MAX_DRAFT_LENGTH = 4000;
 
