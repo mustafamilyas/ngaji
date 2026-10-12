@@ -1,14 +1,17 @@
 import type { SessionUser } from "@/lib/auth/session-user";
 import { PAGE_SIZE } from "@/lib/constants";
 import { db } from "@/lib/db";
-import { clampPage } from "@/lib/pagination";
+import { paginate } from "@/lib/pagination";
 import { resolveGroups } from "@/lib/resolve";
+import type { SortState } from "@/lib/sort";
+import { DEFAULT_SURVEY_SORT, type SurveySortKey, sortSurveys } from "./list-sort";
 
 export type ListSurveysFilter = {
   page?: number;
   search?: string;
   /** Surveys that apply to any of these groups; default the caller's own group. */
   groupIds?: number[];
+  sort?: SortState<SurveySortKey>;
 };
 
 /** `"1/5/9/"` → `["1/", "1/5/", "1/5/9/"]`: the group itself and every ancestor. */
@@ -18,7 +21,7 @@ function selfAndAncestorPaths(path: string): string[] {
 }
 
 /**
- * Visible surveys (survey-forms spec "Survey list"), newest first. A survey
+ * Visible surveys (survey-forms spec "Survey list"), newest first by default. A survey
  * applies to group Y when it is owned by an ancestor of Y, Y itself or a
  * descendant of Y (DESIGN.md §5.3, as for activities); with no group
  * selected Y is the caller's own group, which is exactly the visible set.
@@ -42,13 +45,8 @@ export async function listSurveys(session: SessionUser, filter: ListSurveysFilte
     ...(filter.search ? { title: { contains: filter.search } } : {}),
   };
 
-  const total = await db.survey.count({ where });
-  const page = clampPage(filter.page ?? 1, total, PAGE_SIZE);
   const rows = await db.survey.findMany({
     where,
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    skip: (page - 1) * PAGE_SIZE,
-    take: PAGE_SIZE,
     select: {
       id: true,
       title: true,
@@ -64,12 +62,20 @@ export async function listSurveys(session: SessionUser, filter: ListSurveysFilte
     },
   });
 
-  const surveys = rows.map(({ group: { path, ...group }, _count, ...survey }) => ({
+  const all = rows.map(({ group: { path, ...group }, _count, ...survey }) => ({
     ...survey,
     group,
     responseCount: _count.responses,
     inherited: path !== session.groupPath && session.groupPath.startsWith(path),
   }));
 
-  return { surveys, total, page, pageSize: PAGE_SIZE };
+  const totals = {
+    surveys: all.length,
+    owned: all.filter((s) => s.group.id === session.groupId).length,
+    inherited: all.filter((s) => s.inherited).length,
+    responses: all.reduce((sum, s) => sum + s.responseCount, 0),
+  };
+  const { items: surveys, total, page, pageSize } = paginate(sortSurveys(all, filter.sort ?? DEFAULT_SURVEY_SORT), filter.page ?? 1, PAGE_SIZE);
+
+  return { surveys, total, page, pageSize, totals };
 }

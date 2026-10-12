@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   CalendarDays,
+  ClipboardList,
   LayoutDashboard,
   LogOut,
   Network,
@@ -26,6 +27,7 @@ const ICONS: Record<string, LucideIcon> = {
   "/grup": Network,
   "/anggota": Users,
   "/kegiatan": CalendarDays,
+  "/survei": ClipboardList,
   "/statistik": BarChart3,
   "/pengguna": UserCog,
   "/audit": ScrollText,

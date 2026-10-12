@@ -123,6 +123,26 @@ describe("lib/survey/list", () => {
     expect(branchView.surveys.find((s) => s.id === ids.root)?.responseCount).toBe(0);
   });
 
+  it("sorts by the requested column before paginating", async () => {
+    const session = sessionFor(fx.actorId, "ADMIN", fx.branch);
+
+    const byTitle = await listSurveys(session, { sort: { key: "judul", dir: "asc" } });
+    const byResponses = await listSurveys(session, { sort: { key: "respons", dir: "desc" } });
+
+    expect(byTitle.surveys.map((s) => s.id)).toEqual([ids.branch, ids.leaf, ids.otherLeaf, ids.root]);
+    expect(byResponses.surveys[0].id).toBe(ids.branch);
+  });
+
+  it("totals the whole filtered list, not just the page", async () => {
+    const branchView = await listSurveys(sessionFor(fx.actorId, "ADMIN", fx.branch));
+    const leafView = await listSurveys(sessionFor(fx.actorId, "USER", fx.leaf));
+    const searched = await listSurveys(sessionFor(fx.actorId, "ADMIN", fx.branch), { search: "ramadhan" });
+
+    expect(branchView.totals).toEqual({ surveys: 4, owned: 1, inherited: 1, responses: 2 });
+    expect(leafView.totals).toEqual({ surveys: 3, owned: 1, inherited: 2, responses: 1 });
+    expect(searched.totals).toEqual({ surveys: 1, owned: 1, inherited: 0, responses: 2 });
+  });
+
   it("paginates with PAGE_SIZE and clamps an out-of-range page to the last one", async () => {
     const extraRow = await db.group.create({
       data: { organizationId: fx.organizationId, parentId: fx.branch.id, depth: 2, name: "Paged", path: "" },

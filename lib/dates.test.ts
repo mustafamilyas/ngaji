@@ -3,6 +3,7 @@ import {
   addDays,
   addMonthsOnDay,
   ageInYears,
+  dateOf,
   daysBetween,
   fromDbDate,
   isDateString,
@@ -28,6 +29,13 @@ describe("ageInYears", () => {
 
   it("does not count a birthday that has not happened yet this year", () => {
     expect(ageInYears("1966-09-12", "2026-09-11")).toBe(59);
+  });
+});
+
+describe("dateOf", () => {
+  it("returns the Jakarta calendar date, which is ahead of UTC after 17:00", () => {
+    expect(dateOf(new Date("2026-01-01T16:59:00Z"))).toBe("2026-01-01");
+    expect(dateOf(new Date("2026-01-01T17:00:00Z"))).toBe("2026-01-02");
   });
 });
 
