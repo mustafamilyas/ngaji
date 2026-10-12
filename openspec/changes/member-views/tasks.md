@@ -31,7 +31,7 @@
 ## 5. Pages
 
 - [x] 5.1 `/tampilan` list page + sidebar item "Tampilan" in `lib/nav.ts`; verify page test renders only own-group views
-- [ ] 5.2 `/tampilan/[id]` + `/tampilan/baru` result rendering (ungrouped table with columns from the definition, grouped collapsible sections with counts and "Tampilkan lebih banyak" server action, stale-rule notice); verify page tests incl. hidden PII column not in the response
+- [x] 5.2 `/tampilan/[id]` + `/tampilan/baru` result rendering (ungrouped table with columns from the definition, grouped collapsible sections with counts and "Tampilkan lebih banyak" server action, stale-rule notice); verify page tests incl. hidden PII column not in the response
 - [ ] 5.3 Filter bar (rule groups as chips, AND/OR toggles, per-type operator/value inputs, mobile sheet) and "Tampilan" menu (group-by incl. age bucket editor from `AGE_BRACKETS`, sort, columns) writing the `?d=` draft; verify in the browser preview at desktop and mobile width
 - [ ] 5.4 Header actions: "Simpan" / "Batalkan" (owner), "Simpan sebagai baru" dialog, rename dialog, "Ambil alih" (ADMIN+, orphaned), danger zone delete; verify page tests for control visibility per role/ownership and the full save → reload flow in the preview
 

@@ -122,12 +122,12 @@ export async function resolveUser(session: SessionUser, userId: number) {
 export async function resolveMemberView(_session: SessionUser, viewId: number) {
   const view = await db.memberView.findUnique({
     where: { id: viewId },
-    include: { owner: { select: { isActive: true, role: { select: { groupId: true } } } } },
+    include: { owner: { select: { name: true, isActive: true, role: { select: { groupId: true } } } } },
   });
   if (!view) throw new NotFoundError();
 
   const { owner, ...rest } = view;
-  return { ...rest, ownerIsActive: owner.isActive, ownerGroupId: owner.role?.groupId ?? null };
+  return { ...rest, ownerName: owner.name, ownerIsActive: owner.isActive, ownerGroupId: owner.role?.groupId ?? null };
 }
 
 const isGroupRule = (rule: Rule) => rule.field === "group";
