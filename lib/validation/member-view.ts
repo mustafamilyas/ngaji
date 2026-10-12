@@ -12,6 +12,7 @@ import {
   MAX_NAME_LENGTH,
 } from "@/lib/constants";
 import { isDateString } from "@/lib/dates";
+import { VIEW_SOURCES, VIEW_VISIBILITIES } from "@/lib/validation/enums";
 import { MEMBER_VIEW_FIELDS, GROUPABLE_FIELDS, RULE_FIELD_KEYS, SORT_FIELD_KEYS, operatorsFor, type FieldKey, type Operator } from "@/lib/member-view/fields";
 import { DEFAULT_MEMBER_COLUMNS, MEMBER_COLUMNS, isMemberColumnKey, type MemberColumnKey } from "@/lib/member/columns";
 
@@ -268,3 +269,30 @@ export function parseDefinitionLenient(input: unknown): LenientResult {
 
   return { definition, warnings: [...warnings] };
 }
+
+// ---- Mutation inputs ----
+
+const viewIdSchema = z.coerce.number().int().positive();
+
+/** `groupId` is deliberately absent: the owning group always comes from the session. */
+export const createMemberViewSchema = z.object({
+  name: viewNameSchema,
+  definition: definitionSchema,
+  source: z.enum(VIEW_SOURCES).default("member"),
+  visibility: z.enum(VIEW_VISIBILITIES).default("GROUP"),
+});
+export type CreateMemberViewInput = z.infer<typeof createMemberViewSchema>;
+
+export const updateMemberViewSchema = z
+  .object({
+    viewId: viewIdSchema,
+    name: viewNameSchema.optional(),
+    definition: definitionSchema.optional(),
+  })
+  .refine((input) => input.name !== undefined || input.definition !== undefined, {
+    message: "Tidak ada perubahan",
+  });
+export type UpdateMemberViewInput = z.infer<typeof updateMemberViewSchema>;
+
+export const memberViewIdSchema = z.object({ viewId: viewIdSchema });
+export type MemberViewIdInput = z.infer<typeof memberViewIdSchema>;
