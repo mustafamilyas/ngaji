@@ -107,4 +107,8 @@ export const AUDIT_ACTIONS = [
   "survey.delete",
   "survey_response.save",
   "survey_response.delete",
+  "member_view.create",
+  "member_view.update",
+  "member_view.delete",
+  "member_view.transfer",
 ] as const;

@@ -43,6 +43,8 @@ type MemberStatus     = 'AKTIF' | 'KELUAR' | 'PINDAH' | 'MENINGGAL'
 type Freq             = 'ONCE' | 'DAILY' | 'WEEKLY' | 'MONTHLY'
 type OccurrenceStatus = 'SCHEDULED' | 'CANCELLED'
 type AttendanceStatus = 'HADIR' | 'IZIN'
+type ViewSource       = 'member'      // sumber data tampilan; hanya 'member' untuk sekarang
+type ViewVisibility   = 'GROUP'       // hanya 'GROUP' untuk sekarang (tampilan pribadi = non-MVP)
 ```
 
 ```prisma
@@ -86,6 +88,7 @@ model Group {
   members        Member[]
   activities     Activity[]
   userRoles      UserGroupRole[]
+  memberViews    MemberView[]
 
   @@index([path])
   @@index([parentId])
@@ -106,6 +109,8 @@ model User {
   createdActivities  Activity[]     @relation("activityCreatedBy")
   recordedAttendance Attendance[]   @relation("attendanceRecordedBy")
   auditLogs          AuditLog[]
+  ownedMemberViews   MemberView[]   @relation("memberViewOwner")
+  createdMemberViews MemberView[]   @relation("memberViewCreatedBy")
 }
 
 /// MVP: @@unique([userId]). Non-MVP multi-peran = hapus unique ini saja.
@@ -216,6 +221,27 @@ model Attendance {
 
   @@unique([occurrenceId, memberId])
   @@index([memberId])
+}
+
+/// Tampilan anggota tersimpan (§12). Dimiliki satu grup; hanya terlihat oleh user di grup itu persis (bukan leluhur/turunan).
+model MemberView {
+  id          Int       @id @default(autoincrement())
+  groupId     Int                          // grup pembuat saat dibuat; tidak pernah dari client
+  ownerId     Int                          // bisa berbeda dari createdById setelah diambil alih
+  createdById Int
+  name        String                       // unik di antara tampilan grup yang belum dihapus, tanpa beda huruf besar/kecil (cek di app)
+  source      String    @default("member") // ViewSource
+  visibility  String    @default("GROUP")  // ViewVisibility
+  definition  Json                         // divalidasi lib/validation/member-view.ts di setiap simpan dan muat
+  deletedAt   DateTime?                    // soft delete
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  group     Group @relation(fields: [groupId], references: [id])
+  owner     User  @relation("memberViewOwner", fields: [ownerId], references: [id])
+  createdBy User  @relation("memberViewCreatedBy", fields: [createdById], references: [id])
+
+  @@index([groupId, deletedAt])
 }
 
 /// Formulir survei. Dimiliki satu grup; otomatis berlaku ke semua turunannya (pewarisan seperti Activity, §3.3).
@@ -344,7 +370,8 @@ model AuditLog {
 - Semua **tanggal** — di kode aplikasi maupun kolom Prisma — berbentuk string `YYYY-MM-DD` (SQLite tidak punya tipe DATE native, jadi kolom tanggal didefinisikan `String`, bukan `DateTime`). Tidak ada konversi Date↔string di perbatasan Prisma untuk tanggal murni; `lib/dates.ts` hanya berisi util kalkulasi (tambah hari, cari Minggu terdekat, dst.) yang beroperasi langsung di atas string `YYYY-MM-DD` dan `Intl`/`Date` sesekali secara internal untuk itu. Perbandingan/urutan tanggal tetap valid karena string ISO `YYYY-MM-DD` terurut secara leksikografis sama dengan urutan kronologisnya. Kolom non-tanggal (`createdAt`, `updatedAt`, `recordedAt`) tetap `DateTime` biasa.
 - `weekdays` pada `Activity` disimpan sebagai kolom `Json` (array angka), karena SQLite tidak mendukung scalar list (`Int[]`) di Prisma. Validasi bentuk & isi array tetap di zod (`lib/validation/activity.ts`).
 - **Survei** (§11): `Survey` soft delete (`deletedAt: null` wajib di setiap query, seperti `Activity`). `SurveyResponse`/`SurveyAnswer` dihapus permanen (seperti `Attendance`), isi yang dihapus ada di audit. Jawaban adalah PII anggota: hanya terbaca lewat query yang terfilter scope dan viewer audit OWNER.
-- Enum domain (`Role`, `Sex`, `MaritalStatus`, `WorkStatus`, `MemberStatus`, `Freq`, `OccurrenceStatus`, `AttendanceStatus`, `QuestionType`) bukan Prisma `enum` (tidak didukung SQLite) — kolomnya `String`, nilai valid ditegakkan oleh TS union + zod di `lib/validation/enums.ts`, bukan oleh database.
+- **Tampilan anggota** (§12): `MemberView` soft delete (`deletedAt: null` wajib di setiap query). `definition` adalah `Json` (aturan, urutan, pengelompokan, kolom) dan tidak pernah dipercaya mentah: selalu di-parse zod (ketat saat simpan, longgar saat muat).
+- Enum domain (`Role`, `Sex`, `MaritalStatus`, `WorkStatus`, `MemberStatus`, `Freq`, `OccurrenceStatus`, `AttendanceStatus`, `QuestionType`, `ViewSource`, `ViewVisibility`) bukan Prisma `enum` (tidak didukung SQLite) — kolomnya `String`, nilai valid ditegakkan oleh TS union + zod di `lib/validation/enums.ts`, bukan oleh database.
 
 ---
 
@@ -370,6 +397,10 @@ Setiap user punya satu `UserGroupRole (groupId, role)`. **Scope** = grup itu + s
 | Lihat survei & hasilnya (§11): leluhur / grup user / dalam scope; data dibatasi scope | ✅ | ✅ | ✅ |
 | Buat / ubah / hapus (soft) survei **milik grup user sendiri** | ✅ | ✅ | ❌ |
 | Isi / ubah / hapus respons survei untuk anggota aktif di grup daun dalam scope (user di grup pemilik survei atau di bawahnya) | ✅ | ✅ | ✅ |
+| Lihat tampilan anggota (§12) **milik grup user sendiri** (persis, bukan leluhur/turunan) | ✅ | ✅ | ✅ |
+| Buat tampilan anggota di grup user sendiri; "Simpan sebagai baru" | ✅ | ✅ | ✅ |
+| Ubah / hapus (soft) tampilan anggota — hanya **pemiliknya** | ✅ | ✅ | ✅ |
+| Ambil alih tampilan yatim (pemilik nonaktif / pindah grup) di grup user sendiri | ✅ | ✅ | ❌ |
 | Buat user USER / ADMIN untuk grup dalam scope | ✅ | ✅ | ❌ |
 | Reset password user lain | ✅ semua dalam scope | ✅ hanya USER **di grup yang sama** | ❌ |
 | Buat user OWNER (grup dalam scope) | ✅ | ❌ | ❌ |
@@ -417,6 +448,7 @@ type Action =
   | 'attendance.record'
   | 'survey.view' | 'survey.create' | 'survey.update' | 'survey.delete'
   | 'survey_response.record' | 'survey_response.delete'
+  | 'member_view.view' | 'member_view.create' | 'member_view.update' | 'member_view.delete' | 'member_view.transfer'
   | 'stats.view'
   | 'user.view' | 'user.create' | 'user.updateRole' | 'user.move'
   | 'user.setActive' | 'user.resetPassword'
@@ -441,6 +473,10 @@ function visibleGroupsWhere(session: Session): Prisma.GroupWhereInput   // { pat
 | `survey.create` | peran ≥ ADMIN; `groupId === session.groupId` |
 | `survey.update/delete` | peran ≥ ADMIN; `survey.groupId === session.groupId` |
 | `survey_response.record/delete` | target `{ surveyGroupPath, memberGroupPath, memberIsLeaf }`: user di grup pemilik survei atau di bawahnya; grup anggota daun dalam scope (di luar scope → 404, di atas pemilik → 403). `record` juga mensyaratkan anggota `AKTIF` — aturan data, dicek di action, bukan di `authorize` |
+| `member_view.view` | target `{ groupId, ownerId, ownerIsActive, ownerGroupId }`: `view.groupId === session.groupId` persis, selain itu 404 (leluhur dan turunan juga 404) |
+| `member_view.create` | `groupId === session.groupId`; semua peran |
+| `member_view.update/delete` | seperti `view`, lalu `ownerId === session.user.id` (selain itu 403, ADMIN pun) |
+| `member_view.transfer` | seperti `view`, peran ≥ ADMIN, dan tampilan yatim (`!ownerIsActive` atau `ownerGroupId !== view.groupId`); selain itu 403 |
 | `user.create` | peran ≥ ADMIN; grup target dalam scope; peran baru OWNER hanya oleh OWNER |
 | `user.resetPassword` | §3.4 |
 | `user.updateRole/move/setActive` | OWNER; target dalam scope; bukan diri sendiri; bukan OWNER root terakhir |
@@ -492,6 +528,12 @@ Helper `audit(tx, { action, entity, entityId, groupId, before, after, meta })` d
 | `survey.create/update/delete` | formulir survei | snapshot survei + pertanyaan + opsi; `groupId` = grup pemilik; ubah formulir = satu `survey.update` per simpan |
 | `survey_response.save` | simpan/timpa respons | `before` = jawaban lama (null jika baru), `after` = jawaban baru; `groupId` = grup anggota; `meta: { surveyId, memberId }` |
 | `survey_response.delete` | hapus respons | `before` = jawaban yang dihapus; `groupId` = grup anggota; `meta: { surveyId, memberId }` |
+| `member_view.create` | simpan tampilan baru | `after` = nama, source, visibility, definisi; `groupId` = grup pemilik |
+| `member_view.update` | simpan / ubah nama | `before`/`after` = nama + definisi |
+| `member_view.delete` | hapus (soft) | `before` = snapshot tampilan |
+| `member_view.transfer` | ambil alih | `meta: { fromOwnerId, toOwnerId }` |
+
+Membuka/mendaftar tampilan dan draf yang belum disimpan (`?d=`) tidak diaudit.
 
 Halaman `/audit` (OWNER): terbaru dulu, filter grup (multi, termasuk turunan; memilih grup menyembunyikan entri `auth.*` tanpa grup) / rentang tanggal (default semua waktu) / aksi / aktor, paginasi (§7.1).
 
@@ -606,6 +648,8 @@ Rentang default "30 hari terakhir" = 30 hari inklusif (today−29 .. today). Sta
 | `/survei` | Daftar survei yang terlihat (milik leluhur atau grup dalam scope): judul, grup pemilik, jumlah respons, badge *warisan*; cari judul + filter grup (survei yang berlaku untuk grup terpilih); `PAGE_SIZE`; "Buat survei" hanya ADMIN+ (§11) |
 | `/survei/baru`, `/survei/[id]` | Pembuat formulir; detail (§7.2) tab `?tab=hasil` (default) / `responden` / `formulir` — hasil: satu grup (`?grup=`) + filter demografi (`jk`, `umur`, `kerja`, `nikah`), tingkat respons, "Belum mengisi", grafik per pertanyaan, rincian per sub-grup; responden: daftar respons dalam scope (cari, filter grup, hapus); formulir: hanya pemilik yang bisa mengubah, lainnya baca saja; teks panjang dipaginasi lewat `?teks=<idPertanyaan>:<halaman>` |
 | `/survei/[id]/isi` | Isi / ubah jawaban satu anggota (autocomplete nama, `?anggota=` untuk prefill, "Simpan & anggota berikutnya"); hanya yang boleh mengisi, mobile-first |
+| `/tampilan` | Daftar tampilan anggota milik grup user (nama, pemilik, terakhir diperbarui); cari nama, `PAGE_SIZE`, "Buat tampilan"; semua user (§12) |
+| `/tampilan/baru`, `/tampilan/[id]` | Hasil tampilan: bilah filter (aturan sebagai chip, sheet di HP), menu "Tampilan" (kelompokkan, urutkan, kolom), perubahan belum disimpan di `?d=`; header: Simpan / Batalkan (pemilik), Simpan sebagai baru, Ubah nama (pemilik), Ambil alih (ADMIN+, yatim); zona berbahaya hapus (pemilik) |
 | `/statistik` | Tab: anggota, kegiatan, partisipasi; filter satu grup + rentang tanggal (tidak di tab anggota); tab partisipasi bisa cari nama dan dipaginasi 50/hal |
 | `/pengguna` | OWNER & ADMIN: buat user (dialog "Tambah pengguna"); OWNER: ubah peran, pindah grup, nonaktifkan; reset password sesuai §3.4; cari nama/username + filter grup (multi, termasuk turunan); paginasi 50/hal; kontrol per user di dialog "Kelola", hanya tampil bila ada aksi yang diizinkan |
 | `/pengaturan/jenjang` | OWNER root: rename level |
@@ -625,7 +669,7 @@ Rentang default "30 hari terakhir" = 30 hari inklusif (today−29 .. today). Sta
 ### 7.2 Konvensi tata letak halaman
 
 - **Header** (`components/page-header.tsx`): breadcrumb (akar bagian dulu, halaman sekarang terakhir tanpa tautan; di halaman grup = leluhur grup, hanya grup dalam scope yang bertautan — `lib/group/trail.ts`), judul + badge status, baris fakta ikon + teks, dan aksi di kanan (di HP di bawah judul).
-- **Aksi**: aksi harian di header (sekunder `outline`, utama `default`, dengan ikon). Aksi yang tidak bisa dibatalkan (hapus, akhiri) **tidak** di header, melainkan di blok *Zona berbahaya* yang menjelaskan akibatnya; tetap dengan `confirm()`.
+- **Aksi**: aksi harian di header (sekunder `outline`, utama `default`, dengan ikon). Aksi yang tidak bisa dibatalkan (hapus, akhiri) **tidak** di header, melainkan di blok *Zona berbahaya* yang menjelaskan akibatnya; konfirmasi lewat dialog (atau `confirm()` untuk form sederhana).
 - **Tab** (`components/tab-nav.tsx`, `lib/tabs.ts`): halaman dengan beberapa bagian berbeda dipisah tab di URL `?tab=` (tab default tidak ditulis); hanya tab aktif yang dirender & di-query. Tab yang tidak boleh dipakai viewer tidak ditampilkan, dan memintanya lewat URL jatuh ke tab default. Pindah tab membuang parameter paginasi/filter tab lain.
 - **Isi**: tiap bagian berupa `Card`; baris daftar bisa diklik penuh. Form panjang dua kolom di layar ≥ sm, tombol simpan di kanan bawah.
 - Halaman daftar (`/statistik`, `/pengguna`, …) memakai header yang sama tanpa breadcrumb di akar bagian; tab `/statistik` mempertahankan filter grup & rentang antar tab.
@@ -725,3 +769,29 @@ Formulir isian khusus per grup yang diisi per anggota oleh admin/user (tanpa tau
 
 ### 11.5 Tidak termasuk (non-MVP)
 Tautan survei publik / isian mandiri, status buka-tutup, respons berulang per anggota, pertanyaan bersyarat, unggah berkas, ekspor hasil (butuh kebijakan PII, §10), dan "duplikat survei" untuk putaran berikutnya.
+
+---
+
+## 12. Tampilan anggota
+
+Daftar anggota tersimpan dengan aturan penyaring, urutan, pengelompokan, dan kolom sendiri, per grup. Spesifikasi & skenario uji: `openspec/changes/member-views/`. `/anggota` tidak berubah.
+
+### 12.1 Kepemilikan & izin
+- Tampilan milik satu grup (grup pembuat saat dibuat, tidak pernah dari client) dan **hanya terlihat oleh user di grup itu persis**; leluhur, turunan, dan cabang lain mendapat 404 (beda dari survei/kegiatan, tidak ada pewarisan). Tampilan terhapus dianggap tidak ada.
+- Semua peran boleh membuat. Hanya **pemilik** yang boleh mengubah/menghapus (403 untuk yang lain, ADMIN pun). Tampilan *yatim* = pemilik nonaktif atau sudah pindah grup: ADMIN/OWNER grup itu dapat "Ambil alih" (`member_view.transfer`); selain itu ditolak.
+- Nama unik per grup di antara tampilan yang belum dihapus, tanpa beda huruf besar/kecil; nama tampilan terhapus boleh dipakai ulang. `source` hanya `member`, `visibility` hanya `GROUP`.
+- `resolveMemberView` (`lib/resolve.ts`) memuat tampilan beserta pemiliknya; setiap halaman dan action berawal dari entitas hasil resolve lalu `authorize`.
+
+### 12.2 Definisi
+- `{ version: 1, filter, sort, groupBy?, columns }` (`lib/validation/member-view.ts`, satu skema zod untuk tampilan tersimpan dan draf URL). `filter` = konjungsi teratas (`AND`/`OR`) atas 0–`VIEW_MAX_RULE_GROUPS` grup aturan, masing-masing konjungsi atas 1–`VIEW_MAX_RULES_PER_GROUP` aturan; satu tingkat saja. Filter kosong = semua anggota dalam scope.
+- Medan & operator ada di satu registri (`lib/member-view/fields.ts`): teks (nama, tempat lahir), pilihan (jenis kelamin, status, status nikah, pekerjaan), tanggal (tanggal lahir, masuk, keluar + kosong/tidak kosong, "dalam N hari terakhir"), usia (bilangan bulat), grup (subtree). **`phone`, `address`, `email` tidak ada di registri**, jadi tidak bisa untuk aturan, urutan, atau pengelompokan; hanya boleh tampil sebagai kolom.
+- Usia dihitung saat melihat (Asia/Jakarta), diubah menjadi batas tanggal lahir berupa string sehingga tetap dihitung di database dan cocok dengan `ageInYears` (termasuk 29 Februari). Satu kunci urut + pemecah seri nama, id; urut usia membalik arah di `birthDate`.
+- Pengelompokan: sifat pilihan, tingkat grup (dari kedalaman grup tampilan sampai daun; seksi = leluhur di tingkat itu), atau kelompok umur (1–`VIEW_MAX_AGE_BUCKETS`, tidak boleh tumpang tindih, awal dari `AGE_BRACKETS`; sisanya "Lainnya"). Seksi kosong tidak ditampilkan.
+- Dua mode parse: **ketat** saat simpan (masalah apa pun menolak, batas tidak dipotong) dan **longgar** saat muat/draf (aturan rusak dibuang dengan peringatan, sehingga tampilan lama tetap terbuka). Id grup di-resolve di server: simpan menolak id di luar scope/terhapus; muat membuang aturannya dengan pemberitahuan "Beberapa aturan diabaikan karena tidak berlaku lagi".
+- Hasil selalu `deletedAt: null` + scope user, di-AND dengan `buildWhere(definition, today)` (`lib/member-view/query.ts`), sehingga definisi tak pernah bisa melewati scope. Tanpa pengelompokan: tabel `PAGE_SIZE` (`?page=`); dengan pengelompokan: seksi bisa dilipat (`VIEW_EXPANDED_SECTIONS` pertama terbuka), `VIEW_SECTION_PAGE_SIZE` anggota pertama + "Tampilkan lebih banyak" (server action yang memvalidasi ulang semuanya). Hanya kolom terpilih yang dirender di server.
+
+### 12.3 Draf & simpan
+- Perubahan aturan/urutan/pengelompokan/kolom langsung berlaku sebagai **draf di URL** (`?d=` = JSON base64url, maks. `VIEW_MAX_DRAFT_LENGTH`), ditandai "Belum disimpan", tidak menulis ke database dan tidak diaudit. Draf rusak/terlalu panjang → tampilan tersimpan dengan pemberitahuan generik.
+- Pemilik: **Simpan** (timpa; definisi dikirim lalu divalidasi ketat) dan **Batalkan** (hapus `?d`). Semua user di grup: **Simpan sebagai baru** (dialog nama, jadi milik user, lalu pindah ke tampilan baru) — selalu tampil, juga di `/tampilan/baru`. Pemilik: **Ubah nama** (dialog). Hapus: zona berbahaya, konfirmasi dialog, kembali ke `/tampilan`.
+- `/tampilan/baru` mulai dari definisi awal: status salah satu dari `AKTIF`, urut nama naik, tanpa pengelompokan, kolom default anggota.
+- Audit: `member_view.create/update/delete/transfer` di transaksi yang sama (§4.5). Teks filter bisa memuat nama (PII), itu sebabnya audit hanya untuk OWNER dalam scope.
