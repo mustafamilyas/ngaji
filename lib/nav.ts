@@ -10,6 +10,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Dasbor" },
   { href: "/grup", label: "Grup" },
   { href: "/anggota", label: "Anggota" },
+  { href: "/tampilan", label: "Tampilan" },
   { href: "/kegiatan", label: "Kegiatan" },
   { href: "/survei", label: "Survei" },
   { href: "/statistik", label: "Statistik" },
