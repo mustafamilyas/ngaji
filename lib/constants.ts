@@ -54,6 +54,13 @@ export const SCALE_DEFAULT_MAX = 5;
 export const VIEW_MAX_RULE_GROUPS = 10;
 export const VIEW_MAX_RULES_PER_GROUP = 10;
 export const VIEW_MAX_AGE_BUCKETS = 12;
+export const VIEW_MAX_TEXT_VALUE_LENGTH = 100;
+export const VIEW_MAX_WITHIN_DAYS = 3650;
+export const VIEW_MAX_AGE = 150;
+export const VIEW_MAX_GROUP_IDS = 50;
+export const VIEW_MAX_BUCKET_LABEL_LENGTH = 50;
+/** Deepest org level a view may group by (levels are depth 0 = root). */
+export const VIEW_MAX_GROUP_LEVEL = 20;
 /** Members loaded per section in a grouped view, and per "Tampilkan lebih banyak" click. */
 export const VIEW_SECTION_PAGE_SIZE = 25;
 /** Sections that start expanded; the rest start collapsed. */
