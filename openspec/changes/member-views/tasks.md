@@ -7,7 +7,7 @@
 
 ## 2. Pure logic (tests first)
 
-- [ ] 2.1 `lib/member-view/fields.ts` field registry (types, operators, sortable/groupable; no phone/address/email); verify a test asserts the PII fields are absent from rules, sort and group-by
+- [x] 2.1 `lib/member-view/fields.ts` field registry (types, operators, sortable/groupable; no phone/address/email); verify a test asserts the PII fields are absent from rules, sort and group-by
 - [ ] 2.2 `lib/member-view/age.ts` age → birth-date bounds for every age operator; verify a property test agrees with `ageInYears` for every day across leap years (incl. Feb 29 birthdays) and the "Age is computed" scenarios pass
 - [ ] 2.3 `lib/validation/member-view.ts` definition schema with strict (save) and lenient (load/draft, returns warnings) parsing, limits, bucket overlap check, view name schema; verify tests for every "Definition shape", "Fields and operators", "PII fields" and bucket scenario
 - [ ] 2.4 `lib/member-view/query.ts` `buildWhere` / `buildOrderBy` (AND/OR, text, choice, dates, within-last-N-days, age, group subtree, tie-breaker, age sort flip); verify unit tests on the generated Prisma input
