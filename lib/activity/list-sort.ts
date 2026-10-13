@@ -19,7 +19,7 @@ const VALUE: Record<ActivitySortKey, (e: SortableEntry) => string> = {
   lokasi: (e) => e.effectiveLocation,
 };
 
-/** `/kegiatan` list order (the list is built in memory); ties fall back to date then time. */
+/** `/dashboard/kegiatan` list order (the list is built in memory); ties fall back to date then time. */
 export function sortActivityEntries<T extends SortableEntry>(entries: T[], sort: SortState<ActivitySortKey>): T[] {
   return [...entries].sort(
     (a, b) =>

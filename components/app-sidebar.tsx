@@ -18,27 +18,27 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { signOutAction } from "@/app/dashboard-actions";
+import { signOutAction } from "@/app/dashboard/actions";
 import { Logo } from "@/components/brand/logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { NAV_ITEMS } from "@/lib/nav";
+import { DASHBOARD_PATH, NAV_ITEMS } from "@/lib/nav";
 import { cn, initials } from "@/lib/utils";
 
 const ICONS: Record<string, LucideIcon> = {
-  "/": LayoutDashboard,
-  "/grup": Network,
-  "/anggota": Users,
-  "/tampilan": ListFilter,
-  "/kegiatan": CalendarDays,
-  "/survei": ClipboardList,
-  "/statistik": BarChart3,
-  "/pengguna": UserCog,
-  "/audit": ScrollText,
+  [DASHBOARD_PATH]: LayoutDashboard,
+  "/dashboard/grup": Network,
+  "/dashboard/anggota": Users,
+  "/dashboard/tampilan": ListFilter,
+  "/dashboard/kegiatan": CalendarDays,
+  "/dashboard/survei": ClipboardList,
+  "/dashboard/statistik": BarChart3,
+  "/dashboard/pengguna": UserCog,
+  "/dashboard/audit": ScrollText,
 };
 
 export function BrandMark({ organizationName, withLabel = true }: { organizationName: string; withLabel?: boolean }) {
   return (
-    <Link href="/" aria-label={organizationName} className="flex min-w-0 items-center gap-2 px-2">
+    <Link href={DASHBOARD_PATH} aria-label={organizationName} className="flex min-w-0 items-center gap-2 px-2">
       <Logo />
       {withLabel && (
         <span className="flex min-w-0 flex-col leading-tight">
@@ -76,7 +76,7 @@ export function SidebarNav({
         <ul className="flex flex-col gap-0.5">
           {NAV_ITEMS.map((item) => {
             const Icon = ICONS[item.href] ?? LayoutDashboard;
-            const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+            const active = item.href === DASHBOARD_PATH ? pathname === DASHBOARD_PATH : pathname.startsWith(item.href);
             return (
               <li key={item.href}>
                 <Link
@@ -106,7 +106,7 @@ export function SidebarNav({
         <ul className="flex flex-col gap-0.5">
           <li>
             <Link
-              href="/akun/password"
+              href="/dashboard/akun/password"
               onClick={onNavigate}
               title={collapsed ? "Pengaturan" : undefined}
               aria-label={collapsed ? "Pengaturan" : undefined}

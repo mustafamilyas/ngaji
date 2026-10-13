@@ -171,12 +171,12 @@ export type Definition = z.infer<typeof definitionSchema>;
 
 export const DEFAULT_SORT: ViewSort = { field: "name", dir: "asc" };
 
-/** No rules, name order, no grouping, default `/anggota` columns. */
+/** No rules, name order, no grouping, default `/dashboard/anggota` columns. */
 export function emptyDefinition(): Definition {
   return { version: 1, filter: { op: "AND", groups: [] }, sort: { ...DEFAULT_SORT }, columns: [...DEFAULT_MEMBER_COLUMNS] };
 }
 
-/** Starting point of `/tampilan/baru`: active members only. */
+/** Starting point of `/dashboard/tampilan/baru`: active members only. */
 export function newViewDefinition(): Definition {
   return {
     ...emptyDefinition(),

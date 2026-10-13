@@ -15,7 +15,7 @@ export type MemberViewRow = {
 
 /**
  * Views of the viewer's *exact* group (never ancestors or descendants), for
- * `/tampilan`. The group comes from the session, not from the client.
+ * `/dashboard/tampilan`. The group comes from the session, not from the client.
  * Sorted by name; `search` is a trimmed, ASCII case-insensitive substring match.
  */
 export async function listMemberViews(

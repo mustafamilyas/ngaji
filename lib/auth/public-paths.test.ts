@@ -6,7 +6,7 @@ describe("isPublicPath", () => {
     expect(isPublicPath(pathname)).toBe(true);
   });
 
-  it.each(["/anggota", "/pengajian/1", "/Login", "/pengajian/", "/login/", "/api/x", "/login/../anggota", ""])(
+  it.each(["/dashboard/anggota", "/pengajian/1", "/Login", "/pengajian/", "/login/", "/api/x", "/login/../anggota", ""])(
     "rejects %j",
     (pathname) => {
       expect(isPublicPath(pathname)).toBe(false);

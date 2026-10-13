@@ -7,7 +7,7 @@ Public marketing pages that explain Dahan to prospective organizations and let t
 ## ADDED Requirements
 
 ### Requirement: Landing page at root for logged-out visitors
-The system SHALL render the public landing page at `/` when the request has no valid session, and SHALL render the dashboard at `/` when it does. A session that requires a password change SHALL still be redirected to `/akun/password`.
+The system SHALL render the public landing page at `/` when the request has no valid session, and SHALL redirect `/` to `/dashboard` when it does. Every signed-in page SHALL live under `/dashboard`. A session that requires a password change SHALL still be redirected to `/dashboard/akun/password`.
 
 #### Scenario: Anonymous visitor
 - **WHEN** a visitor without a session requests `/`
@@ -15,11 +15,11 @@ The system SHALL render the public landing page at `/` when the request has no v
 
 #### Scenario: Logged-in user
 - **WHEN** an active user with a valid session requests `/`
-- **THEN** the dashboard is rendered as before
+- **THEN** they are redirected to `/dashboard`, where the dashboard is rendered
 
 #### Scenario: Password change pending
 - **WHEN** a user with `mustChangePassword = true` requests `/`
-- **THEN** they are redirected to `/akun/password`, not shown the landing page
+- **THEN** they are redirected to `/dashboard/akun/password`, not shown the landing page
 
 ### Requirement: Public route allowlist
 Only `/`, `/pengajian`, `/login` and static assets SHALL be reachable without a session. Every other route SHALL keep redirecting unauthenticated requests to `/login`.
@@ -29,7 +29,7 @@ Only `/`, `/pengajian`, `/login` and static assets SHALL be reachable without a 
 - **THEN** the response is 200 with the pengajian page
 
 #### Scenario: App routes stay protected
-- **WHEN** a visitor without a session requests `/anggota`, `/grup/1` or `/kegiatan`
+- **WHEN** a visitor without a session requests `/dashboard/anggota`, `/dashboard/grup/1` or `/dashboard/kegiatan`
 - **THEN** they are redirected to `/login` and no app data is rendered
 
 #### Scenario: Logged-in user on segment page

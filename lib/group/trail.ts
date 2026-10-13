@@ -17,6 +17,6 @@ export async function groupTrail(scopePath: string, path: string): Promise<Group
   return groups.map((g) => ({
     id: g.id,
     name: g.name,
-    href: isInScope(g.path, scopePath) ? `/grup/${g.id}` : undefined,
+    href: isInScope(g.path, scopePath) ? `/dashboard/grup/${g.id}` : undefined,
   }));
 }

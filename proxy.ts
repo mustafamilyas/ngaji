@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isPublicPath } from "@/lib/auth/public-paths";
 import { buildCsp } from "@/lib/security/csp";
+import { DASHBOARD_PATH } from "@/lib/nav";
 
-const PASSWORD_CHANGE_PATH = "/akun/password";
+const PASSWORD_CHANGE_PATH = "/dashboard/akun/password";
 const LOGIN_PATH = "/login";
 
 const IS_DEV = process.env.NODE_ENV !== "production";
@@ -43,9 +44,10 @@ export default auth((req) => {
     return redirect(new URL(LOGIN_PATH, req.url));
   }
 
-  const destination = session.user.mustChangePassword ? PASSWORD_CHANGE_PATH : "/";
+  const destination = session.user.mustChangePassword ? PASSWORD_CHANGE_PATH : DASHBOARD_PATH;
 
-  if (pathname === LOGIN_PATH) {
+  // Signed-in users land on their dashboard instead of the marketing page (the old `/` behaviour).
+  if (pathname === LOGIN_PATH || pathname === "/") {
     return redirect(new URL(destination, req.url));
   }
 

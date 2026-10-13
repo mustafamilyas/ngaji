@@ -37,7 +37,7 @@ Every active user (USER, ADMIN, OWNER) SHALL be able to create a view; the creat
 - **THEN** it is rejected as unauthenticated and nothing is written
 
 ### Requirement: Views are visible to the same group only
-A view SHALL be listed and opened only by users whose group is exactly the view's group. Users in an ancestor group, a descendant group or another branch SHALL receive 404 for the view and SHALL NOT see it in `/tampilan`. Soft-deleted views SHALL behave as nonexistent.
+A view SHALL be listed and opened only by users whose group is exactly the view's group. Users in an ancestor group, a descendant group or another branch SHALL receive 404 for the view and SHALL NOT see it in `/dashboard/tampilan`. Soft-deleted views SHALL behave as nonexistent.
 
 #### Scenario: Same-group user sees the view
 - **WHEN** user B in kelompok K opens a view created by user A in kelompok K
@@ -52,7 +52,7 @@ A view SHALL be listed and opened only by users whose group is exactly the view'
 - **THEN** the response is 404
 
 #### Scenario: List shows only own group's views
-- **WHEN** a user in desa D opens `/tampilan`
+- **WHEN** a user in desa D opens `/dashboard/tampilan`
 - **THEN** only non-deleted views with `groupId = D` are listed
 
 #### Scenario: Deleted view
@@ -76,7 +76,7 @@ Only the view's owner SHALL be able to update (name, definition) or soft-delete 
 
 #### Scenario: Owner deletes
 - **WHEN** the owner confirms delete in the danger zone
-- **THEN** `deletedAt` is set and the view disappears from `/tampilan`
+- **THEN** `deletedAt` is set and the view disappears from `/dashboard/tampilan`
 
 ### Requirement: Takeover of orphaned views
 A view SHALL be *orphaned* when its owner is deactivated or the owner's current group is not the view's group. An ADMIN or OWNER whose group is exactly the view's group SHALL be able to take over an orphaned view, which sets `ownerId` to them; after that the normal owner rules apply. Takeover SHALL be denied for a non-orphaned view and for USER role.
@@ -121,12 +121,12 @@ Opening a view SHALL show its saved definition. Changes to rules, sort, grouping
 - **THEN** the saved definition is shown with a generic notice that the changes could not be read
 
 ### Requirement: View pages
-The app SHALL provide `/tampilan` (list of the group's views: name, owner, last updated; search by name; paginated `PAGE_SIZE`; "Buat tampilan"), `/tampilan/baru` (start from an empty definition) and `/tampilan/[id]` (header with name and owner, filter bar, "Tampilan" menu for group-by/sort/columns, results, danger zone for the owner). A sidebar item "Tampilan" SHALL be visible to all users. Pages SHALL be usable at mobile width.
+The app SHALL provide `/dashboard/tampilan` (list of the group's views: name, owner, last updated; search by name; paginated `PAGE_SIZE`; "Buat tampilan"), `/dashboard/tampilan/baru` (start from an empty definition) and `/dashboard/tampilan/[id]` (header with name and owner, filter bar, "Tampilan" menu for group-by/sort/columns, results, danger zone for the owner). A sidebar item "Tampilan" SHALL be visible to all users. Pages SHALL be usable at mobile width.
 
 #### Scenario: Owner controls hidden from others
-- **WHEN** a non-owner opens `/tampilan/[id]`
+- **WHEN** a non-owner opens `/dashboard/tampilan/[id]`
 - **THEN** "Simpan", rename and the danger zone are not rendered; "Simpan sebagai baru" is
 
 #### Scenario: New view defaults
-- **WHEN** a user opens `/tampilan/baru`
+- **WHEN** a user opens `/dashboard/tampilan/baru`
 - **THEN** the draft has no rules except status is any of `AKTIF`, sort by name ascending, no grouping and the default member columns

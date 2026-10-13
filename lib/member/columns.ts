@@ -1,5 +1,5 @@
 /**
- * Optional columns of the `/anggota` table (the name column is always
+ * Optional columns of the `/dashboard/anggota` table (the name column is always
  * shown). The viewer's choice is kept in a cookie and re-validated here,
  * since cookies are client input. Only chosen columns are rendered, so
  * hidden PII is never sent to the browser.

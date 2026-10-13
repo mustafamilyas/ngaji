@@ -9,7 +9,7 @@ export type TabItem<T extends string = string> = {
   icon?: LucideIcon;
   /** Shown as a pill after the label (list sizes). */
   count?: number;
-  /** Overrides the default `?tab=` link, for pages whose filters apply to every tab (e.g. `/statistik`). */
+  /** Overrides the default `?tab=` link, for pages whose filters apply to every tab (e.g. `/dashboard/statistik`). */
   href?: string;
 };
 

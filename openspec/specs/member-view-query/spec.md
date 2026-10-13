@@ -71,7 +71,7 @@ A rule with an unknown field, an operator not allowed for the field, or a value 
 - **THEN** members aged exactly 13 and exactly 17 are included and a member aged 18 is excluded
 
 ### Requirement: PII fields are never queryable
-`phone`, `address` and `email` SHALL NOT be usable in rules, sort or group-by. They MAY be shown only as columns, following the `/anggota` column rules.
+`phone`, `address` and `email` SHALL NOT be usable in rules, sort or group-by. They MAY be shown only as columns, following the `/dashboard/anggota` column rules.
 
 #### Scenario: Filter on phone rejected
 - **WHEN** a save request or URL draft contains a rule on `phone`
@@ -146,7 +146,7 @@ Without grouping, results SHALL be a table paginated `PAGE_SIZE` per page (`?pag
 - **THEN** the next members of "Remaja" are appended and other sections are unchanged
 
 ### Requirement: Columns
-A definition SHALL store its optional columns using the same keys, order and defaults as the `/anggota` table. Only chosen columns SHALL be rendered on the server; unknown keys SHALL be dropped. The name column is always shown.
+A definition SHALL store its optional columns using the same keys, order and defaults as the `/dashboard/anggota` table. Only chosen columns SHALL be rendered on the server; unknown keys SHALL be dropped. The name column is always shown.
 
 #### Scenario: Hidden column not sent
 - **WHEN** a view does not include the phone column

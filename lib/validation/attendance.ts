@@ -17,7 +17,7 @@ export const attendanceSaveSchema = z.object({
 });
 export type AttendanceSaveInput = z.infer<typeof attendanceSaveSchema>;
 
-/** Single self check-in: one member marked HADIR (the kiosk page at `/kegiatan/[id]/[tanggal]/absen`). */
+/** Single self check-in: one member marked HADIR (the kiosk page at `/dashboard/kegiatan/[id]/[tanggal]/absen`). */
 export const checkInSchema = z.object({
   activityId: z.coerce.number().int().positive(),
   groupId: z.coerce.number().int().positive(),

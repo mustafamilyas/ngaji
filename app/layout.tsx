@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Roboto } from "next/font/google";
 import { auth } from "@/auth";
-import { cookies } from "next/headers";
 import { getOrganizationName } from "@/lib/organization";
-import { NavShell } from "@/components/nav-shell";
-import { SIDEBAR_COLLAPSED_COOKIE } from "@/lib/nav";
 import "./globals.css";
 
 const roboto = Roboto({
@@ -39,25 +36,17 @@ export async function generateMetadata(): Promise<Metadata> {
 // giving up real static optimization.
 export const dynamic = "force-dynamic";
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [session, cookieStore] = await Promise.all([auth(), cookies()]);
-  const sidebarCollapsed = cookieStore.get(SIDEBAR_COLLAPSED_COOKIE)?.value === "1";
-
-  // Only the app shell shows the organization name; public pages never query the DB.
-  const organizationName = session ? await getOrganizationName() : undefined;
-
   return (
     <html lang="id">
       <body
         className={`${roboto.variable} ${geistMono.variable} antialiased`}
       >
-        <NavShell user={session?.user} organizationName={organizationName} initialCollapsed={sidebarCollapsed}>
-          {children}
-        </NavShell>
+        {children}
       </body>
     </html>
   );

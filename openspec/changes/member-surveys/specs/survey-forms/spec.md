@@ -98,7 +98,7 @@ Labels, help text, required flag and order SHALL remain editable; new questions 
 - **THEN** the question is saved and existing responses simply have no answer for it
 
 ### Requirement: Survey list
-`/survei` SHALL list visible, non-deleted surveys (owned by an ancestor of, or a group within, the user's scope) with title, owning group, response count and an "inherited" badge for surveys owned above the user's group. It SHALL follow the standard list conventions: name search and multi-group filter (surveys that apply to a selected group), `PAGE_SIZE` pagination, state in the URL.
+`/dashboard/survei` SHALL list visible, non-deleted surveys (owned by an ancestor of, or a group within, the user's scope) with title, owning group, response count and an "inherited" badge for surveys owned above the user's group. It SHALL follow the standard list conventions: name search and multi-group filter (surveys that apply to a selected group), `PAGE_SIZE` pagination, state in the URL.
 
 #### Scenario: Search by title
 - **WHEN** the user searches "ramadhan"

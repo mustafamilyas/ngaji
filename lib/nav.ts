@@ -1,19 +1,22 @@
 /** Cookie holding the desktop sidebar's collapsed state ("1" = collapsed), read server-side to avoid a flash on load. */
 export const SIDEBAR_COLLAPSED_COOKIE = "sidebar_collapsed";
 
+/** Home of the signed-in app; every app route lives under it, public pages do not. */
+export const DASHBOARD_PATH = "/dashboard";
+
 export type NavItem = {
   href: string;
   label: string;
 };
 
 export const NAV_ITEMS: NavItem[] = [
-  { href: "/", label: "Dasbor" },
-  { href: "/grup", label: "Grup" },
-  { href: "/anggota", label: "Anggota" },
-  { href: "/tampilan", label: "Tampilan" },
-  { href: "/kegiatan", label: "Kegiatan" },
-  { href: "/survei", label: "Survei" },
-  { href: "/statistik", label: "Statistik" },
-  { href: "/pengguna", label: "Pengguna" },
-  { href: "/audit", label: "Audit Log" },
+  { href: DASHBOARD_PATH, label: "Dasbor" },
+  { href: "/dashboard/grup", label: "Grup" },
+  { href: "/dashboard/anggota", label: "Anggota" },
+  { href: "/dashboard/tampilan", label: "Tampilan" },
+  { href: "/dashboard/kegiatan", label: "Kegiatan" },
+  { href: "/dashboard/survei", label: "Survei" },
+  { href: "/dashboard/statistik", label: "Statistik" },
+  { href: "/dashboard/pengguna", label: "Pengguna" },
+  { href: "/dashboard/audit", label: "Audit Log" },
 ];

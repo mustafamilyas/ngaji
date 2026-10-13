@@ -5,7 +5,7 @@ import { newViewDefinition, parseDefinitionLenient, type Definition, type Defini
 import { decodeDraft } from "./draft";
 
 export type LoadedView = {
-  /** The saved view; `null` on `/tampilan/baru`. */
+  /** The saved view; `null` on `/dashboard/tampilan/baru`. */
   view: Awaited<ReturnType<typeof resolveMemberView>> | null;
   /** What to render: the URL draft when it is readable, else the saved (or starting) definition. */
   definition: Definition;

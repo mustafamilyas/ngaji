@@ -21,11 +21,11 @@ The app frame SHALL fill the viewport with only the content area scrolling, so t
 List pages SHALL use one filter bar composed of: a name search (`q`), a group filter (`grup`, comma-separated ids) offered as a searchable tree of the groups in scope, a date range (`range`, `anchor`, `from`, `to`) with page-specific presets, custom from/to and previous/next stepping, plus page-specific selects. A date range SHALL be offered only on pages with a natural date (kegiatan, statistik, activity detail, audit). Filter state SHALL live in the URL; empty fields SHALL be omitted and any filter change SHALL reset pagination to page 1. Every group id from the URL SHALL be resolved and scope-checked server-side; on member, user and audit lists an id outside scope SHALL produce 404.
 
 #### Scenario: Several groups including descendants
-- **WHEN** a user filters `/anggota` by desa D1 and kelompok K5 (K5 not under D1)
+- **WHEN** a user filters `/dashboard/anggota` by desa D1 and kelompok K5 (K5 not under D1)
 - **THEN** members of D1's kelompok and of K5 are listed, and no others
 
 #### Scenario: Out-of-scope id
-- **WHEN** `/pengguna?grup=<id outside scope>` is requested
+- **WHEN** `/dashboard/pengguna?grup=<id outside scope>` is requested
 - **THEN** the system responds 404
 
 #### Scenario: Stepping a preset range
@@ -40,7 +40,7 @@ Every list SHALL be paginated except the attendance form, the group tree and the
 - **THEN** page 3 (members 101–120) is shown
 
 #### Scenario: Two lists on one detail page page independently
-- **WHEN** a user moves to page 2 of a group's members on `/grup/[id]`
+- **WHEN** a user moves to page 2 of a group's members on `/dashboard/grup/[id]`
 - **THEN** the sub-group, activity and user lists stay on their current pages
 
 ### Requirement: Selectable member columns
@@ -69,7 +69,7 @@ The member table and member detail page SHALL offer a button that opens a WhatsA
 Every page with the app frame SHALL open with the shared page header: a breadcrumb (section root first, current page last and not a link; on group pages the group's ancestry, linking only groups inside the viewer's scope), the title with status badges, a row of icon + text facts, and the page's actions on the right (below the title on phones). Header actions SHALL be everyday actions only; irreversible actions (delete, end) SHALL live in a separate "Zona berbahaya" block that explains each consequence. A page with several distinct parts SHALL split them into tabs held in the URL (`?tab=`, default tab omitted); a tab the viewer may not use SHALL NOT be shown, and requesting it SHALL fall back to the default tab.
 
 #### Scenario: Settings tab hidden from USER
-- **WHEN** a USER opens `/grup/<id>?tab=pengaturan`
+- **WHEN** a USER opens `/dashboard/grup/<id>?tab=pengaturan`
 - **THEN** the default tab is shown and no rename or delete control is rendered
 
 #### Scenario: Out-of-scope ancestor in the breadcrumb
@@ -77,20 +77,20 @@ Every page with the app frame SHALL open with the shared page header: a breadcru
 - **THEN** the Pusat and Daerah crumbs show names without links, and the Desa crumb links to its group page
 
 #### Scenario: Only the active tab is rendered
-- **WHEN** `/grup/<leaf id>` is opened without `?tab=`
+- **WHEN** `/dashboard/grup/<leaf id>` is opened without `?tab=`
 - **THEN** the members tab is shown and the group's activities are not in the HTML
 
 ### Requirement: Sortable list columns
-List tables SHALL let the viewer sort by selected columns through `?sort=<key>&dir=asc|desc`. The key SHALL be checked against the page's whitelist; anything else SHALL fall back to the default order. The default order SHALL NOT appear in the URL, changing the order SHALL return to page 1, and filtering SHALL keep the chosen order. Every order SHALL end with a unique tie-breaker so paging is stable. On `/anggota`, only the name and currently visible optional columns SHALL be sortable.
+List tables SHALL let the viewer sort by selected columns through `?sort=<key>&dir=asc|desc`. The key SHALL be checked against the page's whitelist; anything else SHALL fall back to the default order. The default order SHALL NOT appear in the URL, changing the order SHALL return to page 1, and filtering SHALL keep the chosen order. Every order SHALL end with a unique tie-breaker so paging is stable. On `/dashboard/anggota`, only the name and currently visible optional columns SHALL be sortable.
 
 #### Scenario: Toggling a column
 - **WHEN** the member list is sorted by name ascending and the user clicks the name header
 - **THEN** the list is sorted by name descending, starting at page 1
 
 #### Scenario: Unknown sort key
-- **WHEN** `/pengguna?sort=passwordHash` is requested
+- **WHEN** `/dashboard/pengguna?sort=passwordHash` is requested
 - **THEN** the default order (name ascending) is used
 
 #### Scenario: Sort on a hidden member column
-- **WHEN** the birth-date column is hidden and `/anggota?sort=tanggalLahir` is requested
+- **WHEN** the birth-date column is hidden and `/dashboard/anggota?sort=tanggalLahir` is requested
 - **THEN** the list is ordered by name

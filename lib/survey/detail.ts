@@ -7,7 +7,7 @@ import type { SurveyFormInput } from "@/lib/validation/survey";
 import { findAnsweredIds } from "./locks";
 
 /**
- * Everything the `/survei/[id]` page needs. Resolving enforces visibility
+ * Everything the `/dashboard/survei/[id]` page needs. Resolving enforces visibility
  * (404 outside reach); `canEdit` is the owning group's ADMIN+ rule.
  *
  * `form` is the stored form in builder shape — ids and `archived` flags

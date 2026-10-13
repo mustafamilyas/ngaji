@@ -19,7 +19,7 @@ const VALUE: Record<SurveySortKey, (s: SortableSurvey) => string | number> = {
   dibuat: (s) => s.createdAt.getTime(),
 };
 
-/** `/survei` list order (sorted in memory: the response count is scope-dependent); ties fall back to newest first. */
+/** `/dashboard/survei` list order (sorted in memory: the response count is scope-dependent); ties fall back to newest first. */
 export function sortSurveys<T extends SortableSurvey>(surveys: T[], sort: SortState<SurveySortKey>): T[] {
   return [...surveys].sort(
     (a, b) =>

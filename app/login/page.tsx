@@ -21,7 +21,7 @@ export default async function LoginPage({
   const organizationName = await getOrganizationName();
 
   return (
-    <div className="mx-auto flex max-w-sm flex-col gap-6 py-10">
+    <div className="mx-auto flex min-h-dvh max-w-sm flex-col gap-6 px-4 py-16">
       <div className="flex items-center gap-3">
         <Logo />
         <div className="min-w-0 leading-tight">

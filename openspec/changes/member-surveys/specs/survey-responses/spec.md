@@ -81,14 +81,14 @@ A user allowed to record a response for M SHALL be able to delete it. Deleting S
 - **THEN** the system responds 403 and the response remains
 
 ### Requirement: Entry page
-`/survei/[id]/isi` SHALL let an allowed user pick a member (autocomplete by name over members they may record for) and fill in or edit that member's answers on one mobile-friendly page. With `?anggota=<id>` the member is preselected and existing answers are prefilled. After saving, the user SHALL be able to move on to the next member without leaving the page. Users who may only view SHALL NOT see the entry page (404 or redirect to the survey).
+`/dashboard/survei/[id]/isi` SHALL let an allowed user pick a member (autocomplete by name over members they may record for) and fill in or edit that member's answers on one mobile-friendly page. With `?anggota=<id>` the member is preselected and existing answers are prefilled. After saving, the user SHALL be able to move on to the next member without leaving the page. Users who may only view SHALL NOT see the entry page (404 or redirect to the survey).
 
 #### Scenario: Prefilled edit
-- **WHEN** the user opens `/survei/5/isi?anggota=12` and member 12 already responded
+- **WHEN** the user opens `/dashboard/survei/5/isi?anggota=12` and member 12 already responded
 - **THEN** the form shows member 12's current answers
 
 ### Requirement: Respondent list
-The "Responden" tab on `/survei/[id]` SHALL list responses visible to the user (members in their scope) with member name, group, last saved by and when, an edit link and a delete action where allowed; searchable by name, filterable by group, paginated with `PAGE_SIZE`.
+The "Responden" tab on `/dashboard/survei/[id]` SHALL list responses visible to the user (members in their scope) with member name, group, last saved by and when, an edit link and a delete action where allowed; searchable by name, filterable by group, paginated with `PAGE_SIZE`.
 
 #### Scenario: Scope-filtered respondents
 - **WHEN** a kelompok user views the respondents of a desa-wide survey

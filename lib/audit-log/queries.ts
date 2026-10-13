@@ -7,7 +7,7 @@ import { clampPage } from "@/lib/pagination";
 import { resolveGroups } from "@/lib/resolve";
 import type { SortState } from "@/lib/sort";
 
-/** Sortable `/audit` columns → the field they order by. */
+/** Sortable `/dashboard/audit` columns → the field they order by. */
 const AUDIT_SORT_FIELDS = {
   waktu: (dir) => ({ createdAt: dir }),
   aksi: (dir) => ({ action: dir }),
@@ -43,7 +43,7 @@ function endOfDayJakarta(date: string): Date {
 }
 
 /**
- * `/audit` viewer query (audit-log spec "Viewer"): OWNER only, entries
+ * `/dashboard/audit` viewer query (audit-log spec "Viewer"): OWNER only, entries
  * whose `groupId` is in scope plus the caller's own `auth.*` entries
  * (those carry `groupId = null`, per `lib/auth/audit-events.ts`).
  *

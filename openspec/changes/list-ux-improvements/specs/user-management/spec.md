@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: User management page
-`/pengguna` SHALL list users in scope, searchable by name or username, filterable by one or more groups in scope (each including descendants), paginated by `PAGE_SIZE`, and expose only the controls the caller is allowed to use; the Server Actions SHALL enforce the same rules independently of the UI.
+`/dashboard/pengguna` SHALL list users in scope, searchable by name or username, filterable by one or more groups in scope (each including descendants), paginated by `PAGE_SIZE`, and expose only the controls the caller is allowed to use; the Server Actions SHALL enforce the same rules independently of the UI.
 
 #### Scenario: Hidden control still enforced
 - **WHEN** an ADMIN crafts a request to reset an OWNER's password

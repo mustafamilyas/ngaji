@@ -49,15 +49,15 @@ Session cookies SHALL be `httpOnly`, `sameSite=lax`, `secure` in production, wit
 - **THEN** it carries `HttpOnly`, `Secure` and `SameSite=Lax`
 
 ### Requirement: Forced password change
-Users with `mustChangePassword = true` SHALL be redirected to `/akun/password` from every route except `/login` and `/akun/password` until they set a new password. The seeded owner and any user whose password was reset by someone else SHALL have this flag set.
+Users with `mustChangePassword = true` SHALL be redirected to `/dashboard/akun/password` from every route except `/login` and `/dashboard/akun/password` until they set a new password. The seeded owner and any user whose password was reset by someone else SHALL have this flag set.
 
 #### Scenario: Seeded owner first login
 - **WHEN** `admin` logs in for the first time after seeding
-- **THEN** every navigation lands on `/akun/password` until a new password is saved
+- **THEN** every navigation lands on `/dashboard/akun/password` until a new password is saved
 
 #### Scenario: Flag cleared after change
 - **WHEN** the user saves a new password of at least 8 characters
-- **THEN** `mustChangePassword` becomes false, `user.change_password` is audited, and `/` is reachable
+- **THEN** `mustChangePassword` becomes false, `user.change_password` is audited, and `/dashboard` is reachable
 
 ### Requirement: Own password change
 Any authenticated user SHALL be able to change their own password by supplying the current password and a new password of at least 8 characters.

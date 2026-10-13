@@ -414,7 +414,7 @@ Aturan tambahan untuk manajemen user:
 - ADMIN tidak pernah boleh mengubah/mereset user berperan OWNER atau ADMIN, meski dalam scope.
 - User tidak boleh menonaktifkan atau menurunkan peran dirinya sendiri.
 - Tidak boleh menonaktifkan / menurunkan **OWNER aktif terakhir di grup root** (cegah terkunci).
-- Setelah reset password oleh orang lain, `mustChangePassword = true`; user dipaksa ke `/akun/password` sebelum halaman lain.
+- Setelah reset password oleh orang lain, `mustChangePassword = true`; user dipaksa ke `/dashboard/akun/password` sebelum halaman lain.
 
 ### 3.3 Kegiatan warisan
 Misal kegiatan A milik grup X, user U di grup G, absensi diisi untuk grup daun Y.
@@ -495,8 +495,8 @@ Setiap Server Action: `auth()` → zod parse → resolve target → `authorize` 
 - JWT berisi `{ userId, groupId, role, groupPath }`. Di callback `jwt` (dipanggil tiap `auth()`), **query ulang `User` + `UserGroupRole`**: jika `isActive = false` → sesi dibatalkan; jika `role`/`groupId` berubah → token diperbarui. Satu query PK per request; ini disengaja agar nonaktifkan/turunkan peran langsung berlaku.
 - Cookie sesi: `httpOnly`, `secure` (production), `sameSite=lax`, `maxAge` 7 hari.
 - Seed owner `admin/admin` dibuat dengan `mustChangePassword = true`.
-- `mustChangePassword = true` → middleware mengarahkan semua route (kecuali `/akun/password`, `/login`) ke halaman ganti password.
-- **Route publik** (tanpa sesi): hanya `/`, `/pengajian`, `/login`, dicocokkan **persis** oleh `isPublicPath` di `lib/auth/public-paths.ts` (tanpa prefix: `/pengajian/1`, `/Login`, `/pengajian/` bukan publik). Route lain tanpa sesi → redirect `/login`. Halaman publik tidak membaca data dari DB, tidak memuat skrip/tracker pihak ketiga, dan CSP (§4.3) tidak berubah.
+- `mustChangePassword = true` → middleware mengarahkan semua route (kecuali `/dashboard/akun/password`, `/login`) ke halaman ganti password.
+- **Route publik** (tanpa sesi): hanya `/`, `/pengajian`, `/login`, dicocokkan **persis** oleh `isPublicPath` di `lib/auth/public-paths.ts` (tanpa prefix: `/pengajian/1`, `/Login`, `/pengajian/` bukan publik). Route lain (termasuk semua `/dashboard/**`) tanpa sesi → redirect `/login`; dengan sesi, `/` dan `/login` → redirect `/dashboard`. Halaman publik tidak membaca data dari DB, tidak memuat skrip/tracker pihak ketiga, dan CSP (§4.3) tidak berubah.
 
 ### 4.2 Otorisasi
 - Semua di §3. Tidak ada endpoint yang memakai `groupId`/`groupPath` dari client tanpa resolve + cek.
@@ -536,7 +536,7 @@ Helper `audit(tx, { action, entity, entityId, groupId, before, after, meta })` d
 
 Membuka/mendaftar tampilan dan draf yang belum disimpan (`?d=`) tidak diaudit.
 
-Halaman `/audit` (OWNER): terbaru dulu, filter grup (multi, termasuk turunan; memilih grup menyembunyikan entri `auth.*` tanpa grup) / rentang tanggal (default semua waktu) / aksi / aktor, paginasi (§7.1).
+Halaman `/dashboard/audit` (OWNER): terbaru dulu, filter grup (multi, termasuk turunan; memilih grup menyembunyikan entri `auth.*` tanpa grup) / rentang tanggal (default semua waktu) / aksi / aktor, paginasi (§7.1).
 
 ---
 
@@ -587,7 +587,7 @@ Tanggal absensi yang dikirim client **sah** hanya jika ada di `keys` untuk `[dat
 2. `occurrencesFor` tiap activity → `(activity, key, effectiveDate, inherited, canEdit, canRecord)`.
 3. Tandai konflik (5.4).
 
-Untuk satu atau lebih grup terpilih `{Y1, …, Yn}` (mis. `/kegiatan?grup=...`): jalankan langkah 1–2 di atas per `Yi` (masing-masing di-resolve & scope-check sendiri; `Yi` di luar scope pemanggil di-drop dari union, bukan menggagalkan seluruh request), gabungkan hasilnya, dedup per occurrence (`activityId` + tanggal kunci) — jika sebuah occurrence muncul lewat lebih dari satu `Yi`, `inherited`-nya `false` bila ia bukan-warisan (milik salah satu `Yi` sendiri/descendant-nya) untuk *setidaknya satu* `Yi` — baru jalankan deteksi konflik (5.4) sekali atas kumpulan gabungan tsb, supaya konflik lintas-grup-terpilih tetap terdeteksi. Kasus `n = 1` berperilaku identik dengan sebelumnya, termasuk default ke grup pemanggil bila tidak ada grup dipilih.
+Untuk satu atau lebih grup terpilih `{Y1, …, Yn}` (mis. `/dashboard/kegiatan?grup=...`): jalankan langkah 1–2 di atas per `Yi` (masing-masing di-resolve & scope-check sendiri; `Yi` di luar scope pemanggil di-drop dari union, bukan menggagalkan seluruh request), gabungkan hasilnya, dedup per occurrence (`activityId` + tanggal kunci) — jika sebuah occurrence muncul lewat lebih dari satu `Yi`, `inherited`-nya `false` bila ia bukan-warisan (milik salah satu `Yi` sendiri/descendant-nya) untuk *setidaknya satu* `Yi` — baru jalankan deteksi konflik (5.4) sekali atas kumpulan gabungan tsb, supaya konflik lintas-grup-terpilih tetap terdeteksi. Kasus `n = 1` berperilaku identik dengan sebelumnya, termasuk default ke grup pemanggil bila tidak ada grup dipilih.
 
 ### 5.4 Deteksi konflik (peringatan saja)
 Dua occurrence **konflik** jika `effectiveDate` sama, jendela `[effectiveStart, effectiveStart+effectiveDuration)` beririsan, keduanya `SCHEDULED`, dan keduanya berlaku untuk minimal satu grup yang sama (salah satu milik ancestor/self/descendant yang lain).
@@ -599,7 +599,7 @@ Dihitung saat simpan kegiatan / override (horizon 90 hari ke depan) dan saat ren
 | **Edit template** | Semua occurrence yang belum punya override ikut berubah. Baris dengan absensi tetap tampil (union 5.2). | `activity.update` |
 | **Batalkan satu tanggal** | Upsert row `status = CANCELLED`. Absensi yang sudah ada **tidak dihapus**, tetapi halaman absensi menjadi read-only dan occurrence keluar dari statistik. | `occurrence.override` |
 | **Ganti jam / durasi / lokasi / catatan satu tanggal** | Upsert row override. | `occurrence.override` |
-| **Geser satu kali** (ke tanggal lain) | Upsert row untuk tanggal kunci X dengan `overrideDate = Y` (+ jam/durasi baru opsional). Absensi tetap menempel pada row (kunci X). URL tetap `/kegiatan/[id]/X`; UI menampilkan "dipindah dari X ke Y". Ditolak jika Y sudah menjadi occurrence lain dari kegiatan yang sama. | `occurrence.override` |
+| **Geser satu kali** (ke tanggal lain) | Upsert row untuk tanggal kunci X dengan `overrideDate = Y` (+ jam/durasi baru opsional). Absensi tetap menempel pada row (kunci X). URL tetap `/dashboard/kegiatan/[id]/X`; UI menampilkan "dipindah dari X ke Y". Ditolak jika Y sudah menjadi occurrence lain dari kegiatan yang sama. | `occurrence.override` |
 | **Geser ini & seterusnya** (= ubah properti mulai tanggal X ke depan) | Satu transaksi: (1) jika `X ≤ startsOn` → cukup edit template; selain itu (2) `original.endsOn = X − 1`, (3) buat `Activity` baru: salinan template + perubahan dari form, `startsOn = tanggal baru`, `continuesFromId = original.id`, (4) pindahkan `ActivityOccurrence` dengan `date ≥ X` (dan absensinya) ke activity baru. Hanya untuk `freq ≠ ONCE`. Audit `activity.split`. | `activity.split` |
 | **Akhiri mulai tanggal X** | `endsOn = X − 1`; jika `X ≤ startsOn` → soft delete. | `activity.update` |
 | **Hapus** | Soft delete; occurrence & absensi tetap tersimpan, tidak tampil. | `activity.delete` |
@@ -607,7 +607,7 @@ Dihitung saat simpan kegiatan / override (horizon 90 hari ke depan) dan saat ren
 Baris `ActivityOccurrence` hanya bisa dibuat untuk tanggal kunci yang sah menurut 5.2.
 
 ### 5.6 Absensi
-- Halaman `/kegiatan/[id]/[tanggal]?grup=Y`. `Y` **wajib grup daun**. Default: grup user jika daun; jika tidak, dropdown daun-daun dalam scope yang kegiatan ini berlaku padanya.
+- Halaman `/dashboard/kegiatan/[id]/[tanggal]?grup=Y`. `Y` **wajib grup daun**. Default: grup user jika daun; jika tidak, dropdown daun-daun dalam scope yang kegiatan ini berlaku padanya.
 - Daftar = anggota *expected* pada tanggal itu di Y (§6), checkbox HADIR / IZIN, simpan massal. `[tanggal]` adalah tanggal kunci (bukan `overrideDate`).
 - Simpan = transaksi: cek §3.3 → upsert `ActivityOccurrence(activityId, date)` → upsert/delete `Attendance` per anggota → `audit('attendance.save')`.
 - Occurrence `CANCELLED` atau tanggal > hari ini → read-only, Server Action menolak.
@@ -628,40 +628,42 @@ Fungsi `expected(occurrence, groupId)` terpusat di `lib/stats.ts` — juga dipak
 
 Kelompok umur: 0–5 balita, 6–12 anak, 13–18 remaja, 19–59 dewasa, ≥60 lansia. Dihitung dari `birthDate` saat query. Batas umur di `lib/constants.ts` (`AGE_BRACKETS`), bersama `DEFAULT_STATS_RANGE_DAYS = 30`, `CONFLICT_HORIZON_DAYS = 90`, `PAGE_SIZE = 50`, `EMBEDDED_PAGE_SIZE = 10`, dan preset rentang tanggal per halaman (`*_DATE_RANGE`).
 
-Rentang default "30 hari terakhir" = 30 hari inklusif (today−29 .. today). Statistik dihitung untuk **satu** grup scope (default grup user) karena breakdown-nya per sub-grup langsung; filter grup di `/statistik` karena itu single-select.
+Rentang default "30 hari terakhir" = 30 hari inklusif (today−29 .. today). Statistik dihitung untuk **satu** grup scope (default grup user) karena breakdown-nya per sub-grup langsung; filter grup di `/dashboard/statistik` karena itu single-select.
 
 ---
 
 ## 7. Halaman
 
+Semua halaman aplikasi (wajib login) ada di bawah `/dashboard` dan memakai app shell (`app/dashboard/layout.tsx`); halaman publik (`/`, `/login`, studi kasus) di luar `/dashboard` tanpa shell. User yang sudah login dan membuka `/` atau `/login` diarahkan ke `/dashboard`.
+
 | Route | Fungsi |
 |---|---|
 | `/login` | Username + password |
-| `/` (belum login) | Landing page publik generik Dahan (tanpa data organisasi); CTA "Hubungi via WhatsApp" dari env `DAHAN_WHATSAPP` (disembunyikan bila kosong/tidak valid) |
+| `/` | Landing page publik generik Dahan (tanpa data organisasi); CTA "Hubungi via WhatsApp" dari env `DAHAN_WHATSAPP` (disembunyikan bila kosong/tidak valid) |
 | `/pengajian` | Landing page publik untuk segmen pengajian (jamaah, pengurus, pusat/daerah/desa/kelompok); CTA sama |
-| `/akun/password` | Ganti password sendiri (wajib jika `mustChangePassword`) |
-| `/` (sudah login) | Dashboard: ringkasan statistik scope + kegiatan 7 hari ke depan |
-| `/grup` | Pohon grup dalam scope |
-| `/grup/[id]` | Detail (§7.2), tab: anggota (grup daun) **atau** sub-grup, kegiatan, pengguna, pengaturan (ADMIN/OWNER: rename + zona berbahaya hapus) — tiap daftar dipaginasi sendiri (`?subgrup=`, `?anggota=`, `?kegiatan=`, `?pengguna=`, 10/hal); aksi: lihat semua anggota, tambah anggota (daun, `/anggota/baru?grup=`) atau tambah sub-grup (dialog) |
-| `/anggota` | Tabel (paginasi `?page=`, 50/hal) + cari nama + filter grup (multi, termasuk turunan) / status; kolom bisa dipilih (§7.1); tombol WhatsApp per anggota |
-| `/anggota/baru`, `/anggota/[id]` | Form (`?grup=` memilih grup awal); detail (§7.2) tab profil, kehadiran (paginasi `?riwayat=`, 10/hal, tautan ke occurrence), ubah (form + zona berbahaya hapus soft); tombol WhatsApp |
-| `/kegiatan` | Daftar **atau** kalender (toggle) per rentang tanggal — preset Hari ini/Minggu ini/Bulan ini/pilih tanggal (default Minggu ini) dengan tombol ‹ › per rentang, badge *warisan*, *konflik*, *dipindah*, *batal*; cari nama kegiatan (badge konflik tetap dihitung dari semua kegiatan); filter grup multi-select (dengan pintasan "pilih dengan turunannya") atas union §5.3; daftar dipaginasi 50/hal; semua state (grup, rentang, tampilan, cari) di URL |
-| `/kegiatan/baru`, `/kegiatan/[id]` | Form template; detail (§7.2) tab absensi per rentang (preset 7/30/90 hari, bulan ini, pilih tanggal; default 30 hari) dengan tabel per-occurrence & per-anggota (10/hal), jadwal 90 hari ke depan (`?jadwal=`, 10/hal; ubah satu tanggal lewat dialog, hanya `canEdit`), pengaturan (hanya `canEdit`: form, geser, zona berbahaya akhiri/hapus); aksi "Isi absensi hari ini" bila ada occurrence hari ini |
-| `/kegiatan/[id]/[tanggal]` | Absensi occurrence (+ batalkan / override / geser satu kali) — **tidak** dipaginasi (semua anggota perlu terlihat saat mengisi; ada pencarian) |
-| `/survei` | Daftar survei yang terlihat (milik leluhur atau grup dalam scope): judul, grup pemilik, jumlah respons, badge *warisan*; cari judul + filter grup (survei yang berlaku untuk grup terpilih); `PAGE_SIZE`; "Buat survei" hanya ADMIN+ (§11) |
-| `/survei/baru`, `/survei/[id]` | Pembuat formulir; detail (§7.2) tab `?tab=hasil` (default) / `responden` / `formulir` — hasil: satu grup (`?grup=`) + filter demografi (`jk`, `umur`, `kerja`, `nikah`), tingkat respons, "Belum mengisi", grafik per pertanyaan, rincian per sub-grup; responden: daftar respons dalam scope (cari, filter grup, hapus); formulir: hanya pemilik yang bisa mengubah, lainnya baca saja; teks panjang dipaginasi lewat `?teks=<idPertanyaan>:<halaman>` |
-| `/survei/[id]/isi` | Isi / ubah jawaban satu anggota (autocomplete nama, `?anggota=` untuk prefill, "Simpan & anggota berikutnya"); hanya yang boleh mengisi, mobile-first |
-| `/tampilan` | Daftar tampilan anggota milik grup user (nama, pemilik, terakhir diperbarui); cari nama, `PAGE_SIZE`, "Buat tampilan"; semua user (§12) |
-| `/tampilan/baru`, `/tampilan/[id]` | Hasil tampilan: bilah filter (aturan sebagai chip, sheet di HP), menu "Tampilan" (kelompokkan, urutkan, kolom), perubahan belum disimpan di `?d=`; header: Simpan / Batalkan (pemilik), Simpan sebagai baru, Ubah nama (pemilik), Ambil alih (ADMIN+, yatim); zona berbahaya hapus (pemilik) |
-| `/statistik` | Tab: anggota, kegiatan, partisipasi; filter satu grup + rentang tanggal (tidak di tab anggota); tab partisipasi bisa cari nama dan dipaginasi 50/hal |
-| `/pengguna` | OWNER & ADMIN: buat user (dialog "Tambah pengguna"); OWNER: ubah peran, pindah grup, nonaktifkan; reset password sesuai §3.4; cari nama/username + filter grup (multi, termasuk turunan); paginasi 50/hal; kontrol per user di dialog "Kelola", hanya tampil bila ada aksi yang diizinkan |
-| `/pengaturan/jenjang` | OWNER root: rename level |
-| `/audit` | OWNER: audit log dalam scope (§4.5) |
+| `/dashboard/akun/password` | Ganti password sendiri (wajib jika `mustChangePassword`) |
+| `/dashboard` | Dashboard: ringkasan statistik scope + kegiatan 7 hari ke depan |
+| `/dashboard/grup` | Pohon grup dalam scope |
+| `/dashboard/grup/[id]` | Detail (§7.2), tab: anggota (grup daun) **atau** sub-grup, kegiatan, pengguna, pengaturan (ADMIN/OWNER: rename + zona berbahaya hapus) — tiap daftar dipaginasi sendiri (`?subgrup=`, `?anggota=`, `?kegiatan=`, `?pengguna=`, 10/hal); aksi: lihat semua anggota, tambah anggota (daun, `/dashboard/anggota/baru?grup=`) atau tambah sub-grup (dialog) |
+| `/dashboard/anggota` | Tabel (paginasi `?page=`, 50/hal) + cari nama + filter grup (multi, termasuk turunan) / status; kolom bisa dipilih (§7.1); tombol WhatsApp per anggota |
+| `/dashboard/anggota/baru`, `/dashboard/anggota/[id]` | Form (`?grup=` memilih grup awal); detail (§7.2) tab profil, kehadiran (paginasi `?riwayat=`, 10/hal, tautan ke occurrence), ubah (form + zona berbahaya hapus soft); tombol WhatsApp |
+| `/dashboard/kegiatan` | Daftar **atau** kalender (toggle) per rentang tanggal — preset Hari ini/Minggu ini/Bulan ini/pilih tanggal (default Minggu ini) dengan tombol ‹ › per rentang, badge *warisan*, *konflik*, *dipindah*, *batal*; cari nama kegiatan (badge konflik tetap dihitung dari semua kegiatan); filter grup multi-select (dengan pintasan "pilih dengan turunannya") atas union §5.3; daftar dipaginasi 50/hal; semua state (grup, rentang, tampilan, cari) di URL |
+| `/dashboard/kegiatan/baru`, `/dashboard/kegiatan/[id]` | Form template; detail (§7.2) tab absensi per rentang (preset 7/30/90 hari, bulan ini, pilih tanggal; default 30 hari) dengan tabel per-occurrence & per-anggota (10/hal), jadwal 90 hari ke depan (`?jadwal=`, 10/hal; ubah satu tanggal lewat dialog, hanya `canEdit`), pengaturan (hanya `canEdit`: form, geser, zona berbahaya akhiri/hapus); aksi "Isi absensi hari ini" bila ada occurrence hari ini |
+| `/dashboard/kegiatan/[id]/[tanggal]` | Absensi occurrence (+ batalkan / override / geser satu kali) — **tidak** dipaginasi (semua anggota perlu terlihat saat mengisi; ada pencarian) |
+| `/dashboard/survei` | Daftar survei yang terlihat (milik leluhur atau grup dalam scope): judul, grup pemilik, jumlah respons, badge *warisan*; cari judul + filter grup (survei yang berlaku untuk grup terpilih); `PAGE_SIZE`; "Buat survei" hanya ADMIN+ (§11) |
+| `/dashboard/survei/baru`, `/dashboard/survei/[id]` | Pembuat formulir; detail (§7.2) tab `?tab=hasil` (default) / `responden` / `formulir` — hasil: satu grup (`?grup=`) + filter demografi (`jk`, `umur`, `kerja`, `nikah`), tingkat respons, "Belum mengisi", grafik per pertanyaan, rincian per sub-grup; responden: daftar respons dalam scope (cari, filter grup, hapus); formulir: hanya pemilik yang bisa mengubah, lainnya baca saja; teks panjang dipaginasi lewat `?teks=<idPertanyaan>:<halaman>` |
+| `/dashboard/survei/[id]/isi` | Isi / ubah jawaban satu anggota (autocomplete nama, `?anggota=` untuk prefill, "Simpan & anggota berikutnya"); hanya yang boleh mengisi, mobile-first |
+| `/dashboard/tampilan` | Daftar tampilan anggota milik grup user (nama, pemilik, terakhir diperbarui); cari nama, `PAGE_SIZE`, "Buat tampilan"; semua user (§12) |
+| `/dashboard/tampilan/baru`, `/dashboard/tampilan/[id]` | Hasil tampilan: bilah filter (aturan sebagai chip, sheet di HP), menu "Tampilan" (kelompokkan, urutkan, kolom), perubahan belum disimpan di `?d=`; header: Simpan / Batalkan (pemilik), Simpan sebagai baru, Ubah nama (pemilik), Ambil alih (ADMIN+, yatim); zona berbahaya hapus (pemilik) |
+| `/dashboard/statistik` | Tab: anggota, kegiatan, partisipasi; filter satu grup + rentang tanggal (tidak di tab anggota); tab partisipasi bisa cari nama dan dipaginasi 50/hal |
+| `/dashboard/pengguna` | OWNER & ADMIN: buat user (dialog "Tambah pengguna"); OWNER: ubah peran, pindah grup, nonaktifkan; reset password sesuai §3.4; cari nama/username + filter grup (multi, termasuk turunan); paginasi 50/hal; kontrol per user di dialog "Kelola", hanya tampil bila ada aksi yang diizinkan |
+| `/dashboard/pengaturan/jenjang` | OWNER root: rename level |
+| `/dashboard/audit` | OWNER: audit log dalam scope (§4.5) |
 
 ### 7.1 Konvensi tampilan daftar
 
 - **Tata letak**: bingkai aplikasi setinggi layar; hanya area konten yang scroll. Sidebar desktop bisa diperkecil jadi ikon (tombol atau Ctrl/⌘+B; disimpan di cookie `sidebar_collapsed`). Di HP menu berupa drawer di atas konten.
-- **Filter standar** (`components/filters/*`, parsing di `lib/filters.ts`): cari nama (`q`), grup (`grup`, id dipisah koma), rentang tanggal (`range` = preset atau `custom`, `anchor`, `from`, `to`). Hanya halaman dengan tanggal yang alami yang punya filter tanggal (kegiatan, statistik, detail kegiatan, audit); anggota/pengguna/grup tidak. Field kosong tidak masuk URL; mengubah filter selalu kembali ke halaman 1. Setiap id grup dari URL di-resolve & dicek scope di server (`resolveGroups`, di luar scope → 404), kecuali `/kegiatan` yang tetap membuang id di luar scope (§5.3).
+- **Filter standar** (`components/filters/*`, parsing di `lib/filters.ts`): cari nama (`q`), grup (`grup`, id dipisah koma), rentang tanggal (`range` = preset atau `custom`, `anchor`, `from`, `to`). Hanya halaman dengan tanggal yang alami yang punya filter tanggal (kegiatan, statistik, detail kegiatan, audit); anggota/pengguna/grup tidak. Field kosong tidak masuk URL; mengubah filter selalu kembali ke halaman 1. Setiap id grup dari URL di-resolve & dicek scope di server (`resolveGroups`, di luar scope → 404), kecuali `/dashboard/kegiatan` yang tetap membuang id di luar scope (§5.3).
 - **Arti filter grup**: di anggota, pengguna, audit = grup terpilih **beserta turunannya**; di kegiatan = kegiatan yang **berlaku untuk** grup terpilih (§5.3); di statistik = satu grup scope.
 - **Paginasi** (`lib/pagination.ts`, `components/pagination.tsx`): setiap daftar yang mungkin dipaginasi; halaman di luar jangkauan dijepit ke halaman terakhir. Daftar penuh `PAGE_SIZE`, daftar di dalam halaman detail `EMBEDDED_PAGE_SIZE` dengan parameter sendiri dan tanpa lompat ke atas. Tidak dipaginasi: form absensi, pohon grup, pratinjau dashboard. Tabel yang diurutkan di klien (partisipasi, per-occurrence) dipaginasi di klien.
 - **Tata letak daftar**: header halaman (§7.2) + aksi utama, kartu angka ringkas (anggota, kegiatan), lalu kartu tabel: jumlah hasil di kiri, filter di kanan, tabel, pager di bawah. Tiap baris punya menu ⋮ berisi tautan (lihat, ubah, absensi); hapus tidak ada di menu, tetap di zona berbahaya halaman detail.
@@ -675,8 +677,8 @@ Rentang default "30 hari terakhir" = 30 hari inklusif (today−29 .. today). Sta
 - **Aksi**: aksi harian di header (sekunder `outline`, utama `default`, dengan ikon). Aksi yang tidak bisa dibatalkan (hapus, akhiri) **tidak** di header, melainkan di blok *Zona berbahaya* yang menjelaskan akibatnya; konfirmasi lewat dialog (atau `confirm()` untuk form sederhana).
 - **Tab** (`components/tab-nav.tsx`, `lib/tabs.ts`): halaman dengan beberapa bagian berbeda dipisah tab di URL `?tab=` (tab default tidak ditulis); hanya tab aktif yang dirender & di-query. Tab yang tidak boleh dipakai viewer tidak ditampilkan, dan memintanya lewat URL jatuh ke tab default. Pindah tab membuang parameter paginasi/filter tab lain.
 - **Isi**: tiap bagian berupa `Card`; baris daftar bisa diklik penuh. Form panjang dua kolom di layar ≥ sm, tombol simpan di kanan bawah.
-- Halaman daftar (`/statistik`, `/pengguna`, …) memakai header yang sama tanpa breadcrumb di akar bagian; tab `/statistik` mempertahankan filter grup & rentang antar tab.
-- Halaman check-in (`/absen`) dan `/akun/password` (layar wajib ganti password) tetap tata letak terpusat tanpa header ini.
+- Halaman daftar (`/dashboard/statistik`, `/dashboard/pengguna`, …) memakai header yang sama tanpa breadcrumb di akar bagian; tab `/dashboard/statistik` mempertahankan filter grup & rentang antar tab.
+- Halaman check-in (`/absen`) dan `/dashboard/akun/password` (layar wajib ganti password) tetap tata letak terpusat tanpa header ini.
 
 ---
 
@@ -695,7 +697,7 @@ Rentang default "30 hari terakhir" = 30 hari inklusif (today−29 .. today). Sta
 1. Scaffold Next + Prisma + SQLite + shadcn + Vitest — 1 jam
 2. Schema, migrasi, seed, `lib/dates.ts`, `lib/constants.ts` — 1 jam
 3. Logika murni (TDD, tanpa UI): `expandDates`, `occurrencesFor`, konflik, `expected` — 1.5 jam
-4. Auth: login + rate limit + validasi ulang sesi + `mustChangePassword` + `/akun/password` + header keamanan — 1.5 jam
+4. Auth: login + rate limit + validasi ulang sesi + `mustChangePassword` + `/dashboard/akun/password` + header keamanan — 1.5 jam
 5. `authorize` / `visibleGroupsWhere` / `audit()` + tes lintas-scope — 1 jam
    **Checkpoint**: akses lintas-scope gagal tertutup; user nonaktif langsung terlempar.
 6. Grup: pohon + CRUD (soft) + rename level — 1.5 jam
@@ -777,7 +779,7 @@ Tautan survei publik / isian mandiri, status buka-tutup, respons berulang per an
 
 ## 12. Tampilan anggota
 
-Daftar anggota tersimpan dengan aturan penyaring, urutan, pengelompokan, dan kolom sendiri, per grup. Spesifikasi & skenario uji: `openspec/changes/member-views/`. `/anggota` tidak berubah.
+Daftar anggota tersimpan dengan aturan penyaring, urutan, pengelompokan, dan kolom sendiri, per grup. Spesifikasi & skenario uji: `openspec/changes/member-views/`. `/dashboard/anggota` tidak berubah.
 
 ### 12.1 Kepemilikan & izin
 - Tampilan milik satu grup (grup pembuat saat dibuat, tidak pernah dari client) dan **hanya terlihat oleh user di grup itu persis**; leluhur, turunan, dan cabang lain mendapat 404 (beda dari survei/kegiatan, tidak ada pewarisan). Tampilan terhapus dianggap tidak ada.
@@ -795,6 +797,6 @@ Daftar anggota tersimpan dengan aturan penyaring, urutan, pengelompokan, dan kol
 
 ### 12.3 Draf & simpan
 - Perubahan aturan/urutan/pengelompokan/kolom langsung berlaku sebagai **draf di URL** (`?d=` = JSON base64url, maks. `VIEW_MAX_DRAFT_LENGTH`), ditandai "Belum disimpan", tidak menulis ke database dan tidak diaudit. Draf rusak/terlalu panjang → tampilan tersimpan dengan pemberitahuan generik.
-- Pemilik: **Simpan** (timpa; definisi dikirim lalu divalidasi ketat) dan **Batalkan** (hapus `?d`). Semua user di grup: **Simpan sebagai baru** (dialog nama, jadi milik user, lalu pindah ke tampilan baru) — selalu tampil, juga di `/tampilan/baru`. Pemilik: **Ubah nama** (dialog). Hapus: zona berbahaya, konfirmasi dialog, kembali ke `/tampilan`.
-- `/tampilan/baru` mulai dari definisi awal: status salah satu dari `AKTIF`, urut nama naik, tanpa pengelompokan, kolom default anggota.
+- Pemilik: **Simpan** (timpa; definisi dikirim lalu divalidasi ketat) dan **Batalkan** (hapus `?d`). Semua user di grup: **Simpan sebagai baru** (dialog nama, jadi milik user, lalu pindah ke tampilan baru) — selalu tampil, juga di `/dashboard/tampilan/baru`. Pemilik: **Ubah nama** (dialog). Hapus: zona berbahaya, konfirmasi dialog, kembali ke `/dashboard/tampilan`.
+- `/dashboard/tampilan/baru` mulai dari definisi awal: status salah satu dari `AKTIF`, urut nama naik, tanpa pengelompokan, kolom default anggota.
 - Audit: `member_view.create/update/delete/transfer` di transaksi yang sama (§4.5). Teks filter bisa memuat nama (PII), itu sebabnya audit hanya untuk OWNER dalam scope.

@@ -3,10 +3,10 @@
 ## MODIFIED Requirements
 
 ### Requirement: Default range and scope
-Every statistic SHALL be scope-filtered and bounded by a date range defaulting to the last `DEFAULT_STATS_RANGE_DAYS` (constant, 30) days, inclusive of today. Statistics SHALL be computed for a single scope group (default the user's own group); the group filter on `/statistik` SHALL therefore be single-select. The member tab has no date range.
+Every statistic SHALL be scope-filtered and bounded by a date range defaulting to the last `DEFAULT_STATS_RANGE_DAYS` (constant, 30) days, inclusive of today. Statistics SHALL be computed for a single scope group (default the user's own group); the group filter on `/dashboard/statistik` SHALL therefore be single-select. The member tab has no date range.
 
 #### Scenario: Default range applied
-- **WHEN** `/statistik` is opened without parameters
+- **WHEN** `/dashboard/statistik` is opened without parameters
 - **THEN** the range is today−29 .. today
 
 ### Requirement: Participation statistics

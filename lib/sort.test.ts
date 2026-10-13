@@ -19,21 +19,21 @@ describe("parseSort", () => {
 
 describe("sortHref", () => {
   it("flips the active column and drops the page", () => {
-    expect(sortHref("/anggota", { q: "budi", page: "3" }, "nama", DEFAULT, DEFAULT)).toBe(
-      "/anggota?q=budi&sort=nama&dir=desc",
+    expect(sortHref("/dashboard/anggota", { q: "budi", page: "3" }, "nama", DEFAULT, DEFAULT)).toBe(
+      "/dashboard/anggota?q=budi&sort=nama&dir=desc",
     );
   });
 
   it("starts another column ascending, or at firstDir", () => {
-    expect(sortHref("/anggota", {}, "status", DEFAULT, DEFAULT)).toBe("/anggota?sort=status&dir=asc");
-    expect(sortHref("/anggota", {}, "tanggalMasuk", DEFAULT, DEFAULT, "desc")).toBe(
-      "/anggota?sort=tanggalMasuk&dir=desc",
+    expect(sortHref("/dashboard/anggota", {}, "status", DEFAULT, DEFAULT)).toBe("/dashboard/anggota?sort=status&dir=asc");
+    expect(sortHref("/dashboard/anggota", {}, "tanggalMasuk", DEFAULT, DEFAULT, "desc")).toBe(
+      "/dashboard/anggota?sort=tanggalMasuk&dir=desc",
     );
   });
 
   it("omits the default order from the URL", () => {
-    expect(sortHref("/anggota", { sort: "nama", dir: "desc" }, "nama", { key: "nama", dir: "desc" }, DEFAULT)).toBe(
-      "/anggota",
+    expect(sortHref("/dashboard/anggota", { sort: "nama", dir: "desc" }, "nama", { key: "nama", dir: "desc" }, DEFAULT)).toBe(
+      "/dashboard/anggota",
     );
   });
 });

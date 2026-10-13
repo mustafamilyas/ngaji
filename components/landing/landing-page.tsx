@@ -15,9 +15,8 @@ import { TopBar } from "./top-bar";
 export function LandingPage({ content = GENERIC_LANDING }: { content?: LandingContent }) {
   const whatsappHref = contactWhatsappUrl();
   return (
-    // The bare app frame pads its children; cancel that so sections can run edge to edge.
     <div
-      className={`${landingHeading.variable} landing -mx-4 -my-6 min-h-dvh overflow-x-clip bg-(--l-paper) text-(--l-ink)`}
+      className={`${landingHeading.variable} landing min-h-dvh overflow-x-clip bg-(--l-paper) text-(--l-ink)`}
     >
       <TopBar />
       <main>

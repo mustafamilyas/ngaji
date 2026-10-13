@@ -5,7 +5,7 @@ import { clampPage } from "@/lib/pagination";
 import { resolveGroups } from "@/lib/resolve";
 import type { SortState } from "@/lib/sort";
 
-/** Sortable `/pengguna` columns → the field they order by. */
+/** Sortable `/dashboard/pengguna` columns → the field they order by. */
 const USER_SORT_FIELDS = {
   nama: (dir) => ({ user: { name: dir } }),
   username: (dir) => ({ user: { username: dir } }),
@@ -19,7 +19,7 @@ export const USER_SORT_KEYS = Object.keys(USER_SORT_FIELDS) as UserSortKey[];
 export const DEFAULT_USER_SORT: SortState<UserSortKey> = { key: "nama", dir: "asc" };
 
 /**
- * Users in the caller's scope, for the `/pengguna` page and the `/audit`
+ * Users in the caller's scope, for the `/dashboard/pengguna` page and the `/dashboard/audit`
  * actor filter. Filtering through the `group` relation bypasses
  * `lib/db.ts`'s soft-delete extension (that only wraps top-level
  * `group.*` calls), so `deletedAt: null` is added explicitly here.
@@ -42,7 +42,7 @@ export type ListUsersFilter = {
   sort?: SortState<UserSortKey>;
 };
 
-/** Filtered, paginated `/pengguna` list; same scope and soft-delete rules as `listUsersInScope`. */
+/** Filtered, paginated `/dashboard/pengguna` list; same scope and soft-delete rules as `listUsersInScope`. */
 export async function listUsers(session: SessionUser, filter: ListUsersFilter = {}) {
   const groupPaths =
     filter.groupIds && filter.groupIds.length > 0

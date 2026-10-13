@@ -17,10 +17,10 @@ describe("parseTab", () => {
 
 describe("tabHref", () => {
   it("omits the default tab from the URL", () => {
-    expect(tabHref("/anggota/3", "profil", "profil")).toBe("/anggota/3");
+    expect(tabHref("/dashboard/anggota/3", "profil", "profil")).toBe("/dashboard/anggota/3");
   });
 
   it("sets only the tab param", () => {
-    expect(tabHref("/anggota/3", "kehadiran", "profil")).toBe("/anggota/3?tab=kehadiran");
+    expect(tabHref("/dashboard/anggota/3", "kehadiran", "profil")).toBe("/dashboard/anggota/3?tab=kehadiran");
   });
 });

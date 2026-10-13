@@ -1,7 +1,7 @@
 import type { Role } from "@/lib/validation/enums";
 
 /**
- * Which controls the `/pengguna` row offers (DESIGN.md §3.2/§3.4). UI only —
+ * Which controls the `/dashboard/pengguna` row offers (DESIGN.md §3.2/§3.4). UI only —
  * every action re-checks on the server through `authorize()`.
  */
 export function userRowPermissions(input: {

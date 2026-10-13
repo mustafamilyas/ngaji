@@ -22,7 +22,7 @@ export type EntryQuestion = {
 export type EntryMember = { id: number; name: string; groupName: string; hasResponse: boolean };
 
 /**
- * Everything `/survei/[id]/isi` needs. Resolving enforces visibility (404);
+ * Everything `/dashboard/survei/[id]/isi` needs. Resolving enforces visibility (404);
  * `canRecord` is "caller is in the owning group or below" — users above only
  * view, so they get no members and the page redirects them to the survey.
  *

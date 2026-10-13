@@ -58,17 +58,17 @@ describe("pageWindow", () => {
 
 describe("pageHref", () => {
   it("keeps the other params and sets the page", () => {
-    expect(pageHref("/anggota", { q: "budi", grup: "3,4", page: "1" }, 3)).toBe("/anggota?q=budi&grup=3%2C4&page=3");
+    expect(pageHref("/dashboard/anggota", { q: "budi", grup: "3,4", page: "1" }, 3)).toBe("/dashboard/anggota?q=budi&grup=3%2C4&page=3");
   });
 
   it("drops the param for page 1", () => {
-    expect(pageHref("/anggota", { q: "budi", page: "4" }, 1)).toBe("/anggota?q=budi");
-    expect(pageHref("/anggota", {}, 1)).toBe("/anggota");
+    expect(pageHref("/dashboard/anggota", { q: "budi", page: "4" }, 1)).toBe("/dashboard/anggota?q=budi");
+    expect(pageHref("/dashboard/anggota", {}, 1)).toBe("/dashboard/anggota");
   });
 
   it("supports a custom page param and repeated values", () => {
-    expect(pageHref("/kegiatan/1", { range: "7h", tag: ["a", "b"] }, 2, "jadwal")).toBe(
-      "/kegiatan/1?range=7h&tag=a&tag=b&jadwal=2",
+    expect(pageHref("/dashboard/kegiatan/1", { range: "7h", tag: ["a", "b"] }, 2, "jadwal")).toBe(
+      "/dashboard/kegiatan/1?range=7h&tag=a&tag=b&jadwal=2",
     );
   });
 });

@@ -66,18 +66,18 @@ The JWT SHALL carry `{userId, groupId, role, groupPath, sessionVersion}`. On eve
 - **THEN** the session is still terminated on its next read
 
 ### Requirement: Forced password change
-Users with `mustChangePassword = true` SHALL be redirected to `/akun/password` from every route except `/login` and `/akun/password` until they set a new password. Every Server Action other than changing one's own password and signing out SHALL refuse to run for such a user, regardless of the URL the action was posted to. The seeded owner, the bootstrapped owner and any user whose password was reset by someone else SHALL have this flag set.
+Users with `mustChangePassword = true` SHALL be redirected to `/dashboard/akun/password` from every route except `/login` and `/dashboard/akun/password` until they set a new password. Every Server Action other than changing one's own password and signing out SHALL refuse to run for such a user, regardless of the URL the action was posted to. The seeded owner, the bootstrapped owner and any user whose password was reset by someone else SHALL have this flag set.
 
 #### Scenario: Seeded owner first login
 - **WHEN** `admin` logs in for the first time after seeding
-- **THEN** every navigation lands on `/akun/password` until a new password is saved
+- **THEN** every navigation lands on `/dashboard/akun/password` until a new password is saved
 
 #### Scenario: Flag cleared after change
 - **WHEN** the user saves a new password of at least 8 characters
 - **THEN** `mustChangePassword` becomes false, `user.change_password` is audited, and the user is asked to log in again with the new password
 
 #### Scenario: Action posted to the password page is refused
-- **WHEN** a user with `mustChangePassword = true` invokes the create-member action by posting it to `/akun/password`
+- **WHEN** a user with `mustChangePassword = true` invokes the create-member action by posting it to `/dashboard/akun/password`
 - **THEN** no member is created and no `member.create` audit entry is written
 
 ### Requirement: Own password change

@@ -6,7 +6,7 @@ import { resolveGroups } from "@/lib/resolve";
 import type { SortState } from "@/lib/sort";
 import type { MemberStatus } from "@/lib/validation/enums";
 
-/** Sortable `/anggota` columns → the field they order by. Keys match `MEMBER_COLUMNS` (plus the name). */
+/** Sortable `/dashboard/anggota` columns → the field they order by. Keys match `MEMBER_COLUMNS` (plus the name). */
 const MEMBER_SORT_FIELDS = {
   nama: (dir) => ({ name: dir }),
   grup: (dir) => ({ group: { name: dir } }),
