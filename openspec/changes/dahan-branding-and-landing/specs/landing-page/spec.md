@@ -37,7 +37,7 @@ Only `/`, `/ormas`, `/login` and static assets SHALL be reachable without a sess
 - **THEN** the ormas page is rendered (it is marketing content, not app data)
 
 ### Requirement: Landing content
-The landing page SHALL be in Bahasa Indonesia and present: the Dahan name and one-line positioning for hierarchical organizations; how it works (a group tree → a kegiatan set once at a higher level applies to all groups below → attendance taken from a phone → statistics roll up); data protection (audit log, no hard delete, each organization's data kept separate, UU PDP); a link to `/ormas`; a "Masuk" link to `/login`; and the contact CTA. It SHALL NOT show pricing.
+The landing page SHALL be in Bahasa Indonesia and present: the Dahan name and one-line positioning for hierarchical organizations; how it works (a group tree → a kegiatan set once at a higher level applies to all groups below → attendance taken from a phone → statistics roll up); data protection (audit log, no hard delete, each organization's data kept separate, UU PDP); a link to `/ormas`; a "Masuk" link to `/login`; and the contact CTA. It SHALL NOT show pricing. Illustrative UI (sample activity, group tree, attendance and recap cards) SHALL use fictional static sample data from `components/landing/content.ts`, never database content.
 
 #### Scenario: Key sections present
 - **WHEN** the landing page is rendered

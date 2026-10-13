@@ -8,7 +8,7 @@ const LINKS = [
 
 export function Footer() {
   return (
-    <footer className="flex flex-col gap-3 border-t border-(--l-ink)/10 px-4 py-8 text-sm text-(--l-muted) sm:flex-row sm:items-center sm:justify-between sm:px-8">
+    <footer className="flex flex-col gap-3 py-10 text-sm text-(--l-muted) sm:flex-row sm:items-center sm:justify-between">
       <p>Dahan, manajemen anggota dan kegiatan organisasi berjenjang.</p>
       <nav aria-label="Tautan" className="flex flex-wrap gap-x-5 gap-y-1">
         {LINKS.map((link) => (

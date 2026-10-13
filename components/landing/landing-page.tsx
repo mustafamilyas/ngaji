@@ -18,14 +18,17 @@ export function LandingPage({ content = GENERIC_LANDING }: { content?: LandingCo
     <div
       className={`${landingHeading.variable} landing min-h-dvh overflow-x-clip bg-(--l-paper) text-(--l-ink)`}
     >
-      <TopBar />
-      <main>
-        <Hero content={content} />
-        <HowItWorks steps={content.steps} />
-        <DataProtection protection={content.protection} />
-        {whatsappHref && <CtaSection cta={content.cta} href={whatsappHref} />}
-      </main>
-      <Footer />
+      {/* One narrow column for the whole page; sections are framed panels inside it, not full-bleed bands. */}
+      <div className="mx-auto max-w-[1120px] px-4 sm:px-6">
+        <TopBar segmentLink={content.segmentLink} />
+        <main>
+          <Hero content={content} whatsappHref={whatsappHref} />
+          <HowItWorks content={content} />
+          <DataProtection protection={content.protection} />
+          {whatsappHref && <CtaSection cta={content.cta} href={whatsappHref} />}
+        </main>
+        <Footer />
+      </div>
     </div>
   );
 }

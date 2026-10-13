@@ -9,7 +9,25 @@ export type LandingContent = {
   steps: { title: string; body: string }[];
   protection: { title: string; intro: string; points: string[] };
   cta: { title: string; body: string; button: string };
+  /** Sample data for the illustrative UI cards; fictional, never read from the database. */
+  showcase: {
+    activity: string;
+    schedule: string;
+    /** One sample group per level, top to bottom, for the tree card. */
+    groups: [string, string, string, string];
+    /** Second-level groups with an attendance rate, for the recap card. */
+    recap: { name: string; percent: number }[];
+    leafCount: number;
+  };
 };
+
+/** Fictional names for the attendance card, shared by every landing page. */
+export const SAMPLE_ATTENDEES = [
+  { name: "Rina Wulandari", status: "Hadir" },
+  { name: "Ahmad Fauzi", status: "Hadir" },
+  { name: "Dewi Lestari", status: "Izin" },
+  { name: "Bayu Pratama", status: "Hadir" },
+] as const;
 
 const PROTECTION_POINTS = [
   "Setiap perubahan tercatat di log audit: siapa yang mengubah, kapan, dan apa yang berubah.",
@@ -60,6 +78,17 @@ export const GENERIC_LANDING: LandingContent = {
     body: "Ceritakan struktur organisasi Anda. Kami bantu menyiapkannya.",
     button: CTA_BUTTON,
   },
+  showcase: {
+    activity: "Rapat rutin pengurus",
+    schedule: "Setiap Senin, 19.30",
+    groups: ["Pusat", "Wilayah Barat", "Cabang Kota", "Kelompok Melati"],
+    recap: [
+      { name: "Wilayah Barat", percent: 86 },
+      { name: "Wilayah Tengah", percent: 78 },
+      { name: "Wilayah Timur", percent: 71 },
+    ],
+    leafCount: 48,
+  },
 };
 
 export const ORMAS_LANDING: LandingContent = {
@@ -96,5 +125,15 @@ export const ORMAS_LANDING: LandingContent = {
     title: "Ingin mencoba untuk ormas Anda?",
     body: "Ceritakan jumlah wilayah, daerah, dan cabang Anda. Kami bantu menyiapkannya.",
     button: CTA_BUTTON,
+  },  showcase: {
+    activity: "Rapat pleno cabang",
+    schedule: "Setiap Senin pertama, 19.30",
+    groups: ["Pimpinan Pusat", "Wilayah Jawa Barat", "Daerah Bandung", "Cabang Coblong"],
+    recap: [
+      { name: "Jawa Barat", percent: 84 },
+      { name: "Jawa Tengah", percent: 79 },
+      { name: "Jawa Timur", percent: 72 },
+    ],
+    leafCount: 126,
   },
 };
