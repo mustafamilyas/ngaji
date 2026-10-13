@@ -7,7 +7,7 @@ vi.mock("next/font/google", () => ({
 
 import { db } from "@/lib/db";
 import { buildPageFixture } from "@/lib/test/fixtures";
-import PengajianPage from "@/app/pengajian/page";
+import OrmasPage from "@/app/ormas/page";
 import { LandingPage } from "./landing-page";
 
 function renderGeneric() {
@@ -29,10 +29,10 @@ describe("LandingPage (generic)", () => {
     expect(html).toContain("Data anggota dijaga");
   });
 
-  it("links to the login page and the pengajian page", () => {
+  it("links to the login page and the ormas page", () => {
     const html = renderGeneric();
     expect(html).toContain('href="/login"');
-    expect(html).toContain('href="/pengajian"');
+    expect(html).toContain('href="/ormas"');
   });
 
   it("shows no pricing", () => {
@@ -80,27 +80,27 @@ describe("LandingPage (generic)", () => {
   });
 });
 
-describe("PengajianPage", () => {
+describe("OrmasPage", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
 
-  it("uses pengajian wording", () => {
-    const html = renderToStaticMarkup(PengajianPage());
-    for (const term of ["jamaah", "pengurus", "pusat", "daerah", "desa", "kelompok", "pengajian rutin"]) {
+  it("uses ormas wording", () => {
+    const html = renderToStaticMarkup(OrmasPage());
+    for (const term of ["ormas", "anggota", "pengurus", "pusat", "wilayah", "daerah", "cabang"]) {
       expect(html.toLowerCase()).toContain(term);
     }
   });
 
   it("has the same contact CTA and login link", () => {
     vi.stubEnv("DAHAN_WHATSAPP", "0812-3456-7890");
-    const html = renderToStaticMarkup(PengajianPage());
+    const html = renderToStaticMarkup(OrmasPage());
     expect(html).toContain('href="https://wa.me/6281234567890"');
     expect(html).toContain('href="/login"');
   });
 
   it("sets the page title", async () => {
-    const { metadata } = await import("@/app/pengajian/page");
-    expect(metadata.title).toBe("Untuk pengajian");
+    const { metadata } = await import("@/app/ormas/page");
+    expect(metadata.title).toBe("Untuk ormas");
   });
 });

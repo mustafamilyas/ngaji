@@ -2,7 +2,7 @@ import Link from "next/link";
 
 const LINKS = [
   { href: "/", label: "Beranda" },
-  { href: "/pengajian", label: "Untuk pengajian" },
+  { href: "/ormas", label: "Untuk ormas" },
   { href: "/login", label: "Masuk" },
 ];
 

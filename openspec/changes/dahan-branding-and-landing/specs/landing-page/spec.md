@@ -22,30 +22,30 @@ The system SHALL render the public landing page at `/` when the request has no v
 - **THEN** they are redirected to `/dashboard/akun/password`, not shown the landing page
 
 ### Requirement: Public route allowlist
-Only `/`, `/pengajian`, `/login` and static assets SHALL be reachable without a session. Every other route SHALL keep redirecting unauthenticated requests to `/login`.
+Only `/`, `/ormas`, `/login` and static assets SHALL be reachable without a session. Every other route SHALL keep redirecting unauthenticated requests to `/login`.
 
 #### Scenario: Segment page is public
-- **WHEN** a visitor without a session requests `/pengajian`
-- **THEN** the response is 200 with the pengajian page
+- **WHEN** a visitor without a session requests `/ormas`
+- **THEN** the response is 200 with the ormas page
 
 #### Scenario: App routes stay protected
 - **WHEN** a visitor without a session requests `/dashboard/anggota`, `/dashboard/grup/1` or `/dashboard/kegiatan`
 - **THEN** they are redirected to `/login` and no app data is rendered
 
 #### Scenario: Logged-in user on segment page
-- **WHEN** a logged-in user requests `/pengajian`
-- **THEN** the pengajian page is rendered (it is marketing content, not app data)
+- **WHEN** a logged-in user requests `/ormas`
+- **THEN** the ormas page is rendered (it is marketing content, not app data)
 
 ### Requirement: Landing content
-The landing page SHALL be in Bahasa Indonesia and present: the Dahan name and one-line positioning for hierarchical organizations; how it works (a group tree → a kegiatan set once at a higher level applies to all groups below → attendance taken from a phone → statistics roll up); data protection (audit log, no hard delete, each organization's data kept separate, UU PDP); a link to `/pengajian`; a "Masuk" link to `/login`; and the contact CTA. It SHALL NOT show pricing.
+The landing page SHALL be in Bahasa Indonesia and present: the Dahan name and one-line positioning for hierarchical organizations; how it works (a group tree → a kegiatan set once at a higher level applies to all groups below → attendance taken from a phone → statistics roll up); data protection (audit log, no hard delete, each organization's data kept separate, UU PDP); a link to `/ormas`; a "Masuk" link to `/login`; and the contact CTA. It SHALL NOT show pricing.
 
 #### Scenario: Key sections present
 - **WHEN** the landing page is rendered
-- **THEN** it contains the positioning, how-it-works, data-protection sections, a link to `/pengajian` and a link to `/login`
+- **THEN** it contains the positioning, how-it-works, data-protection sections, a link to `/ormas` and a link to `/login`
 
-#### Scenario: Pengajian page wording
-- **WHEN** `/pengajian` is rendered
-- **THEN** it uses pengajian terms (jamaah, pengurus, pusat/daerah/desa/kelompok, pengajian rutin) and has the same contact CTA
+#### Scenario: Ormas page wording
+- **WHEN** `/ormas` is rendered
+- **THEN** it uses ormas terms (anggota, pengurus, pusat/wilayah/daerah/cabang) and has the same contact CTA
 
 ### Requirement: WhatsApp contact CTA from configuration
 The contact CTA SHALL link to `https://wa.me/<number>` (new tab, `rel="noopener noreferrer"`) using a number from deployment configuration, normalized with the same rules as member WhatsApp links (DESIGN.md §7.1). If the number is missing or invalid, the CTA SHALL NOT be rendered and the page SHALL still render.

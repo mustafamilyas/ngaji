@@ -496,7 +496,7 @@ Setiap Server Action: `auth()` → zod parse → resolve target → `authorize` 
 - Cookie sesi: `httpOnly`, `secure` (production), `sameSite=lax`, `maxAge` 7 hari.
 - Seed owner `admin/admin` dibuat dengan `mustChangePassword = true`.
 - `mustChangePassword = true` → middleware mengarahkan semua route (kecuali `/dashboard/akun/password`, `/login`) ke halaman ganti password.
-- **Route publik** (tanpa sesi): hanya `/`, `/pengajian`, `/login`, dicocokkan **persis** oleh `isPublicPath` di `lib/auth/public-paths.ts` (tanpa prefix: `/pengajian/1`, `/Login`, `/pengajian/` bukan publik). Route lain (termasuk semua `/dashboard/**`) tanpa sesi → redirect `/login`; dengan sesi, `/` dan `/login` → redirect `/dashboard`. Halaman publik tidak membaca data dari DB, tidak memuat skrip/tracker pihak ketiga, dan CSP (§4.3) tidak berubah.
+- **Route publik** (tanpa sesi): hanya `/`, `/ormas`, `/login`, dicocokkan **persis** oleh `isPublicPath` di `lib/auth/public-paths.ts` (tanpa prefix: `/ormas/1`, `/Login`, `/ormas/` bukan publik). Route lain (termasuk semua `/dashboard/**`) tanpa sesi → redirect `/login`; dengan sesi, `/` dan `/login` → redirect `/dashboard`. Halaman publik tidak membaca data dari DB, tidak memuat skrip/tracker pihak ketiga, dan CSP (§4.3) tidak berubah.
 
 ### 4.2 Otorisasi
 - Semua di §3. Tidak ada endpoint yang memakai `groupId`/`groupPath` dari client tanpa resolve + cek.
@@ -640,7 +640,7 @@ Semua halaman aplikasi (wajib login) ada di bawah `/dashboard` dan memakai app s
 |---|---|
 | `/login` | Username + password |
 | `/` | Landing page publik generik Dahan (tanpa data organisasi); CTA "Hubungi via WhatsApp" dari env `DAHAN_WHATSAPP` (disembunyikan bila kosong/tidak valid) |
-| `/pengajian` | Landing page publik untuk segmen pengajian (jamaah, pengurus, pusat/daerah/desa/kelompok); CTA sama |
+| `/ormas` | Studi kasus publik untuk segmen ormas (anggota, pengurus, pusat/wilayah/daerah/cabang); CTA sama |
 | `/dashboard/akun/password` | Ganti password sendiri (wajib jika `mustChangePassword`) |
 | `/dashboard` | Dashboard: ringkasan statistik scope + kegiatan 7 hari ke depan |
 | `/dashboard/grup` | Pohon grup dalam scope |

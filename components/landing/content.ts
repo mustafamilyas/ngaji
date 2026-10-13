@@ -28,9 +28,9 @@ export const GENERIC_LANDING: LandingContent = {
   diagramLabel:
     "Pohon grup empat tingkat. Satu kegiatan yang dibuat di tingkat teratas berlaku di semua grup di bawahnya.",
   segmentLink: {
-    prompt: "Mengelola pengajian?",
-    label: "Lihat contoh untuk pengajian",
-    href: "/pengajian",
+    prompt: "Mengelola ormas?",
+    label: "Lihat contoh untuk ormas",
+    href: "/ormas",
   },
   steps: [
     {
@@ -62,39 +62,39 @@ export const GENERIC_LANDING: LandingContent = {
   },
 };
 
-export const PENGAJIAN_LANDING: LandingContent = {
-  headline: "Kelola jamaah dan pengajian rutin dari pusat sampai kelompok.",
-  lead: "Dahan membantu pengurus pusat, daerah, desa, dan kelompok mencatat jamaah, mengatur jadwal pengajian rutin, dan mengabsen dari HP.",
-  levels: ["Pusat", "Daerah", "Desa", "Kelompok"],
+export const ORMAS_LANDING: LandingContent = {
+  headline: "Kelola anggota ormas dari pimpinan pusat sampai cabang.",
+  lead: "Dahan membantu pengurus pusat, wilayah, daerah, dan cabang mendata anggota, menjadwalkan rapat dan kegiatan rutin, serta mengabsen peserta dari HP.",
+  levels: ["Pusat", "Wilayah", "Daerah", "Cabang"],
   diagramLabel:
-    "Pohon grup dari pusat, daerah, desa, sampai kelompok. Satu pengajian rutin yang dibuat di pusat berlaku di semua kelompok.",
+    "Pohon grup dari pimpinan pusat, wilayah, daerah, sampai cabang. Satu kegiatan yang dibuat di pusat berlaku di semua cabang.",
   segmentLink: null,
   steps: [
     {
-      title: "Susun pusat sampai kelompok",
-      body: "Daftarkan daerah, desa, dan kelompok. Jamaah terdaftar di kelompok masing-masing.",
+      title: "Susun pusat sampai cabang",
+      body: "Daftarkan pimpinan wilayah, daerah, dan cabang. Anggota terdaftar di cabang masing-masing.",
     },
     {
-      title: "Jadwalkan pengajian rutin sekali",
-      body: "Pengajian rutin yang dibuat di pusat atau daerah otomatis berlaku untuk semua kelompok di bawahnya.",
+      title: "Jadwalkan kegiatan sekali",
+      body: "Rapat rutin atau kaderisasi yang dibuat di pusat atau wilayah otomatis berlaku untuk semua cabang di bawahnya.",
     },
     {
-      title: "Absen jamaah dari HP",
-      body: "Pengurus kelompok mencatat hadir, izin, atau tidak hadir langsung dari ponsel.",
+      title: "Absen peserta dari HP",
+      body: "Pengurus cabang mencatat kehadiran anggota langsung dari ponsel saat kegiatan berlangsung.",
     },
     {
-      title: "Pantau rekap kehadiran",
-      body: "Pengurus desa, daerah, dan pusat melihat kehadiran jamaah di cakupannya masing-masing.",
+      title: "Pantau rekap tiap jenjang",
+      body: "Pimpinan daerah, wilayah, dan pusat melihat jumlah anggota dan kehadiran di cakupannya masing-masing.",
     },
   ],
   protection: {
-    title: "Data jamaah dijaga",
-    intro: "Data jamaah itu data pribadi. Dahan dibuat dengan itu sebagai syarat, bukan tambahan.",
+    title: "Data anggota dijaga",
+    intro: "Data anggota itu data pribadi. Dahan dibuat dengan itu sebagai syarat, bukan tambahan.",
     points: PROTECTION_POINTS,
   },
   cta: {
-    title: "Ingin mencoba untuk pengajian Anda?",
-    body: "Ceritakan jumlah daerah, desa, dan kelompok Anda. Kami bantu menyiapkannya.",
+    title: "Ingin mencoba untuk ormas Anda?",
+    body: "Ceritakan jumlah wilayah, daerah, dan cabang Anda. Kami bantu menyiapkannya.",
     button: CTA_BUTTON,
   },
 };
