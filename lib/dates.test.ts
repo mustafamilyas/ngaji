@@ -7,6 +7,7 @@ import {
   daysBetween,
   fromDbDate,
   isDateString,
+  isWithinMonths,
   monthEndOf,
   monthStartOf,
   monthsBetween,
@@ -241,5 +242,19 @@ describe("isDateString", () => {
     expect(isDateString("2101-01-01")).toBe(false);
     expect(isDateString("1900-01-01")).toBe(true);
     expect(isDateString("2100-12-31")).toBe(true);
+  });
+});
+
+describe("isWithinMonths", () => {
+  it.each([
+    ["2026-01-01", "2026-03-31", true],
+    ["2026-01-01", "2026-04-01", false],
+    ["2026-01-15", "2026-04-14", true],
+    ["2026-01-15", "2026-04-15", false],
+    ["2026-01-31", "2026-04-29", true],
+    ["2026-01-31", "2026-04-30", false],
+    ["2026-05-10", "2026-05-10", true],
+  ])("%s..%s within 3 months = %s", (from, to, expected) => {
+    expect(isWithinMonths(from, to, 3)).toBe(expected);
   });
 });

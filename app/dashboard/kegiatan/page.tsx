@@ -10,6 +10,7 @@ import {
   List,
   Network,
   Plus,
+  Printer,
   TriangleAlert,
 } from "lucide-react";
 import { auth } from "@/auth";
@@ -101,6 +102,11 @@ export default async function ActivityListPage({
     return hrefWith({ view: "list", range: "custom", from: date, to: date, anchor: undefined });
   }
 
+  const printHref = hrefWith({ view: undefined, sort: undefined, dir: undefined }).replace(
+    "/dashboard/kegiatan?",
+    "/dashboard/kegiatan/cetak?",
+  );
+
   const sorted = sortActivityEntries(entries, sort);
   const listPage = paginate(sorted, page, PAGE_SIZE);
 
@@ -128,10 +134,16 @@ export default async function ActivityListPage({
           </>
         }
         actions={
-          <Link href="/dashboard/kegiatan/baru" className={buttonVariants({ size: "lg" })}>
-            <Plus />
-            Kegiatan baru
-          </Link>
+          <>
+            <Link href={printHref} className={buttonVariants({ size: "lg", variant: "outline" })}>
+              <Printer />
+              Cetak
+            </Link>
+            <Link href="/dashboard/kegiatan/baru" className={buttonVariants({ size: "lg" })}>
+              <Plus />
+              Kegiatan baru
+            </Link>
+          </>
         }
       />
 

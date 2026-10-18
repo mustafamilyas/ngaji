@@ -170,4 +170,19 @@ describe("ActivityListPage", () => {
     expect(html).toContain("Kajian Cabang");
     expect(html).toContain("warisan");
   });
+
+  it("links Cetak to the print route with the current filters", async () => {
+    const fixture = await buildPageFixture("kegiatan-list-cetak-link");
+    const session = sessionFor(fixture.actorId, "OWNER", fixture.root);
+    mockAuthSession(auth, { user: session });
+
+    const html = renderToStaticMarkup(
+      await ActivityListPage({
+        searchParams: Promise.resolve({ grup: String(fixture.leaf.id), q: "uji", range: "custom", from: "2024-01-01", to: "2024-01-31", page: "1" }),
+      }),
+    );
+    expect(html).toContain(
+      `/dashboard/kegiatan/cetak?grup=${fixture.leaf.id}&amp;q=uji&amp;range=custom&amp;from=2024-01-01&amp;to=2024-01-31`,
+    );
+  });
 });

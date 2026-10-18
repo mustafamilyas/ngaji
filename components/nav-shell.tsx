@@ -63,17 +63,19 @@ export function NavShell({
   }
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-background">
-      <AppSidebar
-        organizationName={organizationName}
-        userName={user.name}
-        userRole={user.role}
-        collapsed={collapsed}
-        onToggleCollapsed={toggleCollapsed}
-      />
+    <div className="flex h-dvh overflow-hidden bg-background print:block print:h-auto print:overflow-visible">
+      <div className="contents print:hidden">
+        <AppSidebar
+          organizationName={organizationName}
+          userName={user.name}
+          userRole={user.role}
+          collapsed={collapsed}
+          onToggleCollapsed={toggleCollapsed}
+        />
+      </div>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center justify-between border-b bg-background px-4 lg:hidden">
+      <div className="flex min-w-0 flex-1 flex-col print:block">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b bg-background px-4 lg:hidden print:hidden">
           <BrandMark organizationName={organizationName} />
           <button
             type="button"
@@ -88,15 +90,15 @@ export function NavShell({
         </header>
 
         {/* scroll-padding matches the content padding so Next's scroll-into-view on navigation lands at the very top. */}
-        <main className="min-w-0 flex-1 scroll-pt-6 overflow-y-auto overscroll-contain lg:scroll-pt-8">
-          <div className="px-4 py-6 lg:px-8 lg:py-8">{children}</div>
+        <main className="min-w-0 flex-1 scroll-pt-6 overflow-y-auto overscroll-contain lg:scroll-pt-8 print:overflow-visible">
+          <div className="px-4 py-6 lg:px-8 lg:py-8 print:p-0">{children}</div>
         </main>
       </div>
 
       {/* Mobile drawer: slides over the content instead of pushing it down. */}
       <div
         className={cn(
-          "fixed inset-0 z-50 lg:hidden",
+          "fixed inset-0 z-50 lg:hidden print:hidden",
           drawerOpen ? "pointer-events-auto" : "pointer-events-none",
         )}
         aria-hidden={!drawerOpen}

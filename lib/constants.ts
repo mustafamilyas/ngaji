@@ -24,6 +24,8 @@ export const EMBEDDED_PAGE_SIZE = 10;
 
 /** Date range presets per page for the shared filter (`lib/filters.ts`); first listed = shown first. */
 export const ACTIVITY_LIST_DATE_RANGE: DateRangeConfig = { modes: ["hari", "minggu", "bulan", "custom"], defaultMode: "minggu" };
+/** Longest range the printable schedule accepts, in calendar months. */
+export const PRINT_MAX_MONTHS = 3;
 /** Statistics default to the last `DEFAULT_STATS_RANGE_DAYS` (30) days — keep `defaultMode` in step with it. */
 export const STATS_DATE_RANGE: DateRangeConfig = { modes: ["7h", "30h", "90h", "bulan", "custom"], defaultMode: "30h" };
 export const AUDIT_DATE_RANGE: DateRangeConfig = { modes: ["semua", "hari", "7h", "30h", "90h", "custom"], defaultMode: "semua" };

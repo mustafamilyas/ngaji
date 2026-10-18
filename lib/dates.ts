@@ -153,3 +153,14 @@ export function rangeForMode(mode: RangeMode, referenceDate: string): { from: st
       return { from: monthStartOf(referenceDate), to: monthEndOf(referenceDate) };
   }
 }
+
+/**
+ * True when `to` is earlier than `from` plus `months` calendar months, with the
+ * day clamped to the end of a shorter target month (31 Jan + 3 months = 30 Apr).
+ */
+export function isWithinMonths(from: string, to: string, months: number): boolean {
+  const day = Number(from.split("-")[2]);
+  const firstOfTarget = addMonthsOnDay(from, months, 1)!;
+  const limit = addMonthsOnDay(from, months, day) ?? monthEndOf(firstOfTarget);
+  return to < limit;
+}
