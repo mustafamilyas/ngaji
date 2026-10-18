@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "bootstrap": "tsx prisma/bootstrap.ts"
+    "bootstrap": "tsx prisma/bootstrap.ts",
+    "prisma:seed": "prisma generate && tsx prisma/seed.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

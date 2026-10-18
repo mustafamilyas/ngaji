@@ -9,7 +9,9 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
-    seed: "tsx prisma/seed.ts",
+    // `lib/generated/prisma` is intentionally ignored, so make a fresh
+    // checkout (or a cleaned generated directory) seedable in one command.
+    seed: "pnpm run prisma:seed",
   },
   datasource: {
     // Must resolve the same way `lib/db.ts` does (see lib/database-url.ts) —

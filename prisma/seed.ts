@@ -3,7 +3,11 @@ import { db } from "../lib/db";
 import { BCRYPT_COST } from "../lib/constants";
 import { expandDates } from "../lib/activity/expand";
 import { addDays, daysBetween, today } from "../lib/dates";
-import type { AttendanceStatus, MemberStatus, Role } from "../lib/validation/enums";
+import type {
+  AttendanceStatus,
+  MemberStatus,
+  Role,
+} from "../lib/validation/enums";
 
 const LEVEL_NAMES = ["pusat", "daerah", "desa", "kelompok"];
 
@@ -63,7 +67,13 @@ async function createGroup(
   name: string,
 ): Promise<GroupRef> {
   const group = await db.group.create({
-    data: { organizationId, parentId: parent?.id ?? null, depth, name, path: "" },
+    data: {
+      organizationId,
+      parentId: parent?.id ?? null,
+      depth,
+      name,
+      path: "",
+    },
   });
   const path = `${parent?.path ?? ""}${group.id}/`;
   return db.group.update({ where: { id: group.id }, data: { path } });
@@ -96,7 +106,10 @@ function isExpectedOn(
 }
 
 /** Deterministic HADIR/IZIN/absent split so re-running the seed from empty produces the same history. */
-function attendanceStatusFor(memberId: number, dateOrdinal: number): AttendanceStatus | null {
+function attendanceStatusFor(
+  memberId: number,
+  dateOrdinal: number,
+): AttendanceStatus | null {
   const bucket = (memberId * 7 + dateOrdinal * 3) % 10;
   if (bucket < 7) return "HADIR"; // 70%
   if (bucket < 9) return "IZIN"; // 20%
@@ -112,7 +125,12 @@ function attendanceStatusFor(memberId: number, dateOrdinal: number): AttendanceS
 async function seedHistory(
   activityId: number,
   dates: string[],
-  members: { id: number; joinedAt: string; status: string; exitedAt: string | null }[],
+  members: {
+    id: number;
+    joinedAt: string;
+    status: string;
+    exitedAt: string | null;
+  }[],
   recordedById: number,
   special: {
     cancelDate?: string;
@@ -123,7 +141,12 @@ async function seedHistory(
   for (const date of dates) {
     if (date === special.cancelDate) {
       await db.activityOccurrence.create({
-        data: { activityId, date, status: "CANCELLED", overrideNotes: "Diliburkan karena hari libur nasional" },
+        data: {
+          activityId,
+          date,
+          status: "CANCELLED",
+          overrideNotes: "Diliburkan karena hari libur nasional",
+        },
       });
       continue;
     }
@@ -134,21 +157,32 @@ async function seedHistory(
     if (date === special.overrideDate) {
       overrides.overrideStartTime = "20:00";
       overrides.overrideDurationMinutes = 60;
-      overrides.overrideLocation = "Masjid Al-Ikhlas (pindah sementara karena hujan)";
+      overrides.overrideLocation =
+        "Masjid Al-Ikhlas (pindah sementara karena hujan)";
     }
     if (date === special.moveDate) {
       effectiveDate = addDays(date, 2);
       overrides.overrideDate = effectiveDate;
     }
 
-    const occurrence = await db.activityOccurrence.create({ data: { activityId, date, ...overrides } });
+    const occurrence = await db.activityOccurrence.create({
+      data: { activityId, date, ...overrides },
+    });
 
     for (const member of members) {
       if (!isExpectedOn(member, effectiveDate)) continue;
-      const status = attendanceStatusFor(member.id, daysBetween("2020-01-01", effectiveDate));
+      const status = attendanceStatusFor(
+        member.id,
+        daysBetween("2020-01-01", effectiveDate),
+      );
       if (status === null) continue;
       await db.attendance.create({
-        data: { occurrenceId: occurrence.id, memberId: member.id, status, recordedById },
+        data: {
+          occurrenceId: occurrence.id,
+          memberId: member.id,
+          status,
+          recordedById,
+        },
       });
     }
   }
@@ -167,26 +201,98 @@ async function main() {
   });
 
   for (const [depth, name] of LEVEL_NAMES.entries()) {
-    await db.level.create({ data: { organizationId: organization.id, depth, name } });
+    await db.level.create({
+      data: { organizationId: organization.id, depth, name },
+    });
   }
 
   const pusat = await createGroup(organization.id, null, 0, "Pusat");
 
-  const daerahJakarta = await createGroup(organization.id, pusat, 1, "Daerah Jakarta");
-  const desaMenteng = await createGroup(organization.id, daerahJakarta, 2, "Desa Menteng");
-  const kelompokA_Menteng = await createGroup(organization.id, desaMenteng, 3, "Kelompok A");
-  const kelompokB_Menteng = await createGroup(organization.id, desaMenteng, 3, "Kelompok B");
-  const desaKemayoran = await createGroup(organization.id, daerahJakarta, 2, "Desa Kemayoran");
-  const kelompokA_Kemayoran = await createGroup(organization.id, desaKemayoran, 3, "Kelompok A");
-  const kelompokB_Kemayoran = await createGroup(organization.id, desaKemayoran, 3, "Kelompok B");
+  const daerahJakarta = await createGroup(
+    organization.id,
+    pusat,
+    1,
+    "Daerah Jakarta",
+  );
+  const desaMenteng = await createGroup(
+    organization.id,
+    daerahJakarta,
+    2,
+    "Desa Menteng",
+  );
+  const kelompokA_Menteng = await createGroup(
+    organization.id,
+    desaMenteng,
+    3,
+    "Kelompok A",
+  );
+  const kelompokB_Menteng = await createGroup(
+    organization.id,
+    desaMenteng,
+    3,
+    "Kelompok B",
+  );
+  const desaKemayoran = await createGroup(
+    organization.id,
+    daerahJakarta,
+    2,
+    "Desa Kemayoran",
+  );
+  const kelompokA_Kemayoran = await createGroup(
+    organization.id,
+    desaKemayoran,
+    3,
+    "Kelompok A",
+  );
+  const kelompokB_Kemayoran = await createGroup(
+    organization.id,
+    desaKemayoran,
+    3,
+    "Kelompok B",
+  );
 
-  const daerahBandung = await createGroup(organization.id, pusat, 1, "Daerah Bandung");
-  const desaCicendo = await createGroup(organization.id, daerahBandung, 2, "Desa Cicendo");
-  const kelompokA_Cicendo = await createGroup(organization.id, desaCicendo, 3, "Kelompok A");
-  const kelompokB_Cicendo = await createGroup(organization.id, desaCicendo, 3, "Kelompok B");
-  const desaCoblong = await createGroup(organization.id, daerahBandung, 2, "Desa Coblong");
-  const kelompokA_Coblong = await createGroup(organization.id, desaCoblong, 3, "Kelompok A");
-  const kelompokB_Coblong = await createGroup(organization.id, desaCoblong, 3, "Kelompok B");
+  const daerahBandung = await createGroup(
+    organization.id,
+    pusat,
+    1,
+    "Daerah Bandung",
+  );
+  const desaCicendo = await createGroup(
+    organization.id,
+    daerahBandung,
+    2,
+    "Desa Cicendo",
+  );
+  const kelompokA_Cicendo = await createGroup(
+    organization.id,
+    desaCicendo,
+    3,
+    "Kelompok A",
+  );
+  const kelompokB_Cicendo = await createGroup(
+    organization.id,
+    desaCicendo,
+    3,
+    "Kelompok B",
+  );
+  const desaCoblong = await createGroup(
+    organization.id,
+    daerahBandung,
+    2,
+    "Desa Coblong",
+  );
+  const kelompokA_Coblong = await createGroup(
+    organization.id,
+    desaCoblong,
+    3,
+    "Kelompok A",
+  );
+  const kelompokB_Coblong = await createGroup(
+    organization.id,
+    desaCoblong,
+    3,
+    "Kelompok B",
+  );
 
   const kelompokGroups = [
     kelompokA_Menteng,
@@ -199,8 +305,20 @@ async function main() {
     kelompokB_Coblong,
   ];
 
-  const owner = await createUser("admin", "admin", "Admin Pusat", pusat.id, "OWNER");
-  await createUser("admin_daerah", "admin123", "Admin Daerah Jakarta", daerahJakarta.id, "ADMIN");
+  const owner = await createUser(
+    "admin",
+    "admin",
+    "Admin Pusat",
+    pusat.id,
+    "OWNER",
+  );
+  await createUser(
+    "admin_daerah",
+    "admin123",
+    "Admin Daerah Jakarta",
+    daerahJakarta.id,
+    "ADMIN",
+  );
   const userKelompok = await createUser(
     "user_kelompok",
     "user123",
@@ -220,7 +338,12 @@ async function main() {
   );
 
   const memberCountPerGroup = [4, 4, 4, 4, 4, 4, 3, 3]; // sums to 30, one per kelompok
-  const maritalStatuses = ["BELUM_MENIKAH", "MENIKAH", "CERAI_HIDUP", "CERAI_MATI"] as const;
+  const maritalStatuses = [
+    "BELUM_MENIKAH",
+    "MENIKAH",
+    "CERAI_HIDUP",
+    "CERAI_MATI",
+  ] as const;
   const workStatuses = [
     "BEKERJA",
     "TIDAK_BEKERJA",
@@ -236,7 +359,10 @@ async function main() {
 
   // A handful of members exercise every non-AKTIF MemberStatus and the
   // exitedAt / statistics boundary it implies (DESIGN.md §6, §9 non-MVP note).
-  function specialStatus(index: number): { status: MemberStatus; exitedAt: string | null } {
+  function specialStatus(index: number): {
+    status: MemberStatus;
+    exitedAt: string | null;
+  } {
     if (index === 5) return { status: "MENINGGAL", exitedAt: "2024-06-01" };
     if (index === 15) return { status: "PINDAH", exitedAt: "2024-06-01" };
     if (index === 20) return { status: "KELUAR", exitedAt: "2025-03-01" };
@@ -259,7 +385,9 @@ async function main() {
       // Roughly a third of members have an email on file; most small
       // congregations only track phone numbers, so this stays a minority.
       const email =
-        index % 3 === 0 ? `${name.toLowerCase().replace(/[^a-z]+/g, ".")}@contoh.id` : undefined;
+        index % 3 === 0
+          ? `${name.toLowerCase().replace(/[^a-z]+/g, ".")}@contoh.id`
+          : undefined;
 
       await db.member.create({
         data: {
@@ -377,7 +505,8 @@ async function main() {
       groupId: pusat.id,
       name: "Rapat Koordinasi Nasional",
       location: "Kantor Pusat",
-      notes: "Rapat koordinasi pengurus seluruh jenjang, akhir bulan (bila tanggal 31 ada)",
+      notes:
+        "Rapat koordinasi pengurus seluruh jenjang, akhir bulan (bila tanggal 31 ada)",
       startTime: "09:00",
       durationMinutes: 180,
       freq: "MONTHLY",
@@ -483,14 +612,24 @@ async function main() {
       createdById: owner.id,
     },
   });
-  await db.activity.update({ where: { id: trialActivity.id }, data: { deletedAt: new Date() } });
+  await db.activity.update({
+    where: { id: trialActivity.id },
+    data: { deletedAt: new Date() },
+  });
 
   // --- Historical occurrences & attendance ------------------------------
 
   const historyFrom = addDays(today(), -63);
   const historyTo = addDays(today(), -1);
   const historyDatesA = expandDates(
-    { freq: "WEEKLY", interval: 1, weekdays: [4], monthDay: null, startsOn: "2023-01-05", endsOn: null },
+    {
+      freq: "WEEKLY",
+      interval: 1,
+      weekdays: [4],
+      monthDay: null,
+      startsOn: "2023-01-05",
+      endsOn: null,
+    },
     historyFrom,
     historyTo,
   );
@@ -498,24 +637,41 @@ async function main() {
   const overrideDate = historyDatesA[historyDatesA.length - 4];
   const moveDate = historyDatesA[historyDatesA.length - 6];
 
-  const activityAMembers = [...mentengMembers.slice(0, -1), recentJoiner, recentLeaver].map((m) => ({
+  const activityAMembers = [
+    ...mentengMembers.slice(0, -1),
+    recentJoiner,
+    recentLeaver,
+  ].map((m) => ({
     id: m.id,
     joinedAt: m.id === recentJoiner.id ? addDays(today(), -20) : m.joinedAt,
     status: m.id === recentLeaver.id ? "KELUAR" : m.status,
     exitedAt: m.id === recentLeaver.id ? addDays(today(), -14) : m.exitedAt,
   }));
 
-  await seedHistory(activityA.id, historyDatesA, activityAMembers, userKelompok.id, {
-    cancelDate,
-    overrideDate,
-    moveDate,
-  });
+  await seedHistory(
+    activityA.id,
+    historyDatesA,
+    activityAMembers,
+    userKelompok.id,
+    {
+      cancelDate,
+      overrideDate,
+      moveDate,
+    },
+  );
 
   // C) One past national coordination meeting: only a handful of
   // representatives (one per Kelompok A) actually attend — a realistic low
   // turnout against an org-wide `expected()` denominator.
   const monthlyDatesC = expandDates(
-    { freq: "MONTHLY", interval: 1, weekdays: [], monthDay: 31, startsOn: "2023-01-31", endsOn: null },
+    {
+      freq: "MONTHLY",
+      interval: 1,
+      weekdays: [],
+      monthDay: 31,
+      startsOn: "2023-01-31",
+      endsOn: null,
+    },
     addDays(today(), -360),
     addDays(today(), -30),
   );
@@ -524,44 +680,94 @@ async function main() {
     const occurrenceC = await db.activityOccurrence.create({
       data: { activityId: activityC.id, date: pastMonthlyDate },
     });
-    const representativeGroups = [kelompokA_Menteng, kelompokA_Kemayoran, kelompokA_Cicendo, kelompokA_Coblong];
+    const representativeGroups = [
+      kelompokA_Menteng,
+      kelompokA_Kemayoran,
+      kelompokA_Cicendo,
+      kelompokA_Coblong,
+    ];
     // `findFirst` (unlike `findFirstOrThrow`) goes through `lib/db.ts`'s
     // soft-delete extension, so Kelompok A/Kemayoran's soft-deleted member
     // above is skipped automatically.
     const representatives = await Promise.all(
-      representativeGroups.map((group) => db.member.findFirst({ where: { groupId: group.id }, orderBy: { id: "asc" } })),
+      representativeGroups.map((group) =>
+        db.member.findFirst({
+          where: { groupId: group.id },
+          orderBy: { id: "asc" },
+        }),
+      ),
     );
     for (const [i, rep] of representatives.entries()) {
       if (!rep) continue;
       await db.attendance.create({
-        data: { occurrenceId: occurrenceC.id, memberId: rep.id, status: i === 0 ? "IZIN" : "HADIR", recordedById: owner.id },
+        data: {
+          occurrenceId: occurrenceC.id,
+          memberId: rep.id,
+          status: i === 0 ? "IZIN" : "HADIR",
+          recordedById: owner.id,
+        },
       });
     }
   }
 
   // D) Last two occurrences before Tahsin Mingguan was ended.
   const datesD = expandDates(
-    { freq: "WEEKLY", interval: 1, weekdays: [1], monthDay: null, startsOn: "2023-02-06", endsOn: "2025-06-30" },
+    {
+      freq: "WEEKLY",
+      interval: 1,
+      weekdays: [1],
+      monthDay: null,
+      startsOn: "2023-02-06",
+      endsOn: "2025-06-30",
+    },
     "2025-06-01",
     "2025-06-30",
   ).slice(-2);
-  const cicendoMembers = await db.member.findMany({ where: { groupId: kelompokA_Cicendo.id } });
+  const cicendoMembers = await db.member.findMany({
+    where: { groupId: kelompokA_Cicendo.id },
+  });
   await seedHistory(activityD.id, datesD, cicendoMembers, owner.id);
 
   // E) A couple of occurrences on each side of the TPA Sore split.
-  const kelompokBMentengMembers = await db.member.findMany({ where: { groupId: kelompokB_Menteng.id } });
+  const kelompokBMentengMembers = await db.member.findMany({
+    where: { groupId: kelompokB_Menteng.id },
+  });
   const datesBeforeSplit = expandDates(
-    { freq: "WEEKLY", interval: 1, weekdays: [1, 3], monthDay: null, startsOn: "2023-01-02", endsOn: "2024-12-31" },
+    {
+      freq: "WEEKLY",
+      interval: 1,
+      weekdays: [1, 3],
+      monthDay: null,
+      startsOn: "2023-01-02",
+      endsOn: "2024-12-31",
+    },
     "2024-11-01",
     "2024-12-31",
   ).slice(-2);
   const datesAfterSplit = expandDates(
-    { freq: "WEEKLY", interval: 1, weekdays: [1, 3], monthDay: null, startsOn: "2025-01-01", endsOn: null },
+    {
+      freq: "WEEKLY",
+      interval: 1,
+      weekdays: [1, 3],
+      monthDay: null,
+      startsOn: "2025-01-01",
+      endsOn: null,
+    },
     "2025-01-01",
     "2025-02-28",
   ).slice(0, 2);
-  await seedHistory(tpaOriginal.id, datesBeforeSplit, kelompokBMentengMembers, owner.id);
-  await seedHistory(tpaContinuation.id, datesAfterSplit, kelompokBMentengMembers, owner.id);
+  await seedHistory(
+    tpaOriginal.id,
+    datesBeforeSplit,
+    kelompokBMentengMembers,
+    owner.id,
+  );
+  await seedHistory(
+    tpaContinuation.id,
+    datesAfterSplit,
+    kelompokBMentengMembers,
+    owner.id,
+  );
 
   console.log(
     `Seed complete: ${index + 2} members, ${kelompokGroups.length} kelompok groups, 7 activities (1 conflicted, 1 monthly-edge, 1 ended, 1 split, 1 upcoming, 1 soft-deleted), historical attendance over ${historyDatesA.length} weeks.`,
