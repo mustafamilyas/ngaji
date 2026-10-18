@@ -5,8 +5,9 @@ import type { SessionUser } from "@/lib/auth/session-user";
 import { authorize } from "@/lib/authz";
 import { BCRYPT_COST } from "@/lib/constants";
 import { db } from "@/lib/db";
-import { ValidationError } from "@/lib/errors";
+import { ForbiddenError, ValidationError } from "@/lib/errors";
 import { resolveGroup, resolveUser } from "@/lib/resolve";
+import { toCreatedUserDto, toUserDto } from "./dto";
 import type { Role } from "@/lib/validation/enums";
 import type {
   CreateUserInput,
@@ -20,7 +21,7 @@ const TEMP_PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz
 const TEMP_PASSWORD_LENGTH = 12;
 
 /** Server-generated temporary password (user-management spec "Create users"): shown once, never chosen by the caller, never logged. */
-function generateTemporaryPassword(): string {
+export function generateTemporaryPassword(): string {
   const bytes = randomBytes(TEMP_PASSWORD_LENGTH);
   let password = "";
   for (let i = 0; i < TEMP_PASSWORD_LENGTH; i++) {
@@ -31,19 +32,26 @@ function generateTemporaryPassword(): string {
 
 type UserWithRole = Awaited<ReturnType<typeof resolveUser>>;
 
+type Tx = Parameters<Parameters<typeof db.$transaction>[0]>[0];
+
+/** True when `user` is currently an active OWNER of a root (depth 0) group. */
+function isActiveRootOwner(user: UserWithRole): boolean {
+  return Boolean(user.isActive && user.role?.role === "OWNER" && user.role.group.depth === 0);
+}
+
 /**
  * DESIGN.md §3.2 "Tidak boleh menonaktifkan / menurunkan OWNER aktif
- * terakhir di grup root": true only when `user` is presently the sole
- * active OWNER of their (root, depth 0) group.
+ * terakhir di grup root", checked AFTER the write and inside its
+ * transaction: SQLite serializes write transactions, so of two concurrent
+ * requests the second sees the first's commit, finds no owner left and
+ * throws, which rolls its own write back. A pre-check outside the
+ * transaction would let both pass.
  */
-async function isLastActiveRootOwner(user: UserWithRole): Promise<boolean> {
-  if (!user.role || user.role.role !== "OWNER" || user.role.group.depth !== 0 || !user.isActive) {
-    return false;
-  }
-  const activeOwners = await db.userGroupRole.count({
-    where: { groupId: user.role.groupId, role: "OWNER", user: { isActive: true } },
+async function assertRootOwnerRemains(tx: Tx, rootGroupId: number): Promise<void> {
+  const remaining = await tx.userGroupRole.count({
+    where: { groupId: rootGroupId, role: "OWNER", user: { isActive: true } },
   });
-  return activeOwners === 1;
+  if (remaining === 0) throw new ForbiddenError();
 }
 
 function requireRole(user: UserWithRole): asserts user is UserWithRole & { role: NonNullable<UserWithRole["role"]> } {
@@ -78,7 +86,7 @@ export async function createUser(session: SessionUser, input: CreateUserInput) {
       groupId: group.id,
       after: { ...created, role: role.role, groupId: role.groupId },
     });
-    return created;
+    return toCreatedUserDto(created, role as { role: Role; groupId: number });
   });
 
   return { user, temporaryPassword };
@@ -89,18 +97,16 @@ export async function updateUserRole(session: SessionUser, input: UpdateUserRole
   const user = await resolveUser(session, input.userId);
   requireRole(user);
 
-  const wouldDemoteLastRootOwner = input.role !== "OWNER" && (await isLastActiveRootOwner(user));
-  authorize(session, "user.updateRole", {
-    userId: user.id,
-    groupPath: user.role.group.path,
-    isLastActiveRootOwner: wouldDemoteLastRootOwner,
-  });
+  authorize(session, "user.updateRole", { userId: user.id, groupPath: user.role.group.path });
 
   return db.$transaction(async (tx) => {
     const updated = await tx.userGroupRole.update({
       where: { userId: user.id },
       data: { role: input.role },
     });
+    if (isActiveRootOwner(user) && input.role !== "OWNER") {
+      await assertRootOwnerRemains(tx, user.role.groupId);
+    }
     await audit(tx, {
       actorId: Number(session.id),
       action: "user.update_role",
@@ -127,6 +133,9 @@ export async function moveUser(session: SessionUser, input: MoveUserInput) {
       where: { userId: user.id },
       data: { groupId: destination.id },
     });
+    if (isActiveRootOwner(user)) {
+      await assertRootOwnerRemains(tx, user.role.groupId);
+    }
     await audit(tx, {
       actorId: Number(session.id),
       action: "user.move",
@@ -145,18 +154,16 @@ export async function setUserActive(session: SessionUser, input: SetUserActiveIn
   const user = await resolveUser(session, input.userId);
   requireRole(user);
 
-  const wouldDeactivateLastRootOwner = !input.isActive && (await isLastActiveRootOwner(user));
-  authorize(session, "user.setActive", {
-    userId: user.id,
-    groupPath: user.role.group.path,
-    isLastActiveRootOwner: wouldDeactivateLastRootOwner,
-  });
+  authorize(session, "user.setActive", { userId: user.id, groupPath: user.role.group.path });
 
   return db.$transaction(async (tx) => {
     const updated = await tx.user.update({
       where: { id: user.id },
       data: { isActive: input.isActive },
     });
+    if (isActiveRootOwner(user) && !input.isActive) {
+      await assertRootOwnerRemains(tx, user.role.groupId);
+    }
     await audit(tx, {
       actorId: Number(session.id),
       action: "user.set_active",
@@ -166,7 +173,7 @@ export async function setUserActive(session: SessionUser, input: SetUserActiveIn
       before: { isActive: user.isActive },
       after: { isActive: updated.isActive },
     });
-    return updated;
+    return toUserDto(updated);
   });
 }
 
@@ -187,7 +194,7 @@ export async function resetUserPassword(session: SessionUser, input: ResetUserPa
   await db.$transaction(async (tx) => {
     await tx.user.update({
       where: { id: user.id },
-      data: { passwordHash, mustChangePassword: true },
+      data: { passwordHash, mustChangePassword: true, sessionVersion: { increment: 1 } },
     });
     await audit(tx, {
       actorId: Number(session.id),

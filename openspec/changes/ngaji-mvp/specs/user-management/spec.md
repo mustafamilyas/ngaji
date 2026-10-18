@@ -45,7 +45,7 @@ OWNER SHALL reset the password of any user whose group is in scope (including ot
 - **THEN** the reset proceeds
 
 ### Requirement: User management page
-`/pengguna` SHALL list users in scope and expose only the controls the caller is allowed to use; the Server Actions SHALL enforce the same rules independently of the UI.
+`/dashboard/pengguna` SHALL list users in scope and expose only the controls the caller is allowed to use; the Server Actions SHALL enforce the same rules independently of the UI.
 
 #### Scenario: Hidden control still enforced
 - **WHEN** an ADMIN crafts a request to reset an OWNER's password

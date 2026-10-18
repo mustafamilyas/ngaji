@@ -33,14 +33,14 @@ Each entry SHALL store `actorId` (null only for failed logins with unknown usern
 - **THEN** the entry has `actorId = null` and `meta.username` set
 
 ### Requirement: Viewer
-`/audit` SHALL be available to OWNER only and SHALL show entries whose `groupId` is in scope (plus the OWNER's own auth entries), newest first, filterable by action, actor and date range, paginated by `PAGE_SIZE`.
+`/dashboard/audit` SHALL be available to OWNER only and SHALL show entries whose `groupId` is in scope (plus the OWNER's own auth entries), newest first, filterable by action, actor and date range, paginated by `PAGE_SIZE`.
 
 #### Scenario: ADMIN denied
-- **WHEN** an ADMIN opens `/audit`
+- **WHEN** an ADMIN opens `/dashboard/audit`
 - **THEN** the system responds 404
 
 #### Scenario: Scope filter
-- **WHEN** an OWNER at daerah D opens `/audit`
+- **WHEN** an OWNER at daerah D opens `/dashboard/audit`
 - **THEN** entries for groups under another daerah are not shown
 
 ### Requirement: Application logs contain no PII

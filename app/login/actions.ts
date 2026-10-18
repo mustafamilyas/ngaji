@@ -2,6 +2,7 @@
 
 import { AuthError } from "next-auth";
 import { signIn } from "@/auth";
+import { DASHBOARD_PATH } from "@/lib/nav";
 
 export type LoginState = { error: string | null };
 
@@ -10,7 +11,7 @@ export async function loginAction(_prevState: LoginState, formData: FormData): P
     await signIn("credentials", {
       username: formData.get("username"),
       password: formData.get("password"),
-      redirectTo: "/",
+      redirectTo: DASHBOARD_PATH,
     });
   } catch (error) {
     if (error instanceof AuthError) {

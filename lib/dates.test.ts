@@ -3,8 +3,11 @@ import {
   addDays,
   addMonthsOnDay,
   ageInYears,
+  dateOf,
   daysBetween,
   fromDbDate,
+  isDateString,
+  isWithinMonths,
   monthEndOf,
   monthStartOf,
   monthsBetween,
@@ -27,6 +30,13 @@ describe("ageInYears", () => {
 
   it("does not count a birthday that has not happened yet this year", () => {
     expect(ageInYears("1966-09-12", "2026-09-11")).toBe(59);
+  });
+});
+
+describe("dateOf", () => {
+  it("returns the Jakarta calendar date, which is ahead of UTC after 17:00", () => {
+    expect(dateOf(new Date("2026-01-01T16:59:00Z"))).toBe("2026-01-01");
+    expect(dateOf(new Date("2026-01-01T17:00:00Z"))).toBe("2026-01-02");
   });
 });
 
@@ -207,5 +217,44 @@ describe("rangeForMode", () => {
 
   it("returns the calendar month bounds for 'bulan'", () => {
     expect(rangeForMode("bulan", fixedToday)).toEqual({ from: "2026-09-01", to: "2026-09-30" });
+  });
+});
+
+describe("isDateString", () => {
+  it("accepts real calendar dates, including a leap day", () => {
+    expect(isDateString("2026-02-28")).toBe(true);
+    expect(isDateString("2028-02-29")).toBe(true);
+  });
+
+  it("rejects malformed and impossible dates", () => {
+    expect(isDateString("2026-2-28")).toBe(false);
+    expect(isDateString("2026-02-30")).toBe(false);
+    expect(isDateString("2026-99-99")).toBe(false);
+    expect(isDateString("2026-13-01")).toBe(false);
+    expect(isDateString("2027-02-29")).toBe(false);
+    expect(isDateString("abc")).toBe(false);
+    expect(isDateString(undefined)).toBe(false);
+  });
+
+  it("rejects years outside 1900-2100", () => {
+    expect(isDateString("0001-01-01")).toBe(false);
+    expect(isDateString("1899-12-31")).toBe(false);
+    expect(isDateString("2101-01-01")).toBe(false);
+    expect(isDateString("1900-01-01")).toBe(true);
+    expect(isDateString("2100-12-31")).toBe(true);
+  });
+});
+
+describe("isWithinMonths", () => {
+  it.each([
+    ["2026-01-01", "2026-03-31", true],
+    ["2026-01-01", "2026-04-01", false],
+    ["2026-01-15", "2026-04-14", true],
+    ["2026-01-15", "2026-04-15", false],
+    ["2026-01-31", "2026-04-29", true],
+    ["2026-01-31", "2026-04-30", false],
+    ["2026-05-10", "2026-05-10", true],
+  ])("%s..%s within 3 months = %s", (from, to, expected) => {
+    expect(isWithinMonths(from, to, 3)).toBe(expected);
   });
 });

@@ -3,6 +3,9 @@ import { db } from "../lib/db";
 import { BCRYPT_COST } from "../lib/constants";
 import { expandDates } from "../lib/activity/expand";
 import { addDays, daysBetween, today } from "../lib/dates";
+import { AGE_BRACKETS } from "../lib/constants";
+import type { Prisma } from "../lib/generated/prisma/client";
+import { definitionSchema, newViewDefinition } from "../lib/validation/member-view";
 import type { AttendanceStatus, MemberStatus, Role } from "../lib/validation/enums";
 
 const LEVEL_NAMES = ["pusat", "daerah", "desa", "kelompok"];
@@ -218,6 +221,9 @@ async function main() {
     "USER",
     false,
   );
+
+  // Owns the sample member views below (views belong to the owner's exact group).
+  const adminDesa = await createUser("admin_desa", "desa123", "Admin Desa Menteng", desaMenteng.id, "ADMIN");
 
   const memberCountPerGroup = [4, 4, 4, 4, 4, 4, 3, 3]; // sums to 30, one per kelompok
   const maritalStatuses = ["BELUM_MENIKAH", "MENIKAH", "CERAI_HIDUP", "CERAI_MATI"] as const;
@@ -563,8 +569,98 @@ async function main() {
   await seedHistory(tpaOriginal.id, datesBeforeSplit, kelompokBMentengMembers, owner.id);
   await seedHistory(tpaContinuation.id, datesAfterSplit, kelompokBMentengMembers, owner.id);
 
+  // --- Survey ------------------------------------------------------------
+
+  // H) Desa-level survey inherited by both Menteng kelompok: one question of
+  // each type, a question archived after being answered, and an archived
+  // option that still carries answers (member-surveys spec "Form locks once answered").
+  const survey = await db.survey.create({
+    data: {
+      groupId: desaMenteng.id,
+      title: "Kesiapan Kegiatan Ramadhan",
+      description: "Pendataan kesiapan dan masukan anggota Desa Menteng untuk kegiatan Ramadhan.",
+      createdById: owner.id,
+    },
+  });
+  const question = (order: number, data: { type: string; label: string; required?: boolean; helpText?: string; scaleMin?: number; scaleMax?: number; archivedAt?: Date; options?: { label: string; archivedAt?: Date }[] }) =>
+    db.surveyQuestion.create({
+      data: {
+        surveyId: survey.id,
+        order,
+        type: data.type,
+        label: data.label,
+        required: data.required ?? false,
+        helpText: data.helpText,
+        scaleMin: data.scaleMin,
+        scaleMax: data.scaleMax,
+        archivedAt: data.archivedAt,
+        options: { create: (data.options ?? []).map((o, i) => ({ order: i, label: o.label, archivedAt: o.archivedAt })) },
+      },
+      include: { options: { orderBy: { order: "asc" } } },
+    });
+  const qHadir = await question(0, { type: "SINGLE_CHOICE", label: "Apakah Anda bersedia hadir?", required: true, options: [{ label: "Ya" }, { label: "Tidak" }] });
+  const qWaktu = await question(1, {
+    type: "MULTI_CHOICE",
+    label: "Waktu yang cocok",
+    helpText: "Boleh pilih lebih dari satu",
+    options: [{ label: "Pagi" }, { label: "Siang" }, { label: "Sore" }, { label: "Malam" }, { label: "Subuh", archivedAt: new Date() }],
+  });
+  const qKeluarga = await question(2, { type: "NUMBER", label: "Jumlah anggota keluarga yang ikut" });
+  const qPuas = await question(3, { type: "SCALE", label: "Seberapa puas dengan kegiatan tahun lalu?", scaleMin: 1, scaleMax: 5 });
+  const qSingkat = await question(4, { type: "SHORT_TEXT", label: "Usulan tempat" });
+  const qMasukan = await question(5, { type: "LONG_TEXT", label: "Masukan lain" });
+  const qLama = await question(6, { type: "SHORT_TEXT", label: "Ukuran konsumsi (pertanyaan lama)", archivedAt: new Date() });
+
+  const waktuByLabel = Object.fromEntries(qWaktu.options.map((o) => [o.label, o.id]));
+  const surveyMembers = await db.member.findMany({
+    where: { status: "AKTIF", group: { path: { startsWith: desaMenteng.path } } },
+    orderBy: { id: "asc" },
+  });
+  const SUGGESTIONS = ["Masjid Al-Ikhlas", "Aula Desa", "Rumah Bpk. Ahmad"];
+  // Every second active member responds, so response rate and "belum mengisi" are non-trivial.
+  for (const [i, member] of surveyMembers.entries()) {
+    if (i % 2 === 1) continue;
+    const hadir = i % 4 === 0 ? qHadir.options[0] : qHadir.options[1];
+    const times = [waktuByLabel.Malam, ...(i % 3 === 0 ? [waktuByLabel.Subuh] : []), ...(i % 4 === 0 ? [waktuByLabel.Sore] : [])];
+    const answers: { questionId: number; optionId?: number; numberValue?: number; textValue?: string }[] = [
+      { questionId: qHadir.id, optionId: hadir.id },
+      ...times.map((optionId) => ({ questionId: qWaktu.id, optionId })),
+      { questionId: qKeluarga.id, numberValue: (i % 5) + 1 },
+      { questionId: qPuas.id, numberValue: (i % 5) + 1 },
+      { questionId: qSingkat.id, textValue: SUGGESTIONS[i % SUGGESTIONS.length] },
+      { questionId: qLama.id, textValue: "Nasi kotak" },
+    ];
+    if (i % 4 === 0) answers.push({ questionId: qMasukan.id, textValue: "Mohon jadwal tidak bentrok dengan pengajian rutin." });
+    await db.surveyResponse.create({
+      data: { surveyId: survey.id, memberId: member.id, recordedById: userKelompok.id, answers: { create: answers } },
+    });
+  }
+
+  // --- Member views (Desa Menteng) ---------------------------------------
+
+  const sampleViews: { name: string; groupBy: unknown }[] = [
+    {
+      name: "Anggota per Kelompok Umur",
+      groupBy: { kind: "ageBuckets", buckets: AGE_BRACKETS.map(({ label, min, max }) => ({ label, min, max })) },
+    },
+    { name: "Anggota per Kelompok", groupBy: { kind: "groupLevel", depth: 3 } },
+  ];
+  for (const { name, groupBy } of sampleViews) {
+    // Parsing here keeps the seeded definitions valid against the same schema the app saves with.
+    const definition = definitionSchema.parse({ ...newViewDefinition(), groupBy });
+    await db.memberView.create({
+      data: {
+        groupId: desaMenteng.id,
+        ownerId: adminDesa.id,
+        createdById: adminDesa.id,
+        name,
+        definition: definition as unknown as Prisma.InputJsonValue,
+      },
+    });
+  }
+
   console.log(
-    `Seed complete: ${index + 2} members, ${kelompokGroups.length} kelompok groups, 7 activities (1 conflicted, 1 monthly-edge, 1 ended, 1 split, 1 upcoming, 1 soft-deleted), historical attendance over ${historyDatesA.length} weeks.`,
+    `Seed complete: ${index + 2} members, ${kelompokGroups.length} kelompok groups, 7 activities (1 conflicted, 1 monthly-edge, 1 ended, 1 split, 1 upcoming, 1 soft-deleted), 1 survey with responses, 2 member views, historical attendance over ${historyDatesA.length} weeks.`,
   );
 }
 

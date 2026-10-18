@@ -46,7 +46,7 @@ Saving SHALL run in one transaction: upsert `ActivityOccurrence(activityId, date
 - **THEN** exactly one `attendance.save` entry lists the three set and the one removed
 
 ### Requirement: Attendance page
-`/kegiatan/[id]/[tanggal]?grup=Y` SHALL list expected members of Y for that date with HADIR / IZIN controls usable with one tap each on a 375 px wide screen. If the user's group is a leaf it SHALL be the default `Y`; otherwise a selector of leaf groups in scope to which the activity applies SHALL be shown.
+`/dashboard/kegiatan/[id]/[tanggal]?grup=Y` SHALL list expected members of Y for that date with HADIR / IZIN controls usable with one tap each on a 375 px wide screen. If the user's group is a leaf it SHALL be the default `Y`; otherwise a selector of leaf groups in scope to which the activity applies SHALL be shown.
 
 #### Scenario: Non-leaf user picks a leaf
 - **WHEN** an ADMIN at desa opens the page without `grup`

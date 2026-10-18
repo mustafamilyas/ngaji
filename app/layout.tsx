@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Roboto } from "next/font/google";
 import { auth } from "@/auth";
-import { NavShell } from "@/components/nav-shell";
+import { getOrganizationName } from "@/lib/organization";
 import "./globals.css";
 
 const roboto = Roboto({
@@ -15,10 +15,20 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Ngaji",
-  description: "Manajemen anggota & kegiatan organisasi berjenjang",
-};
+const DESCRIPTION = "Manajemen anggota & kegiatan organisasi berjenjang";
+
+// Public pages (no session) carry only the product name; the organization name never reaches them.
+export async function generateMetadata(): Promise<Metadata> {
+  const session = await auth();
+  if (!session) {
+    return { title: { default: "Dahan", template: "%s · Dahan" }, description: DESCRIPTION };
+  }
+  const organizationName = await getOrganizationName();
+  return {
+    title: { default: `${organizationName} · Dahan`, template: `%s · ${organizationName}` },
+    description: DESCRIPTION,
+  };
+}
 
 // A nonce-based CSP (middleware.ts) needs a fresh nonce per request, which
 // only exists for dynamically rendered pages (Next.js CSP guide) — every
@@ -26,19 +36,17 @@ export const metadata: Metadata = {
 // giving up real static optimization.
 export const dynamic = "force-dynamic";
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth();
-
   return (
     <html lang="id">
       <body
         className={`${roboto.variable} ${geistMono.variable} antialiased`}
       >
-        <NavShell user={session?.user}>{children}</NavShell>
+        {children}
       </body>
     </html>
   );

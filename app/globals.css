@@ -117,11 +117,75 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Print: A4, always black on white regardless of the screen theme. */
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+  :root,
+  .dark {
+    color-scheme: light;
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --muted-foreground: oklch(0.35 0 0);
+    --border: oklch(0.7 0 0);
+  }
+  thead {
+    display: table-header-group;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground font-sans;
+  }
+}
+/* Public landing pages: self-contained palette so they look the same in light and dark app themes. */
+.landing {
+  --l-ink: #16241d;
+  --l-leaf: #2c6e49;
+  --l-paper: #f6f7f2;
+  --l-mist: #e4ece2;
+  --l-sap: #e9a23b;
+  --l-muted: #4c5b53;
+}
+
+/* Framed panels sit on a faint dot grid, like a canvas the org chart is drawn on. */
+.landing-frame {
+  background-image: radial-gradient(rgb(22 36 29 / 0.11) 1px, transparent 1.2px);
+  background-size: 18px 18px;
+}
+
+/* The page's one orchestrated moment: branches grow from the kegiatan node, then the cards settle. */
+@media (prefers-reduced-motion: no-preference) {
+  .landing-branch {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: landing-grow 900ms cubic-bezier(0.4, 0, 0.2, 1) 150ms forwards;
+  }
+  .landing-card {
+    opacity: 0;
+    animation: landing-settle 500ms cubic-bezier(0.2, 0.8, 0.2, 1) 700ms forwards;
+  }
+}
+
+@keyframes landing-grow {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes landing-settle {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
   }
 }

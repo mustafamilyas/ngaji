@@ -1,17 +1,30 @@
 import { z } from "zod";
-import { ACTIVITY_DATE_RE } from "./activity";
+import { MAX_ATTENDANCE_ENTRIES } from "@/lib/constants";
+import { dateSchema } from "./common";
 import { ATTENDANCE_STATUSES } from "./enums";
 
 /** Bulk save for one occurrence (DESIGN.md §5.6): the full set of present members, keyed by leaf group `groupId` (Y) and rule `date` (X). */
 export const attendanceSaveSchema = z.object({
   activityId: z.coerce.number().int().positive(),
   groupId: z.coerce.number().int().positive(),
-  date: z.string().regex(ACTIVITY_DATE_RE, "Tanggal tidak valid"),
+  date: dateSchema(),
   entries: z.array(
     z.object({
       memberId: z.coerce.number().int().positive(),
       status: z.enum(ATTENDANCE_STATUSES),
     }),
-  ),
+  ).max(MAX_ATTENDANCE_ENTRIES),
 });
 export type AttendanceSaveInput = z.infer<typeof attendanceSaveSchema>;
+
+/** Single self check-in: one member marked HADIR (the kiosk page at `/dashboard/kegiatan/[id]/[tanggal]/absen`). */
+export const checkInSchema = z.object({
+  activityId: z.coerce.number().int().positive(),
+  groupId: z.coerce.number().int().positive(),
+  date: dateSchema(),
+  memberId: z.coerce.number().int().positive(),
+});
+export type CheckInInput = z.infer<typeof checkInSchema>;
+
+export const checkInMembersSchema = checkInSchema.omit({ memberId: true });
+export type CheckInMembersInput = z.infer<typeof checkInMembersSchema>;

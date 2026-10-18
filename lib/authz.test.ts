@@ -222,6 +222,119 @@ describe("canRecordAttendance / authorize attendance.record", () => {
   });
 });
 
+describe("authorize survey.view", () => {
+  const roles: Role[] = ["OWNER", "ADMIN", "USER"];
+
+  for (const role of roles) {
+    it(`${role} can view a survey owned by an ancestor group (inherited)`, () => {
+      const s = session(role, 4, KELOMPOK);
+      expect(() => authorize(s, "survey.view", { surveyGroupPath: DESA })).not.toThrow();
+    });
+
+    it(`${role} can view a survey owned by own group or a descendant`, () => {
+      const s = session(role, 3, DESA);
+      expect(() => authorize(s, "survey.view", { surveyGroupPath: DESA })).not.toThrow();
+      expect(() => authorize(s, "survey.view", { surveyGroupPath: KELOMPOK })).not.toThrow();
+    });
+
+    it(`${role} gets NotFoundError for a survey of another branch`, () => {
+      const s = session(role, 3, DESA);
+      expect(() => authorize(s, "survey.view", { surveyGroupPath: OTHER_KELOMPOK })).toThrow(NotFoundError);
+    });
+  }
+});
+
+describe("authorize survey.create / update / delete", () => {
+  it("USER create is denied", () => {
+    const s = session("USER", 3, DESA);
+    expect(() => authorize(s, "survey.create", { groupId: 3 })).toThrow(ForbiddenError);
+  });
+
+  it("ADMIN can create for own group only", () => {
+    const s = session("ADMIN", 3, DESA);
+    expect(() => authorize(s, "survey.create", { groupId: 3 })).not.toThrow();
+    expect(() => authorize(s, "survey.create", { groupId: 4 })).toThrow(ForbiddenError);
+  });
+
+  for (const action of ["survey.update", "survey.delete"] as const) {
+    it(`OWNER and ADMIN can ${action} a survey of their own group`, () => {
+      expect(() => authorize(session("OWNER", 3, DESA), action, { groupId: 3 })).not.toThrow();
+      expect(() => authorize(session("ADMIN", 3, DESA), action, { groupId: 3 })).not.toThrow();
+    });
+
+    it(`USER cannot ${action} a survey of their own group`, () => {
+      expect(() => authorize(session("USER", 3, DESA), action, { groupId: 3 })).toThrow(ForbiddenError);
+    });
+
+    it(`ADMIN of desa cannot ${action} a survey owned by a kelompok below (descendant)`, () => {
+      expect(() => authorize(session("ADMIN", 3, DESA), action, { groupId: 4 })).toThrow(ForbiddenError);
+    });
+
+    it(`ADMIN of kelompok cannot ${action} an inherited survey owned by an ancestor`, () => {
+      expect(() => authorize(session("ADMIN", 4, KELOMPOK), action, { groupId: 3 })).toThrow(ForbiddenError);
+    });
+
+    it(`root OWNER cannot ${action} a survey of a descendant group (no override)`, () => {
+      expect(() => authorize(session("OWNER", 1, ROOT), action, { groupId: 3 })).toThrow(ForbiddenError);
+    });
+  }
+});
+
+describe("authorize survey_response.record / delete", () => {
+  const actions = ["survey_response.record", "survey_response.delete"] as const;
+  const roles: Role[] = ["OWNER", "ADMIN", "USER"];
+
+  for (const action of actions) {
+    for (const role of roles) {
+      it(`${role} can ${action} for a leaf member of an inherited survey in own scope`, () => {
+        const s = session(role, 4, KELOMPOK);
+        expect(() =>
+          authorize(s, action, { surveyGroupPath: DESA, memberGroupPath: KELOMPOK, memberIsLeaf: true }),
+        ).not.toThrow();
+      });
+
+      it(`${role} can ${action} when survey is owned by own group`, () => {
+        const s = session(role, 3, DESA);
+        expect(() =>
+          authorize(s, action, { surveyGroupPath: DESA, memberGroupPath: KELOMPOK, memberIsLeaf: true }),
+        ).not.toThrow();
+      });
+    }
+
+    it(`${action} from above the survey's group is denied (ForbiddenError)`, () => {
+      const s = session("ADMIN", 2, DAERAH);
+      expect(() =>
+        authorize(s, action, { surveyGroupPath: DESA, memberGroupPath: KELOMPOK, memberIsLeaf: true }),
+      ).toThrow(ForbiddenError);
+    });
+
+    it(`${action} for a member outside scope is NotFoundError`, () => {
+      const s = session("USER", 4, KELOMPOK);
+      expect(() =>
+        authorize(s, action, { surveyGroupPath: DESA, memberGroupPath: "1/2/3/5/", memberIsLeaf: true }),
+      ).toThrow(NotFoundError);
+    });
+
+    it(`${action} for a survey of another branch is NotFoundError`, () => {
+      const s = session("USER", 4, KELOMPOK);
+      expect(() =>
+        authorize(s, action, {
+          surveyGroupPath: OTHER_DAERAH,
+          memberGroupPath: KELOMPOK,
+          memberIsLeaf: true,
+        }),
+      ).toThrow(NotFoundError);
+    });
+
+    it(`${action} for a member in a non-leaf group is ForbiddenError`, () => {
+      const s = session("ADMIN", 3, DESA);
+      expect(() =>
+        authorize(s, action, { surveyGroupPath: DESA, memberGroupPath: DESA, memberIsLeaf: false }),
+      ).toThrow(ForbiddenError);
+    });
+  }
+});
+
 describe("authorize user.create", () => {
   it("ADMIN can create a USER in scope", () => {
     const s = session("ADMIN", 2, DAERAH);
@@ -261,11 +374,34 @@ describe("authorize user.create", () => {
 });
 
 describe("authorize user.resetPassword", () => {
-  it("OWNER can reset anyone in scope, including another OWNER", () => {
+  it("OWNER can reset an OWNER in a group strictly below", () => {
     const s = session("OWNER", 2, DAERAH);
     expect(() =>
       authorize(s, "user.resetPassword", { groupPath: DESA, role: "OWNER", groupId: 3 }),
     ).not.toThrow();
+  });
+
+  it("OWNER cannot reset a peer OWNER in the same group", () => {
+    const s = session("OWNER", 2, DAERAH);
+    expect(() =>
+      authorize(s, "user.resetPassword", { groupPath: DAERAH, role: "OWNER", groupId: 2 }),
+    ).toThrow(ForbiddenError);
+  });
+
+  it("root OWNER cannot reset another root OWNER", () => {
+    const s = session("OWNER", 1, ROOT);
+    expect(() =>
+      authorize(s, "user.resetPassword", { groupPath: ROOT, role: "OWNER", groupId: 1 }),
+    ).toThrow(ForbiddenError);
+  });
+
+  it("OWNER can still reset an ADMIN or USER in their own group", () => {
+    const s = session("OWNER", 2, DAERAH);
+    for (const role of ["ADMIN", "USER"] as const) {
+      expect(() =>
+        authorize(s, "user.resetPassword", { groupPath: DAERAH, role, groupId: 2 }),
+      ).not.toThrow();
+    }
   });
 
   it("ADMIN can reset a USER in the exact same group", () => {
@@ -386,5 +522,115 @@ describe("authorize audit.view", () => {
   it("USER is denied", () => {
     const s = session("USER", 2, DAERAH);
     expect(() => authorize(s, "audit.view")).toThrow(ForbiddenError);
+  });
+});
+
+describe("authorize member_view.*", () => {
+  // Kelompok K (groupId 4) is the acting user's group; user id is 1 (see session()).
+  const userOfK = session("USER", 4, KELOMPOK);
+  const adminOfK = session("ADMIN", 4, KELOMPOK);
+  const ownerOfK = session("OWNER", 4, KELOMPOK);
+
+  const viewOfK = { groupId: 4, ownerId: 1, ownerIsActive: true, ownerGroupId: 4 };
+  const viewOfKOwnedByOther = { ...viewOfK, ownerId: 99 };
+  const orphanedByDeactivation = { ...viewOfK, ownerId: 99, ownerIsActive: false };
+  const orphanedByMove = { ...viewOfK, ownerId: 99, ownerGroupId: 5 };
+
+  describe("member_view.view", () => {
+    for (const role of ["OWNER", "ADMIN", "USER"] as const) {
+      it(`${role} can view a view of their exact group`, () => {
+        expect(() =>
+          authorize(session(role, 4, KELOMPOK), "member_view.view", viewOfKOwnedByOther),
+        ).not.toThrow();
+      });
+    }
+
+    it("root OWNER gets NotFoundError for a view of a descendant kelompok", () => {
+      expect(() =>
+        authorize(session("OWNER", 1, ROOT), "member_view.view", viewOfK),
+      ).toThrow(NotFoundError);
+    });
+
+    it("kelompok user gets NotFoundError for a view of the parent desa", () => {
+      expect(() =>
+        authorize(userOfK, "member_view.view", { ...viewOfK, groupId: 3 }),
+      ).toThrow(NotFoundError);
+    });
+
+    it("gets NotFoundError for a view of another branch", () => {
+      expect(() =>
+        authorize(userOfK, "member_view.view", { ...viewOfK, groupId: 7 }),
+      ).toThrow(NotFoundError);
+    });
+  });
+
+  describe("member_view.create", () => {
+    for (const role of ["OWNER", "ADMIN", "USER"] as const) {
+      it(`${role} can create in their own group`, () => {
+        expect(() =>
+          authorize(session(role, 4, KELOMPOK), "member_view.create", { groupId: 4 }),
+        ).not.toThrow();
+      });
+    }
+
+    it("is forbidden for any other group", () => {
+      expect(() => authorize(ownerOfK, "member_view.create", { groupId: 3 })).toThrow(ForbiddenError);
+      expect(() => authorize(ownerOfK, "member_view.create", { groupId: 5 })).toThrow(ForbiddenError);
+    });
+  });
+
+  describe("member_view.update / member_view.delete", () => {
+    for (const action of ["member_view.update", "member_view.delete"] as const) {
+      for (const role of ["OWNER", "ADMIN", "USER"] as const) {
+        it(`${role} owner can ${action} their own view`, () => {
+          expect(() => authorize(session(role, 4, KELOMPOK), action, viewOfK)).not.toThrow();
+        });
+      }
+
+      it(`ADMIN non-owner is forbidden to ${action} while the owner is active in the group`, () => {
+        expect(() => authorize(adminOfK, action, viewOfKOwnedByOther)).toThrow(ForbiddenError);
+      });
+
+      it(`USER non-owner is forbidden to ${action}`, () => {
+        expect(() => authorize(userOfK, action, viewOfKOwnedByOther)).toThrow(ForbiddenError);
+      });
+
+      it(`a former owner who moved groups gets NotFoundError for ${action}`, () => {
+        const moved = session("USER", 5, "1/2/3/5/");
+        expect(() => authorize(moved, action, viewOfK)).toThrow(NotFoundError);
+      });
+
+      it(`ancestor gets NotFoundError for ${action}`, () => {
+        expect(() => authorize(session("OWNER", 1, ROOT), action, viewOfK)).toThrow(NotFoundError);
+      });
+    }
+  });
+
+  describe("member_view.transfer", () => {
+    it("ADMIN can take over a view whose owner is deactivated", () => {
+      expect(() => authorize(adminOfK, "member_view.transfer", orphanedByDeactivation)).not.toThrow();
+    });
+
+    it("OWNER can take over a view whose owner moved to another group", () => {
+      expect(() => authorize(ownerOfK, "member_view.transfer", orphanedByMove)).not.toThrow();
+    });
+
+    it("USER is forbidden even for an orphaned view", () => {
+      expect(() => authorize(userOfK, "member_view.transfer", orphanedByDeactivation)).toThrow(
+        ForbiddenError,
+      );
+    });
+
+    it("ADMIN is forbidden for a view with an active owner still in the group", () => {
+      expect(() => authorize(adminOfK, "member_view.transfer", viewOfKOwnedByOther)).toThrow(
+        ForbiddenError,
+      );
+    });
+
+    it("ADMIN of the parent desa gets NotFoundError for an orphaned view of a child kelompok", () => {
+      expect(() =>
+        authorize(session("ADMIN", 3, DESA), "member_view.transfer", orphanedByDeactivation),
+      ).toThrow(NotFoundError);
+    });
   });
 });

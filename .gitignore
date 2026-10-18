@@ -27,3 +27,11 @@ out/
 *.db-journal
 *.db-wal
 *.db-shm
+
+# Real deployment secrets (only the *.example copies are tracked)
+/deploy/env/*
+!/deploy/env/*.example
+/deploy/rclone.conf
+rclone.conf
+*.age.key
+age-identity*.txt

@@ -135,6 +135,15 @@ describe("lib/activity/list listActivityOccurrences", () => {
     const { entries } = await listActivityOccurrences(leafAdmin, { from: "2026-07-01", to: "2026-07-01" });
     expect(entries).toHaveLength(2);
     expect(entries.every((e) => e.hasConflict)).toBe(true);
+
+    // Searching narrows the list but keeps the conflict found against the hidden entry.
+    const searched = await listActivityOccurrences(leafAdmin, {
+      from: "2026-07-01",
+      to: "2026-07-01",
+      search: "kelompok",
+    });
+    expect(searched.entries.map((e) => e.activityName)).toEqual(["Kelompok 20:30"]);
+    expect(searched.entries[0].hasConflict).toBe(true);
   });
 
   describe("multi-group union", () => {

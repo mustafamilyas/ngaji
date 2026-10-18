@@ -5,16 +5,24 @@ import type { NextConfig } from "next";
 // 'nonce-…'`) so Next's own inline RSC-streaming scripts can run — a static
 // value here would either lack the nonce (every page renders blank) or fight
 // the header middleware sets on the same response.
+// HSTS only in production: a browser that sees it on localhost would pin
+// http://localhost to https for a year and break every other dev server.
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
 const nextConfig: NextConfig = {
   async headers() {
     return [
       {
         source: "/(.*)",
         headers: [
-          {
-            key: "Strict-Transport-Security",
-            value: "max-age=31536000; includeSubDomains",
-          },
+          ...(IS_PRODUCTION
+            ? [
+                {
+                  key: "Strict-Transport-Security",
+                  value: "max-age=31536000; includeSubDomains",
+                },
+              ]
+            : []),
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {

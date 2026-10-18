@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Defines how `/kegiatan` lets a user choose which groups' activities to see, over which date range, and whether to see them as a list or on a calendar grid.
+Defines how `/dashboard/kegiatan` lets a user choose which groups' activities to see, over which date range, and whether to see them as a list or on a calendar grid.
 
 ## ADDED Requirements
 
 ### Requirement: List and calendar view toggle
-`/kegiatan` SHALL offer two views of the same underlying occurrence set: a list view (grouped/sorted by date) and a calendar view (a month grid with one cell per day, each cell showing a compact indicator per occurrence that day). The active view SHALL be selectable via a visible toggle and SHALL not change which occurrences are included, only their presentation. Both views SHALL show the same badges (warisan, konflik, dipindah, batal) and the same `canRecord` entry point to attendance.
+`/dashboard/kegiatan` SHALL offer two views of the same underlying occurrence set: a list view (grouped/sorted by date) and a calendar view (a month grid with one cell per day, each cell showing a compact indicator per occurrence that day). The active view SHALL be selectable via a visible toggle and SHALL not change which occurrences are included, only their presentation. Both views SHALL show the same badges (warisan, konflik, dipindah, batal) and the same `canRecord` entry point to attendance.
 
 #### Scenario: Switching view preserves filters
 - **WHEN** a user switches from list to calendar view without changing group or date filters
@@ -33,7 +33,7 @@ The group filter SHALL allow selecting one or more groups from the set of groups
 - **THEN** the results are the same as selecting only the user's own group
 
 ### Requirement: Date range mode toggle
-`/kegiatan` SHALL offer four range modes: Hari ini (today), Minggu ini (current week, Sunday-start), Bulan ini (current calendar month), and Custom. In the first three modes the effective `from`/`to` dates SHALL be computed by the system from the current date; in Custom mode the existing manual from/to date inputs SHALL be shown and used. On first visit with no range parameters, the mode SHALL default to Minggu ini, matching current behavior. Prev/next navigation SHALL move the range by one unit of the active mode (one day, one week, or one month) and SHALL be hidden or disabled in Custom mode.
+`/dashboard/kegiatan` SHALL offer four range modes: Hari ini (today), Minggu ini (current week, Sunday-start), Bulan ini (current calendar month), and Custom. In the first three modes the effective `from`/`to` dates SHALL be computed by the system from the current date; in Custom mode the existing manual from/to date inputs SHALL be shown and used. On first visit with no range parameters, the mode SHALL default to Minggu ini, matching current behavior. Prev/next navigation SHALL move the range by one unit of the active mode (one day, one week, or one month) and SHALL be hidden or disabled in Custom mode.
 
 #### Scenario: Bulan ini computes calendar month bounds
 - **WHEN** the mode is Bulan ini and today is 2026-09-26
@@ -48,8 +48,8 @@ The group filter SHALL allow selecting one or more groups from the set of groups
 - **THEN** the from/to date inputs are shown and prev/next navigation is not
 
 ### Requirement: Filter state lives in the URL
-The selected view, selected groups, range mode, and (in Custom mode) the manual from/to dates SHALL be represented as `searchParams` on `/kegiatan`, so the page remains a Server Component, the state survives a reload, and a link to a specific filtered view can be shared.
+The selected view, selected groups, range mode, and (in Custom mode) the manual from/to dates SHALL be represented as `searchParams` on `/dashboard/kegiatan`, so the page remains a Server Component, the state survives a reload, and a link to a specific filtered view can be shared.
 
 #### Scenario: Reload preserves filters
-- **WHEN** a user reloads `/kegiatan?view=calendar&grup=3,7&range=bulan`
+- **WHEN** a user reloads `/dashboard/kegiatan?view=calendar&grup=3,7&range=bulan`
 - **THEN** the page renders the calendar view with groups 3 and 7 selected and the current month's range

@@ -13,6 +13,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["**/*.test.ts"],
+    // Agent worktrees under .claude/ are full repo copies; never run their tests.
+    exclude: ["**/node_modules/**", ".claude/**"],
     globalSetup: ["./vitest.global-setup.ts"],
     // Tests share one SQLite file; keep file execution sequential to avoid write contention.
     fileParallelism: false,

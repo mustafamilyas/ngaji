@@ -1,13 +1,13 @@
 import { z } from "zod";
+import { MAX_NAME_LENGTH } from "@/lib/constants";
+import { dateSchema, optionalDateSchema } from "./common";
 import { MARITAL_STATUSES, MEMBER_STATUSES, SEXES, WORK_STATUSES } from "./enums";
-
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Shared by the member forms and Server Actions (DESIGN.md §2, member-management spec). */
 const memberFieldsSchema = z.object({
-  name: z.string().trim().min(1, "Nama wajib diisi").max(200),
+  name: z.string().trim().min(1, "Nama wajib diisi").max(MAX_NAME_LENGTH),
   birthPlace: z.string().trim().min(1, "Tempat lahir wajib diisi").max(100),
-  birthDate: z.string().regex(DATE_RE, "Tanggal lahir tidak valid"),
+  birthDate: dateSchema("Tanggal lahir tidak valid"),
   sex: z.enum(SEXES),
   address: z.string().trim().min(1, "Alamat wajib diisi").max(500),
   phone: z.string().trim().min(1, "Nomor HP wajib diisi").max(30),
@@ -18,11 +18,8 @@ const memberFieldsSchema = z.object({
     .transform((value) => (value ? value : undefined))
     .optional(),
   status: z.enum(MEMBER_STATUSES),
-  joinedAt: z.string().regex(DATE_RE, "Tanggal bergabung tidak valid"),
-  exitedAt: z
-    .union([z.literal(""), z.string().regex(DATE_RE, "Tanggal keluar tidak valid")])
-    .transform((value) => (value ? value : undefined))
-    .optional(),
+  joinedAt: dateSchema("Tanggal bergabung tidak valid"),
+  exitedAt: optionalDateSchema("Tanggal keluar tidak valid"),
 });
 
 function requireExitedAtWhenNotActive(

@@ -1,3 +1,5 @@
+import type { DateRangeConfig } from "@/lib/filters";
+
 export type AgeBracket = {
   label: string;
   min: number;
@@ -17,6 +19,58 @@ export const AGE_BRACKETS: AgeBracket[] = [
 export const DEFAULT_STATS_RANGE_DAYS = 30;
 export const CONFLICT_HORIZON_DAYS = 90;
 export const PAGE_SIZE = 50;
+/** Page size for lists embedded in a detail page (group members, schedule, history, per-occurrence table). */
+export const EMBEDDED_PAGE_SIZE = 10;
+
+/** Date range presets per page for the shared filter (`lib/filters.ts`); first listed = shown first. */
+export const ACTIVITY_LIST_DATE_RANGE: DateRangeConfig = { modes: ["hari", "minggu", "bulan", "custom"], defaultMode: "minggu" };
+/** Longest range the printable schedule accepts, in calendar months. */
+export const PRINT_MAX_MONTHS = 3;
+/** Statistics default to the last `DEFAULT_STATS_RANGE_DAYS` (30) days — keep `defaultMode` in step with it. */
+export const STATS_DATE_RANGE: DateRangeConfig = { modes: ["7h", "30h", "90h", "bulan", "custom"], defaultMode: "30h" };
+export const AUDIT_DATE_RANGE: DateRangeConfig = { modes: ["semua", "hari", "7h", "30h", "90h", "custom"], defaultMode: "semua" };
+
+/** Upper bounds on client-supplied text and lists (input-validation spec). Reject, never truncate. */
+export const MAX_NAME_LENGTH = 200;
+export const MAX_LOCATION_LENGTH = 200;
+export const MAX_NOTES_LENGTH = 1000;
+export const MAX_ATTENDANCE_ENTRIES = 1000;
+export const MAX_WEEKDAYS = 7;
+export const MAX_GROUP_FILTER_IDS = 50;
+
+/** Survey form limits and defaults (member-surveys spec). Reject, never truncate. */
+export const SURVEY_TITLE_MAX = 200;
+export const SURVEY_MAX_QUESTIONS = 100;
+export const SURVEY_MAX_OPTIONS = 50;
+export const SURVEY_DESCRIPTION_MAX = MAX_NOTES_LENGTH;
+export const SURVEY_QUESTION_LABEL_MAX = 300;
+export const SURVEY_HELP_TEXT_MAX = 500;
+export const SURVEY_OPTION_LABEL_MAX = 200;
+export const SHORT_TEXT_MAX = 200;
+export const LONG_TEXT_MAX = 2000;
+export const SCALE_MAX_STEPS = 11;
+export const SCALE_DEFAULT_MIN = 1;
+export const SCALE_DEFAULT_MAX = 5;
+
+/** Member view limits (member-view-query spec). Reject, never truncate. */
+export const VIEW_MAX_RULE_GROUPS = 10;
+export const VIEW_MAX_RULES_PER_GROUP = 10;
+export const VIEW_MAX_AGE_BUCKETS = 12;
+export const VIEW_MAX_TEXT_VALUE_LENGTH = 100;
+export const VIEW_MAX_WITHIN_DAYS = 3650;
+export const VIEW_MAX_AGE = 150;
+export const VIEW_MAX_GROUP_IDS = 50;
+export const VIEW_MAX_BUCKET_LABEL_LENGTH = 50;
+/** Deepest org level a view may group by (levels are depth 0 = root). */
+export const VIEW_MAX_GROUP_LEVEL = 20;
+/** Members loaded per section in a grouped view, and per "Tampilkan lebih banyak" click. */
+export const VIEW_SECTION_PAGE_SIZE = 25;
+/** Sections that start expanded; the rest start collapsed. */
+export const VIEW_EXPANDED_SECTIONS = 5;
+/** Most in-scope groups offered in the view editor's group picker. */
+export const VIEW_GROUP_OPTIONS_LIMIT = 500;
+/** Max length (characters) of the base64url `?d=` URL draft. */
+export const VIEW_MAX_DRAFT_LENGTH = 4000;
 
 /** bcrypt work factor for password hashing (DESIGN.md §4.1). */
 export const BCRYPT_COST = 12;
@@ -26,7 +80,7 @@ export const LOGIN_RATE_LIMIT_WINDOW_MINUTES = 15;
 export const LOGIN_RATE_LIMIT_MAX_PER_USERNAME = 5;
 export const LOGIN_RATE_LIMIT_MAX_PER_IP = 20;
 
-/** Every `AuditLog.action` value the app writes (audit-log spec "Logged actions"), for the `/audit` action filter. */
+/** Every `AuditLog.action` value the app writes (audit-log spec "Logged actions"), for the `/dashboard/audit` action filter. */
 export const AUDIT_ACTIONS = [
   "auth.login",
   "auth.login_failed",
@@ -50,4 +104,13 @@ export const AUDIT_ACTIONS = [
   "activity.split",
   "occurrence.override",
   "attendance.save",
+  "survey.create",
+  "survey.update",
+  "survey.delete",
+  "survey_response.save",
+  "survey_response.delete",
+  "member_view.create",
+  "member_view.update",
+  "member_view.delete",
+  "member_view.transfer",
 ] as const;

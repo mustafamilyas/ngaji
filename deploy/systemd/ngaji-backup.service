@@ -1,0 +1,19 @@
+[Unit]
+Description=Ngaji encrypted offsite database backup
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ngaji
+Group=ngaji
+# BACKUP_BUCKET, AGE_RECIPIENT, HEALTHCHECK_URL (see deploy/env/backup.env.example)
+EnvironmentFile=/etc/ngaji/backup.env
+ExecStart=/opt/ngaji/scripts/backup.sh
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+# sqlite3 .backup needs write access to the -shm file next to the live database.
+ReadWritePaths=/var/lib/ngaji /var/backups/ngaji

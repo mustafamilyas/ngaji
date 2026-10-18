@@ -1,18 +1,28 @@
+import { EMBEDDED_PAGE_SIZE } from "@/lib/constants";
 import { db } from "@/lib/db";
+import { clampPage } from "@/lib/pagination";
 
-/** Most recent attendance rows for one member, newest first (member-management "attendance history"). */
-export async function attendanceHistoryForMember(memberId: number, limit = 20) {
+/** One page of a member's attendance rows, newest first (member-management "attendance history"). */
+export async function attendanceHistoryForMember(memberId: number, page = 1, pageSize = EMBEDDED_PAGE_SIZE) {
+  const where = { memberId };
+  const total = await db.attendance.count({ where });
+  const current = clampPage(page, total, pageSize);
   const attendances = await db.attendance.findMany({
-    where: { memberId },
+    where,
     include: { occurrence: { include: { activity: true } } },
     orderBy: { occurrence: { date: "desc" } },
-    take: limit,
+    skip: (current - 1) * pageSize,
+    take: pageSize,
   });
 
-  return attendances.map((attendance) => ({
+  const entries = attendances.map((attendance) => ({
     id: attendance.id,
     status: attendance.status,
+    activityId: attendance.occurrence.activityId,
     activityName: attendance.occurrence.activity.name,
+    /** Rule key date — what the occurrence page is addressed by. */
+    date: attendance.occurrence.date,
     effectiveDate: attendance.occurrence.overrideDate ?? attendance.occurrence.date,
   }));
+  return { entries, total, page: current, pageSize };
 }

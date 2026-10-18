@@ -10,7 +10,7 @@ An activity owned by group X SHALL apply to X and all its descendants. Activity 
 - **THEN** it is shown with an "warisan" badge and no edit controls
 
 #### Scenario: Sibling-branch activity is 404
-- **WHEN** a user at kelompok K1 opens `/kegiatan/[id]` for an activity owned by sibling kelompok K2
+- **WHEN** a user at kelompok K1 opens `/dashboard/kegiatan/[id]` for an activity owned by sibling kelompok K2
 - **THEN** the system responds 404
 
 #### Scenario: Union across two unrelated selected groups

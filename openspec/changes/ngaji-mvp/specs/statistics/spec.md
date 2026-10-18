@@ -19,7 +19,7 @@
 Every statistic SHALL be scope-filtered and bounded by a date range defaulting to the last `DEFAULT_STATS_RANGE_DAYS` (constant, 30) days.
 
 #### Scenario: Default range applied
-- **WHEN** `/statistik` is opened without parameters
+- **WHEN** `/dashboard/statistik` is opened without parameters
 - **THEN** the range is today−30 .. today
 
 ### Requirement: Member statistics
@@ -48,7 +48,7 @@ The participation tab SHALL show, per member: the number of occurrences applying
 - **THEN** rows are ordered accordingly
 
 ### Requirement: Dashboard
-`/` SHALL show a summary of the member and activity statistics for the user's scope and the occurrences of the next 7 days.
+`/dashboard` SHALL show a summary of the member and activity statistics for the user's scope and the occurrences of the next 7 days.
 
 #### Scenario: Upcoming list
 - **WHEN** the dashboard loads on 2026-09-11

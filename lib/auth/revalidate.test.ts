@@ -28,7 +28,7 @@ describe("revalidateSessionUser", () => {
     });
     await db.userGroupRole.create({ data: { userId: user.id, groupId, role: "ADMIN" } });
 
-    const result = await revalidateSessionUser(user.id);
+    const result = await revalidateSessionUser(user.id, 0);
 
     expect(result).toMatchObject({ username: "still-active", role: "ADMIN", groupId, groupPath: "0/" });
   });
@@ -39,11 +39,11 @@ describe("revalidateSessionUser", () => {
     });
     await db.userGroupRole.create({ data: { userId: user.id, groupId, role: "USER" } });
 
-    expect(await revalidateSessionUser(user.id)).not.toBeNull();
+    expect(await revalidateSessionUser(user.id, 0)).not.toBeNull();
 
     await db.user.update({ where: { id: user.id }, data: { isActive: false } });
 
-    expect(await revalidateSessionUser(user.id)).toBeNull();
+    expect(await revalidateSessionUser(user.id, 0)).toBeNull();
   });
 
   it("reflects a demotion (role change) mid-session without requiring re-login", async () => {
@@ -52,12 +52,12 @@ describe("revalidateSessionUser", () => {
     });
     await db.userGroupRole.create({ data: { userId: user.id, groupId, role: "ADMIN" } });
 
-    const before = await revalidateSessionUser(user.id);
+    const before = await revalidateSessionUser(user.id, 0);
     expect(before?.role).toBe("ADMIN");
 
     await db.userGroupRole.update({ where: { userId: user.id }, data: { role: "USER" } });
 
-    const after = await revalidateSessionUser(user.id);
+    const after = await revalidateSessionUser(user.id, 0);
     expect(after?.role).toBe("USER");
   });
 
@@ -67,17 +67,40 @@ describe("revalidateSessionUser", () => {
     });
     await db.userGroupRole.create({ data: { userId: user.id, groupId, role: "USER" } });
 
-    const before = await revalidateSessionUser(user.id);
+    const before = await revalidateSessionUser(user.id, 0);
     expect(before?.groupPath).toBe("0/");
 
     await db.userGroupRole.update({ where: { userId: user.id }, data: { groupId: otherGroupId } });
 
-    const after = await revalidateSessionUser(user.id);
+    const after = await revalidateSessionUser(user.id, 0);
     expect(after?.groupId).toBe(otherGroupId);
     expect(after?.groupPath).toBe("0-other/");
   });
 
   it("returns null for a user id that no longer exists", async () => {
-    expect(await revalidateSessionUser(999_999)).toBeNull();
+    expect(await revalidateSessionUser(999_999, 0)).toBeNull();
+  });
+
+  it("reset ends sessions: a bumped sessionVersion revokes the old token", async () => {
+    const user = await db.user.create({
+      data: { username: "gets-reset", passwordHash: "x", name: "Gets Reset" },
+    });
+    await db.userGroupRole.create({ data: { userId: user.id, groupId, role: "USER" } });
+
+    expect(await revalidateSessionUser(user.id, 0)).not.toBeNull();
+
+    await db.user.update({ where: { id: user.id }, data: { sessionVersion: { increment: 1 } } });
+
+    expect(await revalidateSessionUser(user.id, 0)).toBeNull();
+    expect(await revalidateSessionUser(user.id, 1)).not.toBeNull();
+  });
+
+  it("treats a missing sessionVersion (pre-upgrade token) as a mismatch", async () => {
+    const user = await db.user.create({
+      data: { username: "old-token", passwordHash: "x", name: "Old Token" },
+    });
+    await db.userGroupRole.create({ data: { userId: user.id, groupId, role: "USER" } });
+
+    expect(await revalidateSessionUser(user.id, undefined)).toBeNull();
   });
 });

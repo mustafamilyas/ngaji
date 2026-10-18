@@ -128,4 +128,22 @@ describe("db soft-delete extension", () => {
     expect(ids).toContain(kept.id);
     expect(ids).not.toContain(deleted.id);
   });
+
+  it("excludes a soft-deleted MemberView from findMany, findFirst, findUnique and count", async () => {
+    const group = await db.group.create({
+      data: { organizationId, depth: 0, name: "View Group", path: "0/" },
+    });
+    const owner = await db.user.create({
+      data: { username: `view-owner-${group.id}`, passwordHash: "x", name: "Owner" },
+    });
+    const base = { groupId: group.id, ownerId: owner.id, createdById: owner.id, definition: {} };
+    const kept = await db.memberView.create({ data: { ...base, name: "Kept View" } });
+    const deleted = await db.memberView.create({ data: { ...base, name: "Deleted View", deletedAt: new Date() } });
+
+    const rows = await db.memberView.findMany({ where: { groupId: group.id } });
+    expect(rows.map((r) => r.id)).toEqual([kept.id]);
+    expect(await db.memberView.findFirst({ where: { id: deleted.id } })).toBeNull();
+    expect(await db.memberView.findUnique({ where: { id: deleted.id } })).toBeNull();
+    expect(await db.memberView.count({ where: { groupId: group.id } })).toBe(1);
+  });
 });

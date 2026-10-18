@@ -1,5 +1,7 @@
 import { z } from "zod";
-import { ACTIVITY_DATE_RE, ACTIVITY_TIME_RE } from "./activity";
+import { MAX_LOCATION_LENGTH, MAX_NOTES_LENGTH } from "@/lib/constants";
+import { ACTIVITY_TIME_RE } from "./activity";
+import { dateSchema, optionalDateSchema } from "./common";
 import { OCCURRENCE_STATUSES } from "./enums";
 
 /**
@@ -12,23 +14,20 @@ export const occurrenceOverrideSchema = z
   .object({
     activityId: z.coerce.number().int().positive(),
     /** The rule-generated date X — the stable key, never the moved-to date. */
-    date: z.string().regex(ACTIVITY_DATE_RE, "Tanggal tidak valid"),
+    date: dateSchema(),
     status: z.enum(OCCURRENCE_STATUSES),
-    overrideDate: z
-      .union([z.literal(""), z.string().regex(ACTIVITY_DATE_RE, "Tanggal tidak valid")])
-      .transform((value) => (value ? value : undefined))
-      .optional(),
+    overrideDate: optionalDateSchema(),
     overrideStartTime: z
       .union([z.literal(""), z.string().regex(ACTIVITY_TIME_RE, "Format jam tidak valid")])
       .transform((value) => (value ? value : undefined))
       .optional(),
     overrideDurationMinutes: z.coerce.number().int().positive().optional(),
     overrideLocation: z
-      .union([z.literal(""), z.string().trim().min(1)])
+      .union([z.literal(""), z.string().trim().min(1).max(MAX_LOCATION_LENGTH)])
       .transform((value) => (value ? value : undefined))
       .optional(),
     overrideNotes: z
-      .union([z.literal(""), z.string().trim().min(1)])
+      .union([z.literal(""), z.string().trim().min(1).max(MAX_NOTES_LENGTH)])
       .transform((value) => (value ? value : undefined))
       .optional(),
   })

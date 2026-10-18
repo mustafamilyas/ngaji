@@ -2,6 +2,18 @@ const TIMEZONE = "Asia/Jakarta";
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MS = 86_400_000;
 
+const MIN_YEAR = 1900;
+const MAX_YEAR = 2100;
+
+/** A well-formed, real calendar date (`YYYY-MM-DD`) with a year in 1900–2100. */
+export function isDateString(value: string | undefined): value is string {
+  if (!value || !DATE_RE.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  if (year < MIN_YEAR || year > MAX_YEAR) return false;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
 function assertDateString(date: string): void {
   if (!DATE_RE.test(date)) {
     throw new Error(`Invalid date string: ${date}`);
@@ -21,14 +33,19 @@ function formatUtc(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-/** Today's date in Asia/Jakarta, independent of the host's local timezone. */
-export function today(): string {
+/** The Asia/Jakarta calendar date (YYYY-MM-DD) of an instant, independent of the host's local timezone. */
+export function dateOf(instant: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: TIMEZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(new Date());
+  }).format(instant);
+}
+
+/** Today's date in Asia/Jakarta, independent of the host's local timezone. */
+export function today(): string {
+  return dateOf(new Date());
 }
 
 /** Validates a YYYY-MM-DD string before it is written to a Prisma String date column. */
@@ -135,4 +152,15 @@ export function rangeForMode(mode: RangeMode, referenceDate: string): { from: st
     case "bulan":
       return { from: monthStartOf(referenceDate), to: monthEndOf(referenceDate) };
   }
+}
+
+/**
+ * True when `to` is earlier than `from` plus `months` calendar months, with the
+ * day clamped to the end of a shorter target month (31 Jan + 3 months = 30 Apr).
+ */
+export function isWithinMonths(from: string, to: string, months: number): boolean {
+  const day = Number(from.split("-")[2]);
+  const firstOfTarget = addMonthsOnDay(from, months, 1)!;
+  const limit = addMonthsOnDay(from, months, day) ?? monthEndOf(firstOfTarget);
+  return to < limit;
 }
