@@ -7,6 +7,9 @@ export type AutocompleteItem = { id: number; label: string; hint?: string; badge
 
 const LIMIT = 8;
 
+export const autocompleteCompactInputClass =
+  "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60";
+
 export const autocompleteInputClass =
   "h-12 w-full rounded-xl border border-input bg-background px-4 text-base outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60";
 
@@ -30,6 +33,7 @@ export function Autocomplete({
   inputRef,
   autoFocus,
   prefix,
+  compact = false,
 }: {
   id: string;
   label: string;
@@ -47,6 +51,8 @@ export function Autocomplete({
   autoFocus?: boolean;
   /** Shown between the label and the input (e.g. the ancestry of the group being chosen). */
   prefix?: React.ReactNode;
+  /** Form-field sizing (like the other inputs in a form) instead of the large kiosk sizing. */
+  compact?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
   const [highlight, setHighlight] = useState(0);
@@ -109,15 +115,18 @@ export function Autocomplete({
           placeholder={placeholder}
           autoComplete="off"
           autoFocus={autoFocus}
-          className={autocompleteInputClass}
+          className={compact ? autocompleteCompactInputClass : autocompleteInputClass}
         />
         {(matches.length > 0 || notFound) && (
           <ul
             id={`${id}-list`}
             role="listbox"
-            className="absolute inset-x-0 top-full z-20 mt-1 max-h-72 overflow-auto rounded-xl border bg-background shadow-lg"
+            className={cn(
+              "absolute inset-x-0 top-full z-20 mt-1 max-h-72 overflow-auto border bg-background shadow-lg",
+              compact ? "rounded-md" : "rounded-xl",
+            )}
           >
-            {notFound && <li className="px-4 py-3 text-sm text-muted-foreground">Tidak ditemukan.</li>}
+            {notFound && <li className={cn("text-sm text-muted-foreground", compact ? "px-3 py-2" : "px-4 py-3")}>Tidak ditemukan.</li>}
             {matches.map((item, i) => (
               <li key={item.id} role="option" aria-selected={i === highlight}>
                 {/* mousedown (not click) so the input's blur doesn't close the list before the pick lands */}
@@ -128,7 +137,8 @@ export function Autocomplete({
                     pick(item);
                   }}
                   className={cn(
-                    "flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-base hover:bg-muted",
+                    "flex w-full items-center justify-between gap-3 text-left hover:bg-muted",
+                    compact ? "px-3 py-2 text-sm" : "px-4 py-3 text-base",
                     i === highlight && "bg-muted",
                   )}
                 >

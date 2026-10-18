@@ -32,7 +32,7 @@ export async function listLeafGroupsInScope(session: SessionUser) {
   return db.group.findMany({
     where: { depth: maxDepth, path: { startsWith: session.groupPath } },
     orderBy: { name: "asc" },
-    select: { id: true, name: true },
+    select: { id: true, name: true, parent: { select: { name: true } } },
   });
 }
 

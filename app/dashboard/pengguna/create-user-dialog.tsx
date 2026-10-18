@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { UserPlus } from "lucide-react";
+import { GroupAutocomplete, withParentNames } from "@/components/group-autocomplete";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { CreatedUserDto } from "@/lib/user/dto";
@@ -12,7 +13,7 @@ import { createUserAction } from "./actions";
 const inputClass =
   "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
-type GroupOption = { id: number; name: string; depth: number };
+type GroupOption = { id: number; name: string; parentId: number | null };
 
 function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
   return (
@@ -38,6 +39,19 @@ export function CreateUserDialog({
     FormData
   >(createUserAction, null);
   const formRef = useRef<HTMLFormElement>(null);
+  const [groupId, setGroupId] = useState<number | undefined>();
+  // Remounting the picker clears its text after a successful create.
+  const [pickerKey, setPickerKey] = useState(0);
+  const groupOptions = useMemo(() => withParentNames(groups), [groups]);
+
+  const [handledState, setHandledState] = useState(state);
+  if (state !== handledState) {
+    setHandledState(state);
+    if (state?.ok) {
+      setGroupId(undefined);
+      setPickerKey((k) => k + 1);
+    }
+  }
 
   useEffect(() => {
     if (state?.ok) formRef.current?.reset();
@@ -54,16 +68,14 @@ export function CreateUserDialog({
         <DialogDescription>Password sementara dibuat otomatis dan wajib diganti saat pertama masuk.</DialogDescription>
 
         <form ref={formRef} action={formAction} className="mt-4 flex flex-col gap-3">
-          <Field label="Grup" htmlFor="new-user-group">
-            <select id="new-user-group" name="groupId" required className={inputClass}>
-              {groups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {"— ".repeat(group.depth)}
-                  {group.name}
-                </option>
-              ))}
-            </select>
-          </Field>
+          <GroupAutocomplete
+            key={pickerKey}
+            id="new-user-group"
+            groups={groupOptions}
+            value={groupId}
+            onChange={setGroupId}
+            name="groupId"
+          />
           <Field label="Nama" htmlFor="new-user-name">
             <input id="new-user-name" name="name" required className={inputClass} />
           </Field>
@@ -103,7 +115,7 @@ export function CreateUserDialog({
 
           <div className="flex justify-end gap-2">
             <DialogClose className={buttonVariants({ variant: "ghost", size: "lg" })}>Tutup</DialogClose>
-            <Button type="submit" size="lg" disabled={pending}>
+            <Button type="submit" size="lg" disabled={pending || groupId === undefined}>
               {pending ? "Menyimpan…" : "Buat pengguna"}
             </Button>
           </div>

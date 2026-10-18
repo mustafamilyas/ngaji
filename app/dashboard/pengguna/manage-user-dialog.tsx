@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { KeyRound, Settings2, UserX } from "lucide-react";
+import { GroupAutocomplete, withParentNames } from "@/components/group-autocomplete";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { UserGroupRole } from "@/lib/generated/prisma/client";
@@ -13,7 +14,7 @@ import { moveUserAction, resetUserPasswordAction, setUserActiveAction, updateUse
 const selectClass =
   "h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
-type GroupOption = { id: number; name: string; depth: number };
+type GroupOption = { id: number; name: string; parentId: number | null };
 
 function Section({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
@@ -61,19 +62,23 @@ function MoveForm({ userId, currentGroupId, groups }: { userId: number; currentG
     moveUserAction,
     null,
   );
+  const [groupId, setGroupId] = useState<number | undefined>(currentGroupId);
+  const groupOptions = useMemo(() => withParentNames(groups), [groups]);
   return (
     <form action={formAction} className="flex flex-col gap-1">
       <input type="hidden" name="userId" value={userId} />
-      <div className="flex items-center gap-2">
-        <select name="groupId" defaultValue={currentGroupId} className={selectClass}>
-          {groups.map((group) => (
-            <option key={group.id} value={group.id}>
-              {"— ".repeat(group.depth)}
-              {group.name}
-            </option>
-          ))}
-        </select>
-        <Button type="submit" variant="outline" disabled={pending}>
+      <div className="flex items-end gap-2">
+        <div className="min-w-0 flex-1">
+          <GroupAutocomplete
+            id={`move-user-group-${userId}`}
+            label="Pindah ke grup"
+            groups={groupOptions}
+            value={groupId}
+            onChange={setGroupId}
+            name="groupId"
+          />
+        </div>
+        <Button type="submit" variant="outline" disabled={pending || groupId === undefined || groupId === currentGroupId}>
           {pending ? "…" : "Pindahkan"}
         </Button>
       </div>

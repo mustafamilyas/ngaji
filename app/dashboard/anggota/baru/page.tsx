@@ -26,7 +26,7 @@ export default async function NewMemberPage({
       />
       <Card>
         <CardContent>
-          <MemberForm mode="create" leafGroups={leafGroups} initialGroupId={initialGroupId} />
+          <MemberForm mode="create" leafGroups={leafGroups.map((g) => ({ id: g.id, name: g.name, parentName: g.parent?.name }))} initialGroupId={initialGroupId} />
         </CardContent>
       </Card>
     </div>

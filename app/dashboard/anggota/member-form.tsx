@@ -6,6 +6,7 @@ import { type ReactNode, useState, useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { Save } from "lucide-react";
 import { createMemberAction, updateMemberAction } from "@/app/dashboard/anggota/actions";
+import { GroupAutocomplete, type GroupAutocompleteOption } from "@/components/group-autocomplete";
 import { Button } from "@/components/ui/button";
 import { today } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -47,10 +48,9 @@ function Field({
   );
 }
 
-type LeafGroupOption = { id: number; name: string };
 
 type MemberFormProps =
-  | { mode: "create"; leafGroups: LeafGroupOption[]; initialGroupId?: number }
+  | { mode: "create"; leafGroups: GroupAutocompleteOption[]; initialGroupId?: number }
   | { mode: "edit"; memberId: number; defaultValues: MemberFormValues };
 
 const emptyDefaults: MemberFormValues = {
@@ -105,24 +105,13 @@ export function MemberForm(props: MemberFormProps) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 sm:grid-cols-2">
       {props.mode === "create" && (
-        <Field label="Grup" htmlFor="groupId" wide>
+        <div className="sm:col-span-2">
           {props.leafGroups.length > 0 ? (
-            <select
-              id="groupId"
-              className={inputClass}
-              value={groupId}
-              onChange={(event) => setGroupId(Number(event.target.value))}
-            >
-              {props.leafGroups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                </option>
-              ))}
-            </select>
+            <GroupAutocomplete id="groupId" groups={props.leafGroups} value={groupId} onChange={setGroupId} />
           ) : (
             <p className="text-sm text-muted-foreground">Tidak ada grup daun dalam scope Anda.</p>
           )}
-        </Field>
+        </div>
       )}
 
       <Field label="Nama" htmlFor="name" error={errors.name?.message} wide>
