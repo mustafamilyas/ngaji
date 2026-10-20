@@ -35,6 +35,8 @@ export const MAX_NAME_LENGTH = 200;
 export const MAX_LOCATION_LENGTH = 200;
 export const MAX_NOTES_LENGTH = 1000;
 export const MAX_ATTENDANCE_ENTRIES = 1000;
+/** Reason (alasan) stored with an IZIN attendance row. */
+export const MAX_ATTENDANCE_NOTE_LENGTH = 500;
 export const MAX_WEEKDAYS = 7;
 export const MAX_GROUP_FILTER_IDS = 50;
 

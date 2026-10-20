@@ -13,6 +13,7 @@ import {
 import { overrideOccurrence } from "@/lib/activity/occurrence-mutations";
 import { checkInMember, listCheckInMembers } from "@/lib/attendance/check-in";
 import { saveAttendance } from "@/lib/attendance/save";
+import { setMemberAttendance } from "@/lib/attendance/set";
 import type { Activity, ActivityOccurrence } from "@/lib/generated/prisma/client";
 import { type ActionResult, ValidationError, runAction } from "@/lib/errors";
 import {
@@ -22,7 +23,12 @@ import {
   deleteActivitySchema,
   endActivitySchema,
 } from "@/lib/validation/activity";
-import { attendanceSaveSchema, checkInMembersSchema, checkInSchema } from "@/lib/validation/attendance";
+import {
+  attendanceSaveSchema,
+  attendanceSetSchema,
+  checkInMembersSchema,
+  checkInSchema,
+} from "@/lib/validation/attendance";
 import { idSchema } from "@/lib/validation/common";
 import { occurrenceOverrideSchema } from "@/lib/validation/occurrence";
 
@@ -168,6 +174,23 @@ export async function saveAttendanceAction(
   });
   if (result.ok && parsedActivityId.success) {
     revalidatePath(`/dashboard/kegiatan/${parsedActivityId.data}`);
+  }
+  return result;
+}
+
+export async function setAttendanceAction(
+  input: unknown,
+): Promise<ActionResult<Awaited<ReturnType<typeof setMemberAttendance>>>> {
+  const session = await requireSession();
+  const parsed = attendanceSetSchema.safeParse(input);
+  const result = await runAction(async () => {
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.issues[0]?.message ?? "Data tidak valid");
+    }
+    return setMemberAttendance(session, parsed.data);
+  });
+  if (result.ok && parsed.success) {
+    revalidatePath(`/dashboard/kegiatan/${parsed.data.activityId}`);
   }
   return result;
 }

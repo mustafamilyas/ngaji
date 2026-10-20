@@ -197,6 +197,7 @@ model Attendance {
   occurrenceId Int
   memberId     Int
   status       String // AttendanceStatus
+  note         String? // reason, only for IZIN
   recordedById Int
   recordedAt   DateTime @default(now())
   updatedAt    DateTime @updatedAt

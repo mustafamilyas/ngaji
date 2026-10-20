@@ -106,6 +106,14 @@ export function canRecordAttendance(
   return sessionAtOrBelowActivityGroup && leafInOwnScope && activityAppliesToLeaf;
 }
 
+/**
+ * DESIGN.md §3.3 "Absensi" condition 4 exception: ADMIN and OWNER may record
+ * a date that has not happened yet (e.g. an IZIN given in advance); USER may not.
+ */
+export function canRecordFutureAttendance(session: SessionUser): boolean {
+  return atLeast(session.role, "ADMIN");
+}
+
 /** Surveys inherit exactly like activities: visible = ancestor-or-scope. */
 export const canViewSurvey = canViewActivity;
 

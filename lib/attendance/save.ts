@@ -16,12 +16,13 @@ import type { MemberStatus } from "@/lib/validation/enums";
 /**
  * Everything both attendance writers (bulk save, single check-in) must
  * establish before touching `Attendance` — DESIGN.md §3.3 `canRecordAttendance`
- * plus the occurrence rules (valid key, not future, not cancelled) — and the
+ * plus the occurrence rules (valid key, not future unless `allowFuture`, not cancelled) — and the
  * members expected on that date. Ids are resolved here, never trusted.
  */
 export async function loadRecordingContext(
   session: SessionUser,
   input: { activityId: number; groupId: number; date: string },
+  { allowFuture = false }: { allowFuture?: boolean } = {},
 ) {
   const activity = await resolveActivity(session, input.activityId);
   const leafGroup = await resolveGroup(session, input.groupId);
@@ -43,7 +44,7 @@ export async function loadRecordingContext(
     (o) => o.key === input.date,
   );
   if (!occurrence) throw new NotFoundError();
-  if (occurrence.effectiveDate > today()) {
+  if (occurrence.effectiveDate > today() && !allowFuture) {
     throw new ValidationError("Tidak bisa mengisi absensi untuk tanggal yang akan datang");
   }
   if (occurrence.status === "CANCELLED") {
@@ -100,7 +101,7 @@ export async function saveAttendance(session: SessionUser, input: AttendanceSave
       await tx.attendance.upsert({
         where: { occurrenceId_memberId: { occurrenceId: occurrenceRow.id, memberId } },
         create: { occurrenceId: occurrenceRow.id, memberId, status, recordedById: Number(session.id) },
-        update: { status, recordedById: Number(session.id) },
+        update: { status, recordedById: Number(session.id), ...(status !== "IZIN" && { note: null }) },
       });
       set.push({ memberId, status });
     }

@@ -23,7 +23,7 @@ Data anggota bersifat **sensitif** (PII). Keamanan dan jejak audit adalah syarat
 | Kegiatan | Aturan berulang sederhana; baris occurrence dibuat **lazy** hanya saat absensi diisi / occurrence diubah. |
 | Edit kegiatan | Hanya user (peran ≥ ADMIN) yang **tepat di grup pemilik** kegiatan. Grup di atas maupun di bawah tidak bisa mengubah. |
 | Konflik | Peringatan jika jam bertabrakan; tetap boleh disimpan. Perlu `durationMinutes`. |
-| Absensi | `HADIR` / `IZIN`; tidak ada baris = tidak hadir. Hanya untuk grup **daun** dan tanggal ≤ hari ini. |
+| Absensi | `HADIR` / `IZIN` (+ alasan opsional untuk `IZIN`); tidak ada baris = tidak hadir. Hanya untuk grup **daun** dan tanggal ≤ hari ini — kecuali ADMIN/OWNER boleh mengisi tanggal mendatang lewat tabel absensi (mis. izin yang sudah diketahui). |
 | Audit | Setiap mutasi menulis `AuditLog` di transaksi yang sama. Login sukses/gagal juga dicatat. |
 | Minggu | Dimulai hari **Minggu** (`0`). |
 
@@ -211,6 +211,7 @@ model Attendance {
   occurrenceId Int
   memberId     Int
   status       String                       // AttendanceStatus
+  note         String?                      // alasan, hanya untuk IZIN
   recordedById Int
   recordedAt   DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
@@ -425,7 +426,7 @@ Misal kegiatan A milik grup X, user U di grup G, absensi diisi untuk grup daun Y
   1. `X ∈ ancestors(G) ∪ {G}` — A berlaku untuk grup user (user berada **di X atau di bawah X**).
   2. `Y ∈ scope(U)` dan Y adalah grup **daun**.
   3. A berlaku untuk Y (`X ∈ ancestors(Y) ∪ {Y}`).
-  4. Tanggal adalah occurrence sah A (§5.2) dan ≤ hari ini (Asia/Jakarta).
+  4. Tanggal adalah occurrence sah A (§5.2) dan ≤ hari ini (Asia/Jakarta). Pengecualian: user ≥ ADMIN boleh mengisi tanggal mendatang lewat tabel absensi (`setMemberAttendance`); check-in dan simpan massal tetap ≤ hari ini.
   5. Setiap `memberId` yang dikirim ada di subtree Y, belum dihapus, dan *expected* pada tanggal itu (§6).
   Konsekuensi: user di **atas** X (mis. admin daerah untuk kegiatan milik kelompok) bisa melihat, tetapi tidak bisa mengisi absensi.
 - **Ubah** (`canEditActivity`): `G === X` dan peran ≥ ADMIN. Berlaku untuk ubah template, hapus, batal/geser occurrence, dan "geser ini & seterusnya". OWNER root pun **tidak** bisa mengubah kegiatan milik kelompok — ia harus punya akun di grup itu, atau meminta admin grup tersebut.
@@ -525,7 +526,7 @@ Helper `audit(tx, { action, entity, entityId, groupId, before, after, meta })` d
 | `member.create/update/delete` | anggota | snapshot penuh (PII) |
 | `activity.create/update/delete/split` | template kegiatan | snapshot; `split` mencatat `{ fromActivityId, toActivityId, fromDate }` |
 | `occurrence.override` | batal/geser/jam/lokasi | snapshot baris occurrence |
-| `attendance.save` | simpan massal absensi | `meta: { date, groupId, set: [{memberId,status}], removed: [memberId] }` |
+| `attendance.save` | simpan absensi (massal, check-in, atau satu anggota dari tabel) | `meta: { date, groupId, set: [{memberId,status,note?}], removed: [memberId] }` |
 | `survey.create/update/delete` | formulir survei | snapshot survei + pertanyaan + opsi; `groupId` = grup pemilik; ubah formulir = satu `survey.update` per simpan |
 | `survey_response.save` | simpan/timpa respons | `before` = jawaban lama (null jika baru), `after` = jawaban baru; `groupId` = grup anggota; `meta: { surveyId, memberId }` |
 | `survey_response.delete` | hapus respons | `before` = jawaban yang dihapus; `groupId` = grup anggota; `meta: { surveyId, memberId }` |
@@ -607,10 +608,11 @@ Dihitung saat simpan kegiatan / override (horizon 90 hari ke depan) dan saat ren
 Baris `ActivityOccurrence` hanya bisa dibuat untuk tanggal kunci yang sah menurut 5.2.
 
 ### 5.6 Absensi
-- Halaman `/dashboard/kegiatan/[id]/[tanggal]?grup=Y`. `Y` **wajib grup daun**. Default: grup user jika daun; jika tidak, dropdown daun-daun dalam scope yang kegiatan ini berlaku padanya.
-- Daftar = anggota *expected* pada tanggal itu di Y (§6), checkbox HADIR / IZIN, simpan massal. `[tanggal]` adalah tanggal kunci (bukan `overrideDate`).
-- Simpan = transaksi: cek §3.3 → upsert `ActivityOccurrence(activityId, date)` → upsert/delete `Attendance` per anggota → `audit('attendance.save')`.
-- Occurrence `CANCELLED` atau tanggal > hari ini → read-only, Server Action menolak.
+- Halaman `/dashboard/kegiatan/[id]/[tanggal]` menampilkan **tabel** anggota *expected* pada tanggal itu (§6) di semua grup daun dalam scope user yang kegiatan ini berlaku padanya (user di atas grup pemilik: seluruh subtree pemilik, baca saja). `[tanggal]` adalah tanggal kunci (bukan `overrideDate`). `?grup=Y` hanya memilih filter grup awal.
+- Kolom: nama (+ nama grup bila > 1 grup), status (Hadir / Izin / Belum absen), alasan (bisa diisi bila Izin), aksi (tombol Hadir / Izin; menekan yang aktif = hapus tanda). Urut nama atau status; filter cari nama, status, grup — semuanya di klien, tanpa paginasi.
+- Setiap klik langsung disimpan per anggota (`setMemberAttendance`): resolve anggota → grup daunnya → cek §3.3 → transaksi upsert `ActivityOccurrence` → upsert/delete satu `Attendance` → `audit('attendance.save')` (tidak ditulis bila tidak ada perubahan). Alasan hanya disimpan untuk `IZIN`; berganti ke `HADIR` menghapusnya.
+- Simpan massal (`saveAttendance`) dan check-in tetap tersedia dengan aturan yang sama (tanpa pengecualian tanggal mendatang).
+- Occurrence `CANCELLED` → read-only untuk semua, Server Action menolak. Tanggal > hari ini → read-only untuk USER; ADMIN/OWNER (di grup pemilik atau di bawahnya) tetap bisa mengisi.
 
 ---
 
@@ -650,7 +652,7 @@ Semua halaman aplikasi (wajib login) ada di bawah `/dashboard` dan memakai app s
 | `/dashboard/kegiatan` | Daftar **atau** kalender (toggle) per rentang tanggal — preset Hari ini/Minggu ini/Bulan ini/pilih tanggal (default Minggu ini) dengan tombol ‹ › per rentang, badge *warisan*, *konflik*, *dipindah*, *batal*; cari nama kegiatan (badge konflik tetap dihitung dari semua kegiatan); filter grup multi-select (dengan pintasan "pilih dengan turunannya") atas union §5.3; daftar dipaginasi 50/hal; semua state (grup, rentang, tampilan, cari) di URL; tombol **Cetak** membuka `/dashboard/kegiatan/cetak` dengan filter yang sama |
 | `/dashboard/kegiatan/cetak` | Jadwal siap cetak untuk filter yang sama dengan daftar (`grup`, `q`, `range`, `anchor`, `from`, `to`), tanpa paginasi; satu bagian per tanggal efektif, urut jam lalu nama; label *Dipindah*/*Batal* sebagai teks; `batal=0` menyembunyikan yang batal (default tampil); rentang maks. `PRINT_MAX_MONTHS` (3) bulan; navigasi & toolbar disembunyikan saat cetak, A4 hitam-putih; dicetak lewat dialog browser (tanpa PDF server) |
 | `/dashboard/kegiatan/baru`, `/dashboard/kegiatan/[id]` | Form template; detail (§7.2) tab absensi per rentang (preset 7/30/90 hari, bulan ini, pilih tanggal; default 30 hari) dengan tabel per-occurrence & per-anggota (10/hal), jadwal 90 hari ke depan (`?jadwal=`, 10/hal; ubah satu tanggal lewat dialog, hanya `canEdit`), pengaturan (hanya `canEdit`: form, geser, zona berbahaya akhiri/hapus); aksi "Isi absensi hari ini" bila ada occurrence hari ini |
-| `/dashboard/kegiatan/[id]/[tanggal]` | Absensi occurrence (+ batalkan / override / geser satu kali) — **tidak** dipaginasi (semua anggota perlu terlihat saat mengisi; ada pencarian) |
+| `/dashboard/kegiatan/[id]/[tanggal]` | Tabel absensi occurrence (nama, status, alasan, aksi Hadir/Izin yang langsung tersimpan; urut nama/status; filter nama/status/grup) — **tidak** dipaginasi (semua anggota perlu terlihat saat mengisi) |
 | `/dashboard/survei` | Daftar survei yang terlihat (milik leluhur atau grup dalam scope): judul, grup pemilik, jumlah respons, badge *warisan*; cari judul + filter grup (survei yang berlaku untuk grup terpilih); `PAGE_SIZE`; "Buat survei" hanya ADMIN+ (§11) |
 | `/dashboard/survei/baru`, `/dashboard/survei/[id]` | Pembuat formulir; detail (§7.2) tab `?tab=hasil` (default) / `responden` / `formulir` — hasil: satu grup (`?grup=`) + filter demografi (`jk`, `umur`, `kerja`, `nikah`), tingkat respons, "Belum mengisi", grafik per pertanyaan, rincian per sub-grup; responden: daftar respons dalam scope (cari, filter grup, hapus); formulir: hanya pemilik yang bisa mengubah, lainnya baca saja; teks panjang dipaginasi lewat `?teks=<idPertanyaan>:<halaman>` |
 | `/dashboard/survei/[id]/isi` | Isi / ubah jawaban satu anggota (autocomplete nama, `?anggota=` untuk prefill, "Simpan & anggota berikutnya"); hanya yang boleh mengisi, mobile-first |
@@ -726,7 +728,7 @@ Semua halaman aplikasi (wajib login) ada di bawah `/dashboard` dan memakai app s
 11. Reset password: OWNER untuk siapa pun dalam scope; ADMIN hanya USER di grupnya sendiri.
 12. Tidak ada hard delete; semua perubahan tercatat di `AuditLog` dalam transaksi yang sama.
 13. Minggu dimulai hari Minggu.
-14. Absensi hanya untuk grup daun dan tanggal ≤ hari ini.
+14. Absensi hanya untuk grup daun dan tanggal ≤ hari ini; ADMIN/OWNER boleh mengisi tanggal mendatang lewat tabel absensi.
 15. `expected` memperhitungkan `joinedAt` / `exitedAt` agar % kehadiran tidak melenceng karena anggota baru/keluar.
 16. User di **atas** grup pemilik kegiatan (mis. admin daerah untuk kegiatan kelompok) hanya bisa melihat — tidak bisa mengisi absensi.
 17. OWNER root **tidak** punya jalur darurat untuk mengubah kegiatan grup di bawahnya.
