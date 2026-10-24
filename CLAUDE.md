@@ -13,13 +13,16 @@ Manajemen anggota & kegiatan untuk organisasi berjenjang (pusat → daerah → d
 ```bash
 pnpm install
 pnpm prisma migrate dev       # migrasi, membuat file SQLite jika belum ada
-pnpm prisma db seed           # org + 4 level + contoh pohon + owner admin/admin (wajib ganti password)
+pnpm prisma db seed           # 2 org (org kedua kecil, owner admin_annur, untuk uji isolasi) + owner admin/admin (wajib ganti password)
+pnpm org:create               # org baru + level + grup akar + OWNER pertama (env BOOTSTRAP_*); `pnpm bootstrap` = alias
+pnpm leads [--csv]            # daftar minat dari /daftar (hanya-baca)
 pnpm dev
 pnpm test                     # vitest: fungsi murni + server action lintas-scope
 pnpm lint && pnpm tsc --noEmit
 ```
 
 ## Invarian yang wajib dijaga (server-side)
+- **Multi-organisasi dalam satu DB**: organisasi user = organisasi grupnya, diambil dari sesi (`getOrganization(session)`), bukan "organisasi pertama". Entitas organisasi lain → 404. Username unik global dan selalu huruf kecil. Daftar minat (`InterestLead`) tidak terkait organisasi mana pun dan tidak boleh tampil di halaman/audit organisasi. Detail: DESIGN.md §1.
 - Setiap query list difilter **scope** user: `group.path startsWith user.groupPath` (path memuat id sendiri + `/` penutup).
 - **Setiap ID dari client** (`groupId`, `memberId`, `activityId`, `occurrenceId`, `userId`, tanggal) di-resolve ke entitasnya di server lalu dicek scope + aturan. Jangan pernah percaya ID/path dari client.
 - Semua mutasi lewat `authorize(session, action, target)` di `lib/authz.ts`; entitas di luar scope → 404, bukan 403.
@@ -31,7 +34,7 @@ pnpm lint && pnpm tsc --noEmit
 - `ActivityOccurrence` dibuat lazy (upsert saat absensi / override). Tidak ada job generator. `date` = tanggal kunci aturan; tanggal efektif = `overrideDate ?? date`.
 - Absen = anggota *expected* (`lib/stats.ts`) tanpa baris `Attendance`. Jangan simpan baris "tidak hadir".
 - Hapus grup hanya jika kosong (tanpa anak, anggota, kegiatan, user yang belum dihapus).
-- Tanggal: kolom `String` (`YYYY-MM-DD`) di DB (SQLite tidak punya tipe DATE native) maupun di seluruh kode — tidak ada konversi Date↔string untuk tanggal murni; `lib/dates.ts` hanya berisi kalkulasi (tambah hari, cari Minggu, dst.) di atas string tersebut. Jam: string `HH:mm`. Satu timezone `Asia/Jakarta`. Minggu dimulai hari Minggu.
+- Tanggal: kolom `String` (`YYYY-MM-DD`) di DB (SQLite tidak punya tipe DATE native) maupun di seluruh kode — tidak ada konversi Date↔string untuk tanggal murni; `lib/dates.ts` hanya berisi kalkulasi (tambah hari, cari Minggu, dst.) di atas string tersebut. Jam: string `HH:mm`. Zona waktu per organisasi (`session.user.timeZone`, default `Asia/Jakarta`): `today()`/`dateOf()` wajib menerima timezone. Minggu dimulai hari Minggu.
 - Enum domain (`Role`, `Sex`, `MemberStatus`, dll.) adalah kolom `String` di Prisma (SQLite tidak mendukung `enum`); nilai valid ditegakkan oleh TS union + zod di `lib/validation/enums.ts`, bukan oleh DB. `Activity.weekdays` adalah kolom `Json` (SQLite tidak punya scalar list `Int[]`).
 
 ## Konvensi

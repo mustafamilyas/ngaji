@@ -106,8 +106,10 @@ sudo -u ngaji pnpm install --frozen-lockfile
 DATABASE_URL="file:/var/lib/ngaji/production.db"
 AUTH_SECRET="<output of: openssl rand -base64 32>"
 AUTH_TRUST_HOST="true"
-# Optional: WhatsApp number for the landing-page CTA (Indonesian format)
+# Optional: WhatsApp number the /daftar form hands visitors to (Indonesian format)
 DAHAN_WHATSAPP="08xxxxxxxxxx"
+# Optional: show the organization name on /login (only when exactly one organization exists)
+LOGIN_SHOW_ORG_NAME="true"
 ```
 
 ```bash
@@ -117,7 +119,8 @@ sudo -u ngaji chmod 600 /opt/ngaji/.env
 - Generate a fresh `AUTH_SECRET` for production; never reuse the development one.
 - `DATABASE_URL` is an **absolute** path so the data lives outside the code directory.
 - `AUTH_TRUST_HOST=true` is required behind Nginx.
-- `DAHAN_WHATSAPP` (optional) is the contact number for the "Hubungi via WhatsApp" button on the public landing pages (`/`, `/pengajian`). It is read on the server at request time, so changing it needs only a service restart, not a rebuild. If unset or invalid, the button is hidden.
+- `DAHAN_WHATSAPP` (optional) is the contact number the public `/daftar` form sends visitors to (WhatsApp, with their details prefilled) after their submission is stored. It is read on the server at request time, so changing it needs only a service restart, not a rebuild. If unset or invalid, the submission is still stored and the visitor sees a confirmation without the WhatsApp link.
+- `LOGIN_SHOW_ORG_NAME` (optional, default off) brings the organization name back on `/login` and in its page title. It applies only when exactly one organization exists; with two or more, or any value other than `true`, the login page stays generic (Dahan only). A deployment that ran as single-organization before this release shows the generic login until you set it.
 - `NODE_ENV=production` is set by the systemd unit. Session cookies are `secure` and HSTS is sent only in production, so HTTPS must work (§6) before go-live.
 
 Generate the Prisma client and apply migrations (use `migrate deploy`, never `migrate dev`):
@@ -130,24 +133,39 @@ sudo -u ngaji pnpm prisma migrate deploy
 
 `lib/generated/prisma` is not committed, so `prisma generate` is needed after every install.
 
-### Create the first OWNER
+### Create an organization and its first OWNER
 
-Do **not** run `pnpm prisma db seed` in production (it creates fake sample data). Use bootstrap, which creates one organization, its levels, a root group and one OWNER:
+Do **not** run `pnpm prisma db seed` in production (it creates fake sample data). Use `pnpm org:create` (`pnpm bootstrap` is an alias), which creates one organization, its levels, a root group and one OWNER. It works on an empty database and on one that already has organizations, so run it again for every additional organization:
 
 ```bash
 sudo -u ngaji bash -c 'cd /opt/ngaji && cat > /tmp/bootstrap.env' <<'EOF'
 BOOTSTRAP_ORG_NAME=Your Organization
 BOOTSTRAP_ROOT_GROUP_NAME=Pusat
+BOOTSTRAP_TIMEZONE=Asia/Jakarta
 BOOTSTRAP_OWNER_USERNAME=owner
 BOOTSTRAP_OWNER_NAME=Owner Full Name
 BOOTSTRAP_OWNER_PASSWORD=<strong password, min 8 chars>
 EOF
-sudo -u ngaji bash -c 'cd /opt/ngaji && set -a && . /tmp/bootstrap.env && set +a && pnpm bootstrap; rm -f /tmp/bootstrap.env'
+sudo -u ngaji bash -c 'cd /opt/ngaji && set -a && . /tmp/bootstrap.env && set +a && pnpm org:create; rm -f /tmp/bootstrap.env'
 ```
 
-- The script refuses to run if any `User` already exists.
-- `BOOTSTRAP_LEVEL_NAMES` is optional (default `pusat,daerah,desa,kelompok`); the OWNER can rename levels later under `/pengaturan/jenjang`.
+- The script aborts, writing nothing, if the owner username is already taken by any organization (usernames are unique across all organizations and stored in lowercase), if the timezone is invalid or if the password is shorter than 8 characters. The password is never printed.
+- `BOOTSTRAP_TIMEZONE` is optional: `Asia/Jakarta` (WIB, default), `Asia/Makassar` (WITA) or `Asia/Jayapura` (WIT). The OWNER can change it later under `/dashboard/pengaturan`.
+- `BOOTSTRAP_LEVEL_NAMES` is optional (default `pusat,daerah,desa,kelompok`); the OWNER can rename levels later under `/dashboard/pengaturan`.
 - The OWNER is created with `mustChangePassword = true` and must change it on first login (DESIGN.md §3.4).
+- Creation is audited (`organization.create`, `user.create`, `actorId = null`).
+
+### Interest sign-ups (`/daftar`)
+
+The public `/daftar` form stores each submission as an interest lead (name, WhatsApp number, organization name, optional member count and message, consent timestamp, IP and user agent). Leads belong to no organization and have no web UI. List them on the server:
+
+```bash
+cd /opt/ngaji
+sudo -u ngaji pnpm leads            # table, newest first (times in UTC)
+sudo -u ngaji pnpm leads --csv > leads.csv
+```
+
+`pnpm leads` is read-only. The form is limited per client IP (see `INTEREST_RATE_LIMIT_*` in `lib/constants.ts`) using the `X-Forwarded-For` / `X-Real-IP` headers, which `deploy/nginx/ngaji.conf` sets from `$remote_addr`; a request without either header is stored without a limit, so do not remove those lines. Leads contain personal data: keep exports off shared drives and delete them when done.
 
 ### Build and start
 
@@ -340,7 +358,8 @@ The action is audited with `actorId = null` and `meta.via = "cli"`. It exits non
 - [ ] From outside: port 3000 refused; `http://` redirects to `https://`
 - [ ] `curl -I https://<domain>/login` shows CSP and HSTS
 - [ ] Password SSH login refused; root SSH login refused; `ufw status` shows only 22/80/443
-- [ ] Bootstrap OWNER password changed after first login
+- [ ] Every organization's OWNER changed the bootstrap password after first login
+- [ ] `LOGIN_SHOW_ORG_NAME` set only if this deployment hosts exactly one organization and you want its name on `/login`
 - [ ] `pnpm prisma db seed` was **never** run against this database
 - [ ] Backup timer enabled; `daily/` and `monthly/` objects exist; healthchecks.io shows success
 - [ ] A failed backup (e.g. wrong endpoint) triggers an alert

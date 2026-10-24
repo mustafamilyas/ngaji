@@ -13,7 +13,8 @@ Data anggota bersifat **sensitif** (PII). Keamanan dan jejak audit adalah syarat
 
 | Topik | Keputusan |
 |---|---|
-| Tenancy | Satu organisasi per deployment. Owner pertama dibuat lewat seed. Tabel `Organization` tetap ada agar mudah multi-tenant nanti. |
+| Tenancy | **Beberapa organisasi dalam satu aplikasi dan satu database SQLite.** Organisasi user = organisasi grupnya (`group.organizationId`); nama, zona waktu, dan level selalu diambil dari organisasi user yang login, tidak pernah "organisasi pertama". Tiap organisasi punya grup akar sendiri sehingga scope path tidak pernah beririsan. Username unik secara **global** (huruf kecil semua) dan pesan kegagalan tetap generik. Tidak ada super-admin platform, user lintas-organisasi, atau subdomain per organisasi. Organisasi dibuat lewat CLI `pnpm org:create` (§8). |
+| Zona waktu | Per organisasi: `Asia/Jakarta` (WIB, default), `Asia/Makassar` (WITA), atau `Asia/Jayapura` (WIT); diubah root OWNER di `/dashboard/pengaturan`. Menentukan "hari ini" dan tampilan waktu; tanggal & jam tersimpan tidak dikonversi. |
 | Jenjang grup | Level tetap & berurutan, tidak boleh loncat. Nama level bisa diganti (`pusat`, `daerah`, `desa`, `kelompok`). |
 | Anggota | Hanya di grup **daun** (depth = level terakhir). Keluar = ubah `status`, bukan hapus. |
 | Hapus data | **Tidak ada hard delete** untuk entitas domain. Grup, anggota, kegiatan = soft delete (`deletedAt`). User = nonaktifkan (`isActive`). Absensi boleh dihapus barisnya (itu makna "tidak hadir"), tetapi tercatat di audit log. |
@@ -52,11 +53,29 @@ type ViewVisibility   = 'GROUP'       // hanya 'GROUP' untuk sekarang (tampilan 
 model Organization {
   id        Int      @id @default(autoincrement())
   name      String
-  timezone  String   @default("Asia/Jakarta")
+  timezone  String   @default("Asia/Jakarta")  // salah satu TIMEZONES (lib/validation/enums.ts)
+  logoUrl   String?                            // belum bisa diubah / ditampilkan
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   levels    Level[]
   groups    Group[]
+}
+
+/// Minat dari halaman publik /daftar. Tanpa relasi ke Organization: tidak pernah
+/// muncul di halaman atau viewer audit organisasi mana pun. Dibaca hanya lewat `pnpm leads`.
+model InterestLead {
+  id               Int      @id @default(autoincrement())
+  name             String
+  phone            String
+  organizationName String
+  memberCount      Int?
+  message          String?
+  consentAt        DateTime
+  ip               String?
+  userAgent        String?
+  createdAt        DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 /// Nama jenjang, depth 0 = root. Rename level = ubah satu baris.
@@ -372,6 +391,8 @@ model AuditLog {
 - `weekdays` pada `Activity` disimpan sebagai kolom `Json` (array angka), karena SQLite tidak mendukung scalar list (`Int[]`) di Prisma. Validasi bentuk & isi array tetap di zod (`lib/validation/activity.ts`).
 - **Survei** (§11): `Survey` soft delete (`deletedAt: null` wajib di setiap query, seperti `Activity`). `SurveyResponse`/`SurveyAnswer` dihapus permanen (seperti `Attendance`), isi yang dihapus ada di audit. Jawaban adalah PII anggota: hanya terbaca lewat query yang terfilter scope dan viewer audit OWNER.
 - **Tampilan anggota** (§12): `MemberView` soft delete (`deletedAt: null` wajib di setiap query). `definition` adalah `Json` (aturan, urutan, pengelompokan, kolom) dan tidak pernah dipercaya mentah: selalu di-parse zod (ketat saat simpan, longgar saat muat).
+- **Multi-organisasi** (§1): tidak ada filter `organizationId` global; scope path sudah memisahkan entitas yang menempel pada grup. Query yang tidak berbasis path (level, pengecekan username, lookup organisasi) wajib dibatasi ke organisasi user; daftar dan hasil pemeriksaannya ada di `openspec/changes/multi-org-and-onboarding/isolation-checklist.md`. Entitas organisasi lain dijawab 404 seperti entitas di luar scope. Last-owner (§3.2) dihitung per organisasi.
+- **`InterestLead`** menyimpan PII calon pengguna (persetujuan dicatat di `consentAt`); PII hanya ada di baris ini, bukan di `AuditLog`. Masa simpan belum ditetapkan.
 - Enum domain (`Role`, `Sex`, `MaritalStatus`, `WorkStatus`, `MemberStatus`, `Freq`, `OccurrenceStatus`, `AttendanceStatus`, `QuestionType`, `ViewSource`, `ViewVisibility`) bukan Prisma `enum` (tidak didukung SQLite) — kolomnya `String`, nilai valid ditegakkan oleh TS union + zod di `lib/validation/enums.ts`, bukan oleh database.
 
 ---
@@ -410,11 +431,13 @@ Setiap user punya satu `UserGroupRole (groupId, role)`. **Scope** = grup itu + s
 | Nonaktifkan / aktifkan user dalam scope | ✅ | ❌ | ❌ |
 | Lihat audit log dalam scope | ✅ | ❌ | ❌ |
 | Ganti nama jenjang (Level) | ✅ hanya jika grupnya depth 0 | ❌ | ❌ |
+| Ubah pengaturan organisasi (`organization.update`: nama, zona waktu) | ✅ hanya jika grupnya depth 0 | ❌ | ❌ |
 
 Aturan tambahan untuk manajemen user:
 - ADMIN tidak pernah boleh mengubah/mereset user berperan OWNER atau ADMIN, meski dalam scope.
 - User tidak boleh menonaktifkan atau menurunkan peran dirinya sendiri.
 - Tidak boleh menonaktifkan / menurunkan **OWNER aktif terakhir di grup root** (cegah terkunci).
+- `organization.update` dan `level.rename` memakai predikat yang sama (OWNER di grup depth 0) dan selalu berlaku untuk organisasi user sendiri; tidak ada target organisasi dari client.
 - Setelah reset password oleh orang lain, `mustChangePassword = true`; user dipaksa ke `/dashboard/akun/password` sebelum halaman lain.
 
 ### 3.3 Kegiatan warisan
@@ -426,7 +449,7 @@ Misal kegiatan A milik grup X, user U di grup G, absensi diisi untuk grup daun Y
   1. `X ∈ ancestors(G) ∪ {G}` — A berlaku untuk grup user (user berada **di X atau di bawah X**).
   2. `Y ∈ scope(U)` dan Y adalah grup **daun**.
   3. A berlaku untuk Y (`X ∈ ancestors(Y) ∪ {Y}`).
-  4. Tanggal adalah occurrence sah A (§5.2) dan ≤ hari ini (Asia/Jakarta). Pengecualian: user ≥ ADMIN boleh mengisi tanggal mendatang lewat tabel absensi (`setMemberAttendance`); check-in dan simpan massal tetap ≤ hari ini.
+  4. Tanggal adalah occurrence sah A (§5.2) dan ≤ hari ini (zona waktu organisasi). Pengecualian: user ≥ ADMIN boleh mengisi tanggal mendatang lewat tabel absensi (`setMemberAttendance`); check-in dan simpan massal tetap ≤ hari ini.
   5. Setiap `memberId` yang dikirim ada di subtree Y, belum dihapus, dan *expected* pada tanggal itu (§6).
   Konsekuensi: user di **atas** X (mis. admin daerah untuk kegiatan milik kelompok) bisa melihat, tetapi tidak bisa mengisi absensi.
 - **Ubah** (`canEditActivity`): `G === X` dan peran ≥ ADMIN. Berlaku untuk ubah template, hapus, batal/geser occurrence, dan "geser ini & seterusnya". OWNER root pun **tidak** bisa mengubah kegiatan milik kelompok — ia harus punya akun di grup itu, atau meminta admin grup tersebut.
@@ -523,6 +546,9 @@ Helper `audit(tx, { action, entity, entityId, groupId, before, after, meta })` d
 | `auth.login`, `auth.login_failed`, `auth.logout` | login/logout | `meta: { username }` |
 | `user.create`, `user.update_role`, `user.move`, `user.set_active`, `user.reset_password`, `user.change_password` | manajemen user | snapshot tanpa hash |
 | `group.create/update/delete`, `level.rename` | struktur | snapshot |
+| `organization.create` | `pnpm org:create` (`actorId: null`, `groupId` = grup akar) | `after` = nama, zona waktu, nama level, id grup akar (diikuti `user.create` untuk OWNER pertama) |
+| `organization.update` | ubah nama / zona waktu di `/dashboard/pengaturan` | `before`/`after` = nama + zona waktu |
+| `lead.create` | kirim formulir publik `/daftar` (`actorId: null`, `groupId: null`) | tanpa PII; `meta: { leadId }`; dipakai juga untuk batas laju per IP; **tidak pernah tampil** di viewer audit organisasi mana pun |
 | `member.create/update/delete` | anggota | snapshot penuh (PII) |
 | `activity.create/update/delete/split` | template kegiatan | snapshot; `split` mencatat `{ fromActivityId, toActivityId, fromDate }` |
 | `occurrence.override` | batal/geser/jam/lokasi | snapshot baris occurrence |
@@ -640,17 +666,18 @@ Semua halaman aplikasi (wajib login) ada di bawah `/dashboard` dan memakai app s
 
 | Route | Fungsi |
 |---|---|
-| `/login` | Username + password |
-| `/` | Landing page publik generik Dahan (tanpa data organisasi); CTA "Hubungi via WhatsApp" dari env `DAHAN_WHATSAPP` (disembunyikan bila kosong/tidak valid) |
-| `/ormas` | Studi kasus publik untuk segmen ormas (anggota, pengurus, pusat/wilayah/daerah/cabang); CTA sama |
+| `/login` | Username + password; generik Dahan tanpa nama organisasi (judul `Masuk · Dahan`). Env `LOGIN_SHOW_ORG_NAME=true` menampilkan nama organisasi hanya bila tepat satu organisasi ada |
+| `/` | Landing page publik generik Dahan (tanpa data organisasi); CTA "Daftar minat" menuju `/daftar` |
+| `/ormas` | Studi kasus publik untuk segmen ormas (anggota, pengurus, pusat/wilayah/daerah/cabang); CTA menuju `/daftar` |
+| `/daftar` | Publik: formulir minat (nama, WhatsApp, nama organisasi, perkiraan jumlah anggota, pesan, persetujuan wajib) dengan honeypot dan batas laju per IP (`INTEREST_RATE_LIMIT_*`); data disimpan sebagai `InterestLead`, lalu pengunjung diarahkan ke WhatsApp (`DAHAN_WHATSAPP`) dengan teks terisi; tanpa data organisasi |
 | `/dashboard/akun/password` | Ganti password sendiri (wajib jika `mustChangePassword`) |
 | `/dashboard` | Dashboard: ringkasan statistik scope + kegiatan 7 hari ke depan |
 | `/dashboard/grup` | Pohon grup dalam scope |
 | `/dashboard/grup/[id]` | Detail (§7.2), tab: anggota (grup daun) **atau** sub-grup, kegiatan, pengguna, pengaturan (ADMIN/OWNER: rename + zona berbahaya hapus) — tiap daftar dipaginasi sendiri (`?subgrup=`, `?anggota=`, `?kegiatan=`, `?pengguna=`, 10/hal); aksi: lihat semua anggota, tambah anggota (daun, `/dashboard/anggota/baru?grup=`) atau tambah sub-grup (dialog) |
 | `/dashboard/anggota` | Tabel (paginasi `?page=`, 50/hal) + cari nama + filter grup (multi, termasuk turunan) / status; kolom bisa dipilih (§7.1); tombol WhatsApp per anggota |
 | `/dashboard/anggota/baru`, `/dashboard/anggota/[id]` | Form (`?grup=` memilih grup awal); detail (§7.2) tab profil, kehadiran (paginasi `?riwayat=`, 10/hal, tautan ke occurrence), ubah (form + zona berbahaya hapus soft); tombol WhatsApp |
-| `/dashboard/kegiatan` | Daftar **atau** kalender (toggle) per rentang tanggal — preset Hari ini/Minggu ini/Bulan ini/pilih tanggal (default Minggu ini) dengan tombol ‹ › per rentang, badge *warisan*, *konflik*, *dipindah*, *batal*; cari nama kegiatan (badge konflik tetap dihitung dari semua kegiatan); filter grup multi-select (dengan pintasan "pilih dengan turunannya") atas union §5.3; daftar dipaginasi 50/hal; semua state (grup, rentang, tampilan, cari) di URL; tombol **Cetak** membuka `/dashboard/kegiatan/cetak` dengan filter yang sama |
-| `/dashboard/kegiatan/cetak` | Jadwal siap cetak untuk filter yang sama dengan daftar (`grup`, `q`, `range`, `anchor`, `from`, `to`), tanpa paginasi; satu bagian per tanggal efektif, urut jam lalu nama; label *Dipindah*/*Batal* sebagai teks; `batal=0` menyembunyikan yang batal (default tampil); rentang maks. `PRINT_MAX_MONTHS` (3) bulan; navigasi & toolbar disembunyikan saat cetak, A4 hitam-putih; dicetak lewat dialog browser (tanpa PDF server) |
+| `/dashboard/kegiatan` | Daftar **atau** kalender (toggle) per rentang tanggal — preset Hari ini/Minggu ini/Bulan ini/pilih tanggal (default Minggu ini) dengan tombol ‹ › per rentang, badge *warisan*, *konflik*, *dipindah*, *batal*; Keterangan occurrence (`overrideNotes` atau catatan kegiatan) tampil sebagai teks polos terpotong di daftar dan kalender; cari nama kegiatan (badge konflik tetap dihitung dari semua kegiatan); filter grup multi-select (dengan pintasan "pilih dengan turunannya") atas union §5.3; daftar dipaginasi 50/hal; semua state (grup, rentang, tampilan, cari) di URL; tombol **Cetak** membuka `/dashboard/kegiatan/cetak` dengan filter yang sama |
+| `/dashboard/kegiatan/cetak` | Jadwal siap cetak untuk filter yang sama dengan daftar (`grup`, `q`, `range`, `anchor`, `from`, `to`), tanpa paginasi; satu tabel untuk seluruh rentang (kolom Tanggal, Jam, Kegiatan, Grup, Lokasi, Keterangan), Tanggal tampil sekali per tanggal efektif (rowspan) dengan garis pemisah, urut jam lalu nama, header tabel diulang tiap halaman cetak, baris tidak terbelah; label *Dipindah*/*Batal* sebagai teks; `batal=0` menyembunyikan yang batal (default tampil); rentang maks. `PRINT_MAX_MONTHS` (3) bulan; navigasi & toolbar disembunyikan saat cetak, A4 hitam-putih; dicetak lewat dialog browser (tanpa PDF server) |
 | `/dashboard/kegiatan/baru`, `/dashboard/kegiatan/[id]` | Form template; detail (§7.2) tab absensi per rentang (preset 7/30/90 hari, bulan ini, pilih tanggal; default 30 hari) dengan tabel per-occurrence & per-anggota (10/hal), jadwal 90 hari ke depan (`?jadwal=`, 10/hal; ubah satu tanggal lewat dialog, hanya `canEdit`), pengaturan (hanya `canEdit`: form, geser, zona berbahaya akhiri/hapus); aksi "Isi absensi hari ini" bila ada occurrence hari ini |
 | `/dashboard/kegiatan/[id]/[tanggal]` | Tabel absensi occurrence (nama, status, alasan, aksi Hadir/Izin yang langsung tersimpan; urut nama/status; filter nama/status/grup) — **tidak** dipaginasi (semua anggota perlu terlihat saat mengisi) |
 | `/dashboard/survei` | Daftar survei yang terlihat (milik leluhur atau grup dalam scope): judul, grup pemilik, jumlah respons, badge *warisan*; cari judul + filter grup (survei yang berlaku untuk grup terpilih); `PAGE_SIZE`; "Buat survei" hanya ADMIN+ (§11) |
@@ -660,7 +687,8 @@ Semua halaman aplikasi (wajib login) ada di bawah `/dashboard` dan memakai app s
 | `/dashboard/tampilan/baru`, `/dashboard/tampilan/[id]` | Hasil tampilan: bilah filter (aturan sebagai chip, sheet di HP), menu "Tampilan" (kelompokkan, urutkan, kolom), perubahan belum disimpan di `?d=`; header: Simpan / Batalkan (pemilik), Simpan sebagai baru, Ubah nama (pemilik), Ambil alih (ADMIN+, yatim); zona berbahaya hapus (pemilik) |
 | `/dashboard/statistik` | Tab: anggota, kegiatan, partisipasi; filter satu grup + rentang tanggal (tidak di tab anggota); tab partisipasi bisa cari nama dan dipaginasi 50/hal |
 | `/dashboard/pengguna` | OWNER & ADMIN: buat user (dialog "Tambah pengguna"); OWNER: ubah peran, pindah grup, nonaktifkan; reset password sesuai §3.4; cari nama/username + filter grup (multi, termasuk turunan); paginasi 50/hal; kontrol per user di dialog "Kelola", hanya tampil bila ada aksi yang diizinkan |
-| `/dashboard/pengaturan/jenjang` | OWNER root: rename level |
+| `/dashboard/pengaturan` | OWNER root saja (menu "Pengaturan" hanya untuk mereka): ubah nama & zona waktu organisasi (`organization.update`) dan rename level; user lain melihat pesan tanpa izin |
+| `/dashboard/pengaturan/jenjang` | Dialihkan ke `/dashboard/pengaturan` |
 | `/dashboard/audit` | OWNER: audit log dalam scope (§4.5) |
 
 ### 7.1 Konvensi tampilan daftar
@@ -688,11 +716,11 @@ Semua halaman aplikasi (wajib login) ada di bawah `/dashboard` dan memakai app s
 ## 8. Stack & praktik
 
 - **Next.js 16 App Router** (Turbopack), Server Actions untuk mutasi, Server Components untuk list.
-- **Prisma 7 + SQLite** via driver adapter `@prisma/adapter-better-sqlite3` (file lokal, tanpa server DB terpisah — juga dipakai di production). `prisma db seed` (`prisma/seed.ts`) membuat org, 4 level, contoh pohon, ~30 anggota, kegiatan contoh (termasuk yang saling konflik, riwayat absensi, dan kasus tepi seperti split/akhiri/hapus) — **development only**. Production dibuat lewat `pnpm bootstrap` (`prisma/bootstrap.ts`): org + level + satu grup akar + satu user OWNER, tanpa data contoh. Lihat DEPLOYMENT.md.
+- **Prisma 7 + SQLite** via driver adapter `@prisma/adapter-better-sqlite3` (file lokal, tanpa server DB terpisah — juga dipakai di production). `prisma db seed` (`prisma/seed.ts`) membuat org, 4 level, contoh pohon, ~30 anggota, kegiatan contoh (termasuk yang saling konflik, riwayat absensi, dan kasus tepi seperti split/akhiri/hapus) — **development only**. Seed membuat dua organisasi (untuk uji isolasi). Production: `pnpm org:create` (`prisma/org-create.ts` → `provisionOrganization` di `lib/organization/provision.ts`) membuat organisasi + level + satu grup akar + satu OWNER dalam satu transaksi (audit `organization.create` dan `user.create`, `mustChangePassword`), di database kosong maupun berisi; gagal bila username sudah dipakai. `pnpm bootstrap` adalah alias. Konfigurasi lewat env `BOOTSTRAP_*` termasuk `BOOTSTRAP_TIMEZONE`. `pnpm leads [--csv]` (`scripts/leads.ts`, hanya-baca) menampilkan `InterestLead`. Lihat DEPLOYMENT.md.
 - **Auth**: Auth.js v5 Credentials + bcrypt; sesi JWT + validasi ulang per request (§4.1).
 - **UI**: Tailwind + shadcn/ui, react-hook-form + zod (skema zod dipakai ulang di Server Action), Recharts untuk grafik.
 - **Tes**: Vitest untuk fungsi murni (`expandDates`, konflik, `expected`, `authorize`) dan Server Action lintas-scope (harus gagal-tertutup). `pnpm test` masuk ke CI bersama `pnpm lint && pnpm tsc --noEmit && pnpm audit`.
-- **Tanggal**: kolom `String` (`YYYY-MM-DD`) di DB (SQLite tanpa tipe DATE native) & string `HH:mm` untuk jam; satu timezone organisasi (`Asia/Jakarta`); string `YYYY-MM-DD` di seluruh kode aplikasi maupun DB, tanpa konversi Date↔string untuk tanggal murni.
+- **Tanggal**: kolom `String` (`YYYY-MM-DD`) di DB (SQLite tanpa tipe DATE native) & string `HH:mm` untuk jam; zona waktu per organisasi (`Organization.timezone`, default `Asia/Jakarta`; "hari ini" dihitung dari `session.user.timeZone`, dibaca ulang tiap request, dan diteruskan sebagai prop ke komponen klien); string `YYYY-MM-DD` di seluruh kode aplikasi maupun DB, tanpa konversi Date↔string untuk tanggal murni.
 - **Validasi server-side wajib** untuk: depth grup = parent+1, anggota hanya di grup daun, scope & aturan §3 untuk semua mutasi, tanggal absensi sah.
 - Setiap tabel punya `createdAt/updatedAt`; `createdById`/`recordedById` ber-FK; `AuditLog` untuk jejak perubahan.
 
@@ -717,7 +745,7 @@ Semua halaman aplikasi (wajib login) ada di bawah `/dashboard` dan memakai app s
 
 1. ADMIN boleh membuat user USER/ADMIN dalam scope; OWNER saja yang bisa membuat OWNER, mengubah peran, memindahkan, dan menonaktifkan user.
 2. Sub-grup tidak bisa opt-out dari kegiatan warisan.
-3. Satu timezone `Asia/Jakarta` (per-grup timezone: nanti).
+3. Zona waktu per organisasi (WIB/WITA/WIT, §1); per-grup timezone: nanti.
 4. `WorkStatus` memisahkan pelajar menjadi SD / SMP / SMA.
 5. Kelompok umur dapat diubah nanti (konstanta terpusat di `lib/constants.ts`).
 6. Kegiatan berulang: edit template, batalkan per tanggal, geser satu kali, geser ini & seterusnya (split), akhiri mulai tanggal tertentu.
@@ -743,7 +771,7 @@ Semua halaman aplikasi (wajib login) ada di bawah `/dashboard` dan memakai app s
 | Syarat peserta kegiatan (perempuan saja, SMP, dll.) | Kolom JSON `criteria` di `Activity`; `expected()` sudah terpusat sehingga tinggal tambah filter. |
 | Riwayat pindah grup anggota | Tabel `MemberGroupHistory`; `PINDAH` saat ini membuat baris baru. |
 | Ekspor data / cetak | Perlu keputusan kebijakan PII dulu; audit `export.*`. |
-| Multi-organisasi | `organizationId` sudah ada di Level/Group. |
+| Multi-organisasi — super-admin platform, user lintas-organisasi, subdomain, logo | Multi-organisasi dasar **sudah ada** (§1). Belum ada: UI super-admin, user di banyak organisasi, subdomain; `Organization.logoUrl` sudah ada tetapi belum diedit/ditampilkan. |
 
 ---
 
@@ -769,7 +797,7 @@ Formulir isian khusus per grup yang diisi per anggota oleh admin/user (tanpa tau
 - Tidak ada baris "belum mengisi": belum mengisi = anggota *expected* tanpa `SurveyResponse` (seperti absen, §2).
 
 ### 11.4 Statistik
-- Satu grup terpilih G (`?grup=`, harus dalam scope, selain itu 404). Default: X bila dalam scope, jika tidak grup user. **Populasi** = anggota yang belum dihapus di subtree(G) ∩ subtree(X), dipersempit filter demografi (jenis kelamin, kelompok umur dari `AGE_BRACKETS` dihitung per hari ini di Asia/Jakarta, status kerja, status nikah; nilai tidak valid diabaikan).
+- Satu grup terpilih G (`?grup=`, harus dalam scope, selain itu 404). Default: X bila dalam scope, jika tidak grup user. **Populasi** = anggota yang belum dihapus di subtree(G) ∩ subtree(X), dipersempit filter demografi (jenis kelamin, kelompok umur dari `AGE_BRACKETS` dihitung per hari ini di zona waktu organisasi, status kerja, status nikah; nilai tidak valid diabaikan).
 - Tingkat respons: *expected* = populasi berstatus `AKTIF`; *terjawab* = expected yang punya respons; daftar "Belum mengisi" dipaginasi dengan tautan isi. Respons anggota yang sudah tidak `AKTIF` tetap dihitung di hasil per pertanyaan tetapi tidak di expected/terjawab.
 - Per pertanyaan (termasuk yang diarsip, ditandai): jumlah terjawab; pilihan = jumlah & % per opsi relatif terhadap jumlah terjawab (multi-pilihan bisa > 100%); angka = jumlah/rata-rata/min/maks; skala = rata-rata + sebaran semua nilai (nol ditampilkan); teks = daftar terbaru dulu, hanya satu daftar yang dipaginasi lewat `?teks=`.
 - Rincian per anak langsung G (yang beririsan dengan subtree X): tingkat respons dan hitungan opsi/nilai per anak.
@@ -793,7 +821,7 @@ Daftar anggota tersimpan dengan aturan penyaring, urutan, pengelompokan, dan kol
 ### 12.2 Definisi
 - `{ version: 1, filter, sort, groupBy?, columns }` (`lib/validation/member-view.ts`, satu skema zod untuk tampilan tersimpan dan draf URL). `filter` = konjungsi teratas (`AND`/`OR`) atas 0–`VIEW_MAX_RULE_GROUPS` grup aturan, masing-masing konjungsi atas 1–`VIEW_MAX_RULES_PER_GROUP` aturan; satu tingkat saja. Filter kosong = semua anggota dalam scope.
 - Medan & operator ada di satu registri (`lib/member-view/fields.ts`): teks (nama, tempat lahir), pilihan (jenis kelamin, status, status nikah, pekerjaan), tanggal (tanggal lahir, masuk, keluar + kosong/tidak kosong, "dalam N hari terakhir"), usia (bilangan bulat), grup (subtree). **`phone`, `address`, `email` tidak ada di registri**, jadi tidak bisa untuk aturan, urutan, atau pengelompokan; hanya boleh tampil sebagai kolom.
-- Usia dihitung saat melihat (Asia/Jakarta), diubah menjadi batas tanggal lahir berupa string sehingga tetap dihitung di database dan cocok dengan `ageInYears` (termasuk 29 Februari). Satu kunci urut + pemecah seri nama, id; urut usia membalik arah di `birthDate`.
+- Usia dihitung saat melihat (zona waktu organisasi), diubah menjadi batas tanggal lahir berupa string sehingga tetap dihitung di database dan cocok dengan `ageInYears` (termasuk 29 Februari). Satu kunci urut + pemecah seri nama, id; urut usia membalik arah di `birthDate`.
 - Pengelompokan: sifat pilihan, tingkat grup (dari kedalaman grup tampilan sampai daun; seksi = leluhur di tingkat itu), atau kelompok umur (1–`VIEW_MAX_AGE_BUCKETS`, tidak boleh tumpang tindih, awal dari `AGE_BRACKETS`; sisanya "Lainnya"). Seksi kosong tidak ditampilkan.
 - Dua mode parse: **ketat** saat simpan (masalah apa pun menolak, batas tidak dipotong) dan **longgar** saat muat/draf (aturan rusak dibuang dengan peringatan, sehingga tampilan lama tetap terbuka). Id grup di-resolve di server: simpan menolak id di luar scope/terhapus; muat membuang aturannya dengan pemberitahuan "Beberapa aturan diabaikan karena tidak berlaku lagi".
 - Hasil selalu `deletedAt: null` + scope user, di-AND dengan `buildWhere(definition, today)` (`lib/member-view/query.ts`), sehingga definisi tak pernah bisa melewati scope. Tanpa pengelompokan: tabel `PAGE_SIZE` (`?page=`); dengan pengelompokan: seksi bisa dilipat (`VIEW_EXPANDED_SECTIONS` pertama terbuka), `VIEW_SECTION_PAGE_SIZE` anggota pertama + "Tampilkan lebih banyak" (server action yang memvalidasi ulang semuanya). Hanya kolom terpilih yang dirender di server.
