@@ -89,6 +89,59 @@ describe("PrintSchedulePage", () => {
     expect((hidden.match(/Kajian Batal/g) ?? []).length).toBe(4);
   });
 
+  it("renders one table with a single header row for the whole range", async () => {
+    const fixture = await buildPageFixture("cetak-single");
+    const { admin } = await weeklyActivity(fixture, "Kajian Tunggal");
+    mockAuthSession(auth, { user: admin });
+
+    const html = renderToStaticMarkup(await PrintSchedulePage({ searchParams: Promise.resolve(RANGE) }));
+    expect((html.match(/<table/g) ?? []).length).toBe(1);
+    expect((html.match(/<thead/g) ?? []).length).toBe(1);
+    expect((html.match(/<th scope="col"/g) ?? []).length).toBe(6);
+    for (const column of ["Tanggal", "Jam", "Kegiatan", "Grup", "Lokasi", "Keterangan"]) {
+      expect(html).toContain(`>${column}</th>`);
+    }
+  });
+
+  it("shows a date once, spanning its rows, in time order", async () => {
+    const fixture = await buildPageFixture("cetak-rowspan");
+    const { admin } = await weeklyActivity(fixture, "Kajian Malam");
+    await createActivity(admin, {
+      groupId: fixture.leaf.id,
+      name: "Kajian Subuh",
+      location: "Aula",
+      startTime: "05:00",
+      durationMinutes: 30,
+      freq: "WEEKLY",
+      interval: 1,
+      weekdays: [1],
+      startsOn: "2026-01-05",
+    });
+    mockAuthSession(auth, { user: admin });
+
+    const html = renderToStaticMarkup(
+      await PrintSchedulePage({ searchParams: Promise.resolve({ range: "custom", from: "2026-03-02", to: "2026-03-02" }) }),
+    );
+    expect((html.match(/rowSpan="2"|rowspan="2"/g) ?? []).length).toBe(1);
+    expect((html.match(/2 Mar|2 Maret/g) ?? []).length).toBeGreaterThanOrEqual(1);
+    expect(html.indexOf("Kajian Subuh")).toBeLessThan(html.indexOf("Kajian Malam"));
+  });
+
+  it("leaves no rows for a date whose only occurrence is cancelled when hidden", async () => {
+    const fixture = await buildPageFixture("cetak-empty-date");
+    const { admin, activity } = await weeklyActivity(fixture, "Kajian Kosong");
+    await overrideOccurrence(admin, { activityId: activity.id, date: "2026-03-02", status: "CANCELLED" });
+    mockAuthSession(auth, { user: admin });
+
+    const html = renderToStaticMarkup(
+      await PrintSchedulePage({
+        searchParams: Promise.resolve({ range: "custom", from: "2026-03-02", to: "2026-03-02", batal: "0" }),
+      }),
+    );
+    expect(html).toContain("Tidak ada jadwal");
+    expect(html).not.toContain("<table");
+  });
+
   it("rejects a range over 3 months without querying", async () => {
     const fixture = await buildPageFixture("cetak-long");
     mockAuthSession(auth, { user: sessionFor(fixture.actorId, "OWNER", fixture.root) });

@@ -102,33 +102,43 @@ export default async function PrintSchedulePage({
       ) : days.length === 0 ? (
         <p className="px-4 py-10 text-center text-sm text-muted-foreground">Tidak ada jadwal</p>
       ) : (
-        days.map((day) => (
-          <section key={day.date} className="break-inside-avoid">
-            <h2 className="mb-1 text-sm font-semibold">
-              {WEEKDAY_LABELS[weekdayOf(day.date)]}, {formatDate(day.date)}
-            </h2>
-            <table className="w-full table-fixed border-collapse text-sm">
-              <thead className="print:table-header-group">
-                <tr className="border-y text-left text-xs">
-                  <th scope="col" className="w-28 py-1 pr-2 font-medium">Jam</th>
-                  <th scope="col" className="w-[24%] py-1 pr-2 font-medium">Kegiatan</th>
-                  <th scope="col" className="w-[16%] py-1 pr-2 font-medium">Grup</th>
-                  <th scope="col" className="w-[22%] py-1 pr-2 font-medium">Lokasi</th>
-                  <th scope="col" className="py-1 font-medium">Keterangan</th>
-                </tr>
-              </thead>
-              <tbody>
-                {day.entries.map((entry) => {
+        <div className="overflow-x-auto print:overflow-visible">
+          <table className="w-full min-w-[40rem] table-fixed border-collapse text-sm print:min-w-0 print:text-[11px]">
+            <thead className="print:table-header-group">
+              <tr className="border-y text-left text-xs">
+                <th scope="col" className="w-24 py-1 pr-2 font-medium print:w-20">Tanggal</th>
+                <th scope="col" className="w-24 py-1 pr-2 font-medium print:w-20">Jam</th>
+                <th scope="col" className="w-[22%] py-1 pr-2 font-medium">Kegiatan</th>
+                <th scope="col" className="w-[14%] py-1 pr-2 font-medium">Grup</th>
+                <th scope="col" className="w-[18%] py-1 pr-2 font-medium">Lokasi</th>
+                <th scope="col" className="py-1 font-medium">Keterangan</th>
+              </tr>
+            </thead>
+            {days.map((day) => (
+              <tbody key={day.date} className="border-t-2 border-foreground/60">
+                {day.entries.map((entry, index) => {
                   const cancelled = entry.status === "CANCELLED";
                   return (
-                    <tr key={`${entry.activityId}:${entry.key}`} className="border-b align-top break-inside-avoid">
-                      <td className="py-1 pr-2 tabular-nums">
+                    <tr
+                      key={`${entry.activityId}:${entry.key}`}
+                      className={cn("align-top break-inside-avoid", index > 0 && "border-t")}
+                    >
+                      {index === 0 && (
+                        <th scope="rowgroup" rowSpan={day.entries.length} className="py-1 pr-2 text-left font-semibold">
+                          {WEEKDAY_LABELS[weekdayOf(day.date)]}
+                          <br />
+                          <span className="font-normal">{formatDate(day.date)}</span>
+                        </th>
+                      )}
+                      <td className="py-1 pr-2 tabular-nums print:py-0.5">
                         {entry.effectiveStartTime}–{endTimeOf(entry.effectiveStartTime, entry.effectiveDurationMinutes)}
                       </td>
-                      <td className={cn("py-1 pr-2 font-medium", cancelled && "line-through")}>{entry.activityName}</td>
-                      <td className="py-1 pr-2">{entry.groupName}</td>
-                      <td className="py-1 pr-2">{entry.effectiveLocation}</td>
-                      <td className="py-1">
+                      <td className={cn("py-1 pr-2 font-medium print:py-0.5", cancelled && "line-through")}>
+                        {entry.activityName}
+                      </td>
+                      <td className="py-1 pr-2 print:py-0.5">{entry.groupName}</td>
+                      <td className="py-1 pr-2 print:py-0.5">{entry.effectiveLocation}</td>
+                      <td className="py-1 print:py-0.5">
                         {[entry.moved && "Dipindah", cancelled && "Batal"].filter(Boolean).join(", ")}
                         {(entry.moved || cancelled) && entry.effectiveNotes ? " · " : ""}
                         {entry.effectiveNotes}
@@ -137,9 +147,9 @@ export default async function PrintSchedulePage({
                   );
                 })}
               </tbody>
-            </table>
-          </section>
-        ))
+            ))}
+          </table>
+        </div>
       )}
     </div>
   );
