@@ -25,6 +25,17 @@ describe("DaftarPage", () => {
     expect(html).toContain('href="/login"');
   });
 
+  it("keeps field text at 16px on tablets so iPad Safari does not zoom on focus", () => {
+    const html = renderToStaticMarkup(DaftarPage());
+    const fields = html.match(/<(input|textarea)\b[^>]*class="[^"]*"[^>]*>/g) ?? [];
+    const visible = fields.filter((tag) => !tag.includes('id="website"') && !tag.includes('type="checkbox"'));
+    expect(visible).toHaveLength(5);
+    for (const tag of visible) {
+      expect(tag).toContain("text-base");
+      expect(tag).not.toMatch(/\b(sm|md|lg):text-(sm|xs)\b/);
+    }
+  });
+
   it("includes a honeypot field that people and assistive tech skip", () => {
     const html = renderToStaticMarkup(DaftarPage());
     expect(html).toMatch(/name="website"/);
