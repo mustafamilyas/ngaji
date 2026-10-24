@@ -2,7 +2,7 @@
 
 ## 1. Schema and constants
 
-- [ ] 1.1 Add `Organization.logoUrl String?` and the `InterestLead` model; run `pnpm prisma migrate dev` and verify the migration applies on a copy of the current dev DB with no data change to existing orgs
+- [x] 1.1 Add `Organization.logoUrl String?` and the `InterestLead` model; run `pnpm prisma migrate dev` and verify the migration applies on a copy of the current dev DB with no data change to existing orgs
 - [ ] 1.2 Add `TIMEZONES` (+ WIB/WITA/WIT labels) to `lib/validation/enums.ts` and `INTEREST_RATE_LIMIT_MAX_PER_IP`, `INTEREST_RATE_LIMIT_WINDOW_MINUTES` to `lib/constants.ts`; verify `pnpm tsc --noEmit`
 - [ ] 1.3 Extend `prisma/seed.ts` and `lib/test/fixtures.ts` with a second organization (own levels, root group, OWNER, members, activities); verify `pnpm prisma db seed` creates both and existing tests still pass
 
@@ -51,3 +51,8 @@
 
 - [ ] 9.1 Update DESIGN.md (§1 tenancy, §2 schema, §3.2 `organization.update`, §4.5 new audit actions, §7 pages `/daftar` + `/dashboard/pengaturan`, §8 `org:create`, §10 multi-org row), DEPLOYMENT.md (`org:create`, `BOOTSTRAP_TIMEZONE`, `LOGIN_SHOW_ORG_NAME`, `pnpm leads`), CLAUDE.md commands and `openspec/config.yaml` context; verify they match the specs
 - [ ] 9.2 Run `pnpm lint && pnpm tsc --noEmit && pnpm test` and verify everything passes
+
+## 10. Additional tasks (failures found during implementation)
+
+- [ ] 10.1 `pnpm tsc --noEmit` reports 32 errors, all in the stale, git-ignored `.next/types/validator.ts` (e.g. missing `app/statistik/page.js`); none in source files (found at 1.1). Make tsc robust against stale `.next` output (e.g. clear `.next` or exclude `.next/types` from `tsconfig.json`) and verify `pnpm tsc --noEmit` exits 0 on a tree with an old `.next`
+- [ ] 10.2 `pnpm test` fails under an AI agent because `vitest.global-setup.ts` runs `prisma db push --accept-data-loss`, which Prisma guards behind `PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION` (found at 1.1; it passed once the user consented, since it only recreates `prisma/test.db`). Replace it with a non-destructive path for the freshly deleted test DB (e.g. `prisma migrate deploy`) and verify `pnpm test` runs without the consent variable

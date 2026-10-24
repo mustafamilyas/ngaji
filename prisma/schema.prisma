@@ -32,10 +32,29 @@ model Organization {
   id        Int      @id @default(autoincrement())
   name      String
   timezone  String   @default("Asia/Jakarta")
+  logoUrl   String? // reserved; no upload or rendering yet
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   levels    Level[]
   groups    Group[]
+}
+
+/// Public sign-up interest from a prospective organization. Deliberately has
+/// no relation to Organization: it must never surface in any org's pages or
+/// audit viewer. Read only via `pnpm leads`.
+model InterestLead {
+  id               Int      @id @default(autoincrement())
+  name             String
+  phone            String
+  organizationName String
+  memberCount      Int?
+  message          String?
+  consentAt        DateTime
+  ip               String?
+  userAgent        String?
+  createdAt        DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 /// Level name, depth 0 = root. Renaming a level is a single-row update.
