@@ -10,6 +10,9 @@ import type { NextConfig } from "next";
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    agentUpgrade: "security",
+  },
   async headers() {
     return [
       {
