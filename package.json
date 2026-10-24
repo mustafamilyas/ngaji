@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "bootstrap": "tsx prisma/bootstrap.ts",
+    "org:create": "tsx prisma/org-create.ts",
+    "bootstrap": "pnpm org:create",
     "reset-owner-password": "tsx scripts/reset-owner-password.ts"
   },
   "dependencies": {
