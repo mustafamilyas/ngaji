@@ -2,13 +2,12 @@
 
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
+import { touchButton, touchField } from "@/components/ui/touch";
+import { cn } from "@/lib/utils";
 import type { ActionResult } from "@/lib/errors";
 import type { Organization } from "@/lib/generated/prisma/client";
 import { TIMEZONES, TIMEZONE_LABELS } from "@/lib/validation/enums";
 import { updateOrganizationAction } from "./actions";
-
-const fieldClass =
-  "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
 export function OrganizationForm({ name, timezone }: { name: string; timezone: string }) {
   const [state, formAction, pending] = useActionState<ActionResult<Organization> | null, FormData>(
@@ -17,12 +16,12 @@ export function OrganizationForm({ name, timezone }: { name: string; timezone: s
   );
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form action={formAction} className="flex max-w-xl flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <label htmlFor="organization-name" className="text-sm font-medium">
           Nama organisasi
         </label>
-        <input id="organization-name" name="name" defaultValue={name} required maxLength={100} className={fieldClass} />
+        <input id="organization-name" name="name" defaultValue={name} required maxLength={100} className={touchField} />
       </div>
       <div className="flex flex-col gap-1.5">
         <label htmlFor="organization-timezone" className="text-sm font-medium">
@@ -34,7 +33,7 @@ export function OrganizationForm({ name, timezone }: { name: string; timezone: s
           // React resets the form to its first-mount defaults after the action; keying on the saved zone remounts the select with the new default.
           key={timezone}
           defaultValue={timezone}
-          className={fieldClass}
+          className={touchField}
         >
           {TIMEZONES.map((zone) => (
             <option key={zone} value={zone}>
@@ -57,7 +56,7 @@ export function OrganizationForm({ name, timezone }: { name: string; timezone: s
         </p>
       )}
       <div>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending} className={cn(touchButton, "w-full sm:w-auto")}>
           {pending ? "Menyimpan…" : "Simpan"}
         </Button>
       </div>

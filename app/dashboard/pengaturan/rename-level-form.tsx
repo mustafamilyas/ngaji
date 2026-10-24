@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
+import { touchButton, touchField } from "@/components/ui/touch";
+import { cn } from "@/lib/utils";
 import type { ActionResult } from "@/lib/errors";
 import type { Level } from "@/lib/generated/prisma/client";
 import { renameLevelAction } from "./level-actions";
@@ -13,7 +15,7 @@ export function RenameLevelForm({ depth, name }: { depth: number; name: string }
   );
 
   return (
-    <form action={formAction} className="flex flex-col gap-2">
+    <form action={formAction} className="flex max-w-xl flex-col gap-2">
       <input type="hidden" name="depth" value={depth} />
       <div className="flex items-center gap-3">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium tabular-nums">
@@ -24,9 +26,9 @@ export function RenameLevelForm({ depth, name }: { depth: number; name: string }
           defaultValue={name}
           aria-label={`Nama jenjang ${depth + 1}`}
           required
-          className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className={cn(touchField, "min-w-0 flex-1")}
         />
-        <Button type="submit" variant="outline" disabled={pending}>
+        <Button type="submit" variant="outline" disabled={pending} className={touchButton}>
           {pending ? "Menyimpan…" : "Simpan"}
         </Button>
       </div>
