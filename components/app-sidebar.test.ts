@@ -38,4 +38,27 @@ describe("AppSidebar", () => {
     expect(html).toContain("Pengajian Al-Ikhlas");
     expect(html).not.toContain("Ngaji");
   });
+
+  const render = (isRootOwner: boolean) =>
+    renderToStaticMarkup(
+      createElement(AppSidebar, {
+        organizationName: "Pengajian Al-Ikhlas",
+        userName: "Budi",
+        userRole: "OWNER",
+        isRootOwner,
+        collapsed: false,
+        onToggleCollapsed: () => {},
+      }),
+    );
+
+  it("shows the organization Pengaturan item only to a root owner", () => {
+    expect(render(true)).toContain('href="/dashboard/pengaturan"');
+    expect(render(false)).not.toContain('href="/dashboard/pengaturan"');
+  });
+
+  it("labels the account link Akun so Pengaturan is unambiguous", () => {
+    const html = render(true);
+    expect(html).toContain("Akun");
+    expect(html.match(/Pengaturan/g)).toHaveLength(1);
+  });
 });

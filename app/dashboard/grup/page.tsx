@@ -88,9 +88,9 @@ export default async function GroupTreePage() {
         meta={`${groups.length} grup dalam scope Anda${levelNames.length > 0 ? ` · ${levelNames.join(" › ")}` : ""}`}
         actions={
           isRootOwner && (
-            <Link href="/dashboard/pengaturan/jenjang" className={buttonVariants({ variant: "outline", size: "lg" })}>
+            <Link href="/dashboard/pengaturan" className={buttonVariants({ variant: "outline", size: "lg" })}>
               <Settings />
-              Pengaturan jenjang
+              Pengaturan
             </Link>
           )
         }

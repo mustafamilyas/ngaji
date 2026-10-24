@@ -23,7 +23,7 @@ export async function renameLevelAction(
     return renameLevel(user, parsed.data);
   });
   if (result.ok) {
-    revalidatePath("/dashboard/pengaturan/jenjang");
+    revalidatePath("/dashboard/pengaturan");
     revalidatePath("/dashboard/grup");
   }
   return result;

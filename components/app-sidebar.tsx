@@ -34,6 +34,7 @@ const ICONS: Record<string, LucideIcon> = {
   "/dashboard/statistik": BarChart3,
   "/dashboard/pengguna": UserCog,
   "/dashboard/audit": ScrollText,
+  "/dashboard/pengaturan": Settings,
 };
 
 export function BrandMark({ organizationName, withLabel = true }: { organizationName: string; withLabel?: boolean }) {
@@ -54,11 +55,14 @@ export function BrandMark({ organizationName, withLabel = true }: { organization
 export function SidebarNav({
   userName,
   userRole,
+  isRootOwner = false,
   onNavigate,
   collapsed = false,
 }: {
   userName: string;
   userRole: string;
+  /** Reveals root-OWNER-only items such as "Pengaturan". */
+  isRootOwner?: boolean;
   onNavigate?: () => void;
   /** Icon-only rail (desktop "minimize"); labels move to tooltips. */
   collapsed?: boolean;
@@ -74,7 +78,7 @@ export function SidebarNav({
       <nav className="flex flex-col gap-1">
         <SectionLabel collapsed={collapsed}>MENU</SectionLabel>
         <ul className="flex flex-col gap-0.5">
-          {NAV_ITEMS.map((item) => {
+          {NAV_ITEMS.filter((item) => isRootOwner || !item.rootOwnerOnly).map((item) => {
             const Icon = ICONS[item.href] ?? LayoutDashboard;
             const active = item.href === DASHBOARD_PATH ? pathname === DASHBOARD_PATH : pathname.startsWith(item.href);
             return (
@@ -108,12 +112,12 @@ export function SidebarNav({
             <Link
               href="/dashboard/akun/password"
               onClick={onNavigate}
-              title={collapsed ? "Pengaturan" : undefined}
-              aria-label={collapsed ? "Pengaturan" : undefined}
+              title={collapsed ? "Akun" : undefined}
+              aria-label={collapsed ? "Akun" : undefined}
               className={cn(itemClass, "text-muted-foreground hover:bg-muted hover:text-foreground")}
             >
               <Settings className="size-4 shrink-0" />
-              {!collapsed && "Pengaturan"}
+              {!collapsed && "Akun"}
             </Link>
           </li>
           <li>
@@ -163,12 +167,14 @@ export function AppSidebar({
   organizationName,
   userName,
   userRole,
+  isRootOwner,
   collapsed,
   onToggleCollapsed,
 }: {
   organizationName: string;
   userName: string;
   userRole: string;
+  isRootOwner?: boolean;
   collapsed: boolean;
   onToggleCollapsed: () => void;
 }) {
@@ -193,7 +199,7 @@ export function AppSidebar({
           {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
         </button>
       </div>
-      <SidebarNav userName={userName} userRole={userRole} collapsed={collapsed} />
+      <SidebarNav userName={userName} userRole={userRole} isRootOwner={isRootOwner} collapsed={collapsed} />
     </aside>
   );
 }

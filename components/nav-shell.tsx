@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { AppSidebar, BrandMark, SidebarNav } from "@/components/app-sidebar";
 import { CHECK_IN_PATH_RE } from "@/lib/attendance/paths";
-import type { SessionUser } from "@/lib/auth/session-user";
+import { isRootOwner, type SessionUser } from "@/lib/auth/session-user";
 import { SIDEBAR_COLLAPSED_COOKIE } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +21,7 @@ export function NavShell({
 }: {
   children: React.ReactNode;
   organizationName?: string;
-  user?: Pick<SessionUser, "name" | "role">;
+  user?: Pick<SessionUser, "name" | "role" | "groupPath">;
   initialCollapsed?: boolean;
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -69,6 +69,7 @@ export function NavShell({
           organizationName={organizationName}
           userName={user.name}
           userRole={user.role}
+          isRootOwner={isRootOwner(user)}
           collapsed={collapsed}
           onToggleCollapsed={toggleCollapsed}
         />
@@ -130,7 +131,7 @@ export function NavShell({
               <X className="size-5" />
             </button>
           </div>
-          <SidebarNav userName={user.name} userRole={user.role} onNavigate={() => setDrawerOpen(false)} />
+          <SidebarNav userName={user.name} userRole={user.role} isRootOwner={isRootOwner(user)} onNavigate={() => setDrawerOpen(false)} />
         </nav>
       </div>
     </div>

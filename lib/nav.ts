@@ -7,6 +7,8 @@ export const DASHBOARD_PATH = "/dashboard";
 export type NavItem = {
   href: string;
   label: string;
+  /** Shown only to an OWNER of the organization's root group. */
+  rootOwnerOnly?: boolean;
 };
 
 export const NAV_ITEMS: NavItem[] = [
@@ -19,4 +21,5 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard/statistik", label: "Statistik" },
   { href: "/dashboard/pengguna", label: "Pengguna" },
   { href: "/dashboard/audit", label: "Audit Log" },
+  { href: "/dashboard/pengaturan", label: "Pengaturan", rootOwnerOnly: true },
 ];

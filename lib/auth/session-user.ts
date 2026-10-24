@@ -50,3 +50,8 @@ export function toSessionUser(user: ResolvedUser): SessionUser {
     sessionVersion: user.sessionVersion,
   };
 }
+
+/** DESIGN.md §3.2/§3.5: an OWNER whose own group is the organization's root (path holds only its own id). */
+export function isRootOwner(session: Pick<SessionUser, "role" | "groupPath">): boolean {
+  return session.role === "OWNER" && session.groupPath.split("/").filter(Boolean).length === 1;
+}

@@ -33,7 +33,7 @@
 ## 6. Organization settings
 
 - [x] 6.1 Add `updateOrganization` mutation + server action (name, timezone, audit with before/after); verify action tests for success and both denial cases
-- [ ] 6.2 Build `/dashboard/pengaturan` (org form + level renaming), redirect `/dashboard/pengaturan/jenjang`, show "Pengaturan" nav only to root OWNERs; verify page tests for root OWNER (forms shown) and others (no-permission message), and check in the browser preview at 360px
+- [x] 6.2 Build `/dashboard/pengaturan` (org form + level renaming), redirect `/dashboard/pengaturan/jenjang`, show "Pengaturan" nav only to root OWNERs; verify page tests for root OWNER (forms shown) and others (no-permission message), and check in the browser preview at 360px
 
 ## 7. Interest sign-up
 
@@ -58,3 +58,17 @@
 - [x] 10.2 `pnpm test` fails under an AI agent because `vitest.global-setup.ts` runs `prisma db push --accept-data-loss`, which Prisma guards behind `PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION` (found at 1.1; it passed once the user consented, since it only recreates `prisma/test.db`). Replace it with a non-destructive path for the freshly deleted test DB (e.g. `prisma migrate deploy`) and verify `pnpm test` runs without the consent variable
 - [ ] 10.3 `sessionFor()` in `lib/test/fixtures.ts` falls back to `organizationId: 0` when the group argument carries none (found at 3.1; 239 callers pass `{ id, path }` only). Tests that need the actor's real org (3.2 cross-org name, 4.1 sweep) must pass a group with `organizationId`; consider making it required in the fixture group types once those slices land
 - [x] 10.4 Usernames are case-sensitive: `usernameSchema` accepts uppercase and the SQLite `@unique` index is case-sensitive, so `Budi` and `budi` can both exist, within one org or across orgs, and login looks up the exact string (found at 4.2). Decided: usernames are always lowercase (shared `lib/validation/username.ts`; login, create user and `reset-owner-password` normalize; migration `lowercase_usernames` lowercases existing rows and aborts on a case collision); multi-organization spec and DESIGN.md updated; verified with schema, login and recovery tests. Task 5.1 must reuse `usernameSchema` for the owner username
+
+- [ ] 10.5 Form inputs, selects and submit buttons on `/dashboard/pengaturan` are 32–36px tall at 360px, below the 44px tap-target minimum of section 11 (found at 6.2; `fieldClass` in `organization-form.tsx` and `rename-level-form.tsx` use `h-9`, buttons use the default size). Fix with a shared touch-friendly size on small screens and verify heights ≥ 44px at 360px; covered by 11.1
+
+## 11. Mobile and tablet quality
+
+Each check is done in the browser preview at 360px (phone), 768px (tablet portrait) and 1024px (tablet landscape): no horizontal page scroll, tap targets at least 44px, labels not truncated, on-screen keyboard does not hide the submit button, light and dark theme readable.
+
+- [ ] 11.1 `/dashboard/pengaturan` (6.2): organization form, timezone select and level rename forms; verify at 360/768/1024, forms stack on phone and sit comfortably on tablet, saved/error messages visible without scrolling
+- [ ] 11.2 Navigation: "Pengaturan" item in the mobile drawer and the collapsed desktop/tablet rail (tooltip, active state); verify drawer opens/closes with one hand reach and tablet keeps a usable sidebar
+- [ ] 11.3 `/daftar` (7.3): form fields use correct `inputmode`/`autocomplete` (tel for WhatsApp), consent checkbox has a large tap area, success state's WhatsApp button is full-width on phone; verify at 360/768/1024
+- [ ] 11.4 Landing and `/ormas` CTA to `/daftar` (7.3): CTA reachable above the fold on 360px; verify no layout shift or overflow
+- [ ] 11.5 Keterangan in activity list and calendar (8.1): clamped text and the "full text" affordance work by tap (not only hover); verify at 360/768
+- [ ] 11.6 Compact print (8.2): on-screen preview of `/dashboard/kegiatan/cetak` scrolls inside its own container on phone and the print button is reachable; verify at 360/768 and that print CSS only applies to `@media print`
+- [ ] 11.7 Final sweep: walk every page touched by this change (login, pengaturan, daftar, kegiatan, cetak, absensi) at 360/768/1024 and record any defect as a new task in this section

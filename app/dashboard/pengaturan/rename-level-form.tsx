@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import type { ActionResult } from "@/lib/errors";
 import type { Level } from "@/lib/generated/prisma/client";
-import { renameLevelAction } from "./actions";
+import { renameLevelAction } from "./level-actions";
 
 export function RenameLevelForm({ depth, name }: { depth: number; name: string }) {
   const [state, formAction, pending] = useActionState<ActionResult<Level> | null, FormData>(
