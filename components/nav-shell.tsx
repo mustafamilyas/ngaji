@@ -84,7 +84,7 @@ export function NavShell({
             aria-expanded={drawerOpen}
             aria-controls="mobile-nav"
             onClick={() => setDrawerOpen(true)}
-            className="inline-flex size-11 items-center justify-center rounded-md hover:bg-muted"
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-md hover:bg-muted"
           >
             <Menu className="size-5" />
           </button>
@@ -126,7 +126,7 @@ export function NavShell({
               type="button"
               aria-label="Tutup menu"
               onClick={() => setDrawerOpen(false)}
-              className="inline-flex size-11 items-center justify-center rounded-md hover:bg-muted"
+              className="inline-flex size-11 shrink-0 items-center justify-center rounded-md hover:bg-muted"
             >
               <X className="size-5" />
             </button>

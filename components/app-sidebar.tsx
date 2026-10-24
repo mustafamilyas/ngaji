@@ -40,7 +40,7 @@ const ICONS: Record<string, LucideIcon> = {
 
 export function BrandMark({ organizationName, withLabel = true }: { organizationName: string; withLabel?: boolean }) {
   return (
-    <Link href={DASHBOARD_PATH} aria-label={organizationName} className="flex min-w-0 items-center gap-2 px-2">
+    <Link href={DASHBOARD_PATH} aria-label={organizationName} className="flex min-h-11 min-w-0 items-center gap-2 px-2">
       <Logo />
       {withLabel && (
         <span className="flex min-w-0 flex-col leading-tight">
@@ -196,7 +196,7 @@ export function AppSidebar({
           title={`${toggleLabel} (Ctrl/⌘+B)`}
           aria-label={toggleLabel}
           aria-expanded={!collapsed}
-          className="inline-flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground xl:size-8"
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground xl:size-8"
         >
           {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
         </button>

@@ -79,4 +79,16 @@ describe("LoginPage", () => {
       expect(await title()).toBe("Masuk · Dahan");
     });
   });
+
+  it("gives the fields and the button 44px tap targets with 16px text below xl", async () => {
+    const html = await render();
+    const classOf = (pattern: RegExp) => (html.match(pattern)?.[0] ?? "").match(/class="([^"]*)"/)?.[1] ?? "";
+
+    for (const field of [/<input[^>]*id="username"[^>]*>/, /<input[^>]*id="password"[^>]*>/]) {
+      const cls = classOf(field);
+      expect(cls, String(field)).toMatch(/\bh-11\b/);
+      expect(cls, String(field)).toMatch(/\btext-base\b/);
+    }
+    expect(classOf(/<button[^>]*type="submit"[^>]*>/)).toMatch(/\bh-11\b.*\bxl:h-8\b|\bh-11\b.*\bxl:h-9\b/);
+  });
 });

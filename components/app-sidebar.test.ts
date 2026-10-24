@@ -15,6 +15,11 @@ describe("BrandMark", () => {
     expect(html).not.toContain("Ngaji");
   });
 
+  it("is at least 44px tall so it is a comfortable tap target", () => {
+    const html = renderToStaticMarkup(createElement(BrandMark, { organizationName: "Pengajian Al-Ikhlas" }));
+    expect(html).toMatch(/<a[^>]*class="[^"]*\bmin-h-11\b/);
+  });
+
   it("keeps only the logo when collapsed, named after the organization", () => {
     const html = renderToStaticMarkup(
       createElement(BrandMark, { organizationName: "Pengajian Al-Ikhlas", withLabel: false }),
@@ -25,6 +30,19 @@ describe("BrandMark", () => {
 });
 
 describe("AppSidebar", () => {
+  it("never shrinks the collapse button below 44px wide on a docked sidebar", () => {
+    const html = renderToStaticMarkup(
+      createElement(AppSidebar, {
+        organizationName: "Pengajian Al-Ikhlas",
+        userName: "Budi",
+        userRole: "OWNER",
+        collapsed: false,
+        onToggleCollapsed: () => {},
+      }),
+    );
+    expect(html).toMatch(/<button[^>]*aria-label="Perkecil menu"[^>]*class="[^"]*\bshrink-0\b|<button[^>]*class="[^"]*\bshrink-0\b[^"]*"[^>]*aria-label="Perkecil menu"/);
+  });
+
   it("contains the organization name and no old product name", () => {
     const html = renderToStaticMarkup(
       createElement(AppSidebar, {

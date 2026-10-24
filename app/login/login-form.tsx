@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
+import { touchButton, touchField } from "@/components/ui/touch";
 import { loginAction, type LoginState } from "./actions";
 
 const initialState: LoginState = { error: null };
@@ -22,7 +23,7 @@ export function LoginForm() {
           autoComplete="username"
           autoCapitalize="none"
           required
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className={touchField}
         />
       </div>
       <div className="flex flex-col gap-1.5">
@@ -35,7 +36,7 @@ export function LoginForm() {
           type="password"
           autoComplete="current-password"
           required
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className={touchField}
         />
       </div>
       {state.error && (
@@ -43,7 +44,7 @@ export function LoginForm() {
           {state.error}
         </p>
       )}
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" disabled={pending} className={touchButton}>
         {pending ? "Memproses…" : "Masuk"}
       </Button>
     </form>
