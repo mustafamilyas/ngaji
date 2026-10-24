@@ -28,7 +28,14 @@ export function OrganizationForm({ name, timezone }: { name: string; timezone: s
         <label htmlFor="organization-timezone" className="text-sm font-medium">
           Zona waktu
         </label>
-        <select id="organization-timezone" name="timezone" defaultValue={timezone} className={fieldClass}>
+        <select
+          id="organization-timezone"
+          name="timezone"
+          // React resets the form to its first-mount defaults after the action; keying on the saved zone remounts the select with the new default.
+          key={timezone}
+          defaultValue={timezone}
+          className={fieldClass}
+        >
           {TIMEZONES.map((zone) => (
             <option key={zone} value={zone}>
               {TIMEZONE_LABELS[zone]} ({zone})
