@@ -8,7 +8,7 @@ import { setMemberAttendance } from "@/lib/attendance/set";
 import { listAuditLog } from "@/lib/audit-log/queries";
 import { addDays, today } from "@/lib/dates";
 import { db } from "@/lib/db";
-import { NotFoundError } from "@/lib/errors";
+import { NotFoundError, ValidationError } from "@/lib/errors";
 import { getLevels, listLeafGroupsInScope, renameLevel } from "@/lib/group/levels";
 import { createGroup, deleteGroup, renameGroup } from "@/lib/group/mutations";
 import { createMember, deleteMember } from "@/lib/member/mutations";
@@ -249,6 +249,27 @@ describe("cross-organization isolation", () => {
       expect(inScope.some((r) => r.user.id === B.actorId)).toBe(false);
       const { roles } = await listUsers(A.owner);
       expect(roles.some((r) => r.user.id === B.actorId || bExtraOwnerIds.includes(r.user.id))).toBe(false);
+    });
+
+    it("rejects a username that exists in another organization with the same message as within one organization", async () => {
+      const takenInA = `iso-a-actor`; // org A's OWNER, created by buildOrgFixture("iso-a")
+      const usersBefore = await db.user.count();
+      const auditBefore = await db.auditLog.count({ where: { action: "user.create" } });
+
+      const crossOrg = await createUser(B.owner, { groupId: B.root.id, username: takenInA, name: "Salinan", role: "USER" }).catch((e) => e);
+
+      await createUser(B.owner, { groupId: B.root.id, username: "iso-b-same-org", name: "Pertama", role: "USER" });
+      const sameOrg = await createUser(B.owner, { groupId: B.root.id, username: "iso-b-same-org", name: "Kedua", role: "USER" }).catch((e) => e);
+
+      expect(crossOrg).toBeInstanceOf(ValidationError);
+      expect(sameOrg).toBeInstanceOf(ValidationError);
+      expect(crossOrg.message).toBe(`Username "${takenInA}" sudah dipakai`);
+      expect(sameOrg.message).toBe(`Username "iso-b-same-org" sudah dipakai`);
+
+      // Only the one legitimate creation happened: no user and no audit entry for the rejected ones.
+      expect(await db.user.count()).toBe(usersBefore + 1);
+      expect(await db.auditLog.count({ where: { action: "user.create" } })).toBe(auditBefore + 1);
+      expect(await db.user.count({ where: { username: takenInA } })).toBe(1);
     });
 
     it("keeps last-owner protection per organization: org A's only OWNER cannot deactivate themself", async () => {
