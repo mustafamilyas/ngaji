@@ -6,7 +6,9 @@ import { z } from "zod";
  * passwords, and login must still be able to compare it against the hash.
  */
 export const credentialsSchema = z.object({
-  username: z.string().trim().min(1),
+  // Lowercased like every stored username, but without the create-time format
+  // rules: login must still be able to reject (not crash on) odd input.
+  username: z.string().trim().toLowerCase().min(1),
   password: z.string().min(1),
 });
 

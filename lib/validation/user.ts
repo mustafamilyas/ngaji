@@ -1,13 +1,6 @@
 import { z } from "zod";
 import { ROLES } from "./enums";
-
-/** Shared by the user forms and Server Actions (DESIGN.md §2, user-management spec). */
-const usernameSchema = z
-  .string()
-  .trim()
-  .min(3, "Username minimal 3 karakter")
-  .max(50, "Username terlalu panjang")
-  .regex(/^[a-z0-9_.]+$/i, "Username hanya boleh huruf, angka, titik, dan garis bawah");
+import { usernameSchema } from "./username";
 
 const nameSchema = z.string().trim().min(1, "Nama wajib diisi").max(200, "Nama terlalu panjang");
 

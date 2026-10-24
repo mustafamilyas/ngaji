@@ -96,7 +96,7 @@ model Group {
 
 model User {
   id                 Int      @id @default(autoincrement())
-  username           String   @unique
+  username           String   @unique   // selalu huruf kecil: dinormalisasi (trim + lowercase) di lib/validation/username.ts, login tidak peka huruf besar/kecil
   passwordHash       String
   name               String
   isActive           Boolean  @default(true)

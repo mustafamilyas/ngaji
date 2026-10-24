@@ -41,7 +41,15 @@ No user SHALL be able to read or change any group, member, activity, occurrence,
 - **THEN** org A's OWNER still cannot deactivate or demote themself, regardless of org B's owners
 
 ### Requirement: Globally unique usernames
-Usernames SHALL be unique across all organizations. Login SHALL ask only for username and password; the organization SHALL follow from the user.
+Usernames SHALL be unique across all organizations. Usernames SHALL be stored in lowercase: every input path (create user, login, CLI scripts) SHALL trim and lowercase the username before using it, so `Budi` and `budi` are the same account and login is case-insensitive. Login SHALL ask only for username and password; the organization SHALL follow from the user.
+
+#### Scenario: Username case is normalized
+- **WHEN** an OWNER creates a user with the username `Budi`
+- **THEN** the user is stored as `budi`, a later attempt to create `BUDI` is rejected as already taken, and the user can sign in with `Budi`, `BUDI` or `budi`
+
+#### Scenario: Existing mixed-case usernames
+- **WHEN** the migration runs on a database holding a user `Budi`
+- **THEN** that user becomes `budi`; if two users differ only by case, the migration fails without changing data and the deployer resolves them by hand
 
 #### Scenario: Duplicate username in another organization
 - **WHEN** an OWNER of org B creates a user with a username that already exists in org A
