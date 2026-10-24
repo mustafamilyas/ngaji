@@ -16,6 +16,7 @@ import { canRecordFutureAttendance } from "@/lib/authz";
 import { formatDate } from "@/lib/filters";
 import { getMaxDepth } from "@/lib/group/levels";
 import { resolveActivity } from "@/lib/resolve";
+import { cn } from "@/lib/utils";
 import { isInScope } from "@/lib/scope";
 import { expected } from "@/lib/stats";
 import type { AttendanceStatus, MemberStatus } from "@/lib/validation/enums";
@@ -130,7 +131,7 @@ export default async function AttendancePage({
       {header(
         activity.group.name,
         canRecordHere && (
-          <Link href={checkInPath(activity.id, tanggal)} className={buttonVariants({ variant: "outline", size: "lg" })}>
+          <Link href={checkInPath(activity.id, tanggal)} className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-11 w-full text-base sm:w-auto xl:h-9 xl:text-sm")}>
             <UserCheck />
             Mode check-in
           </Link>

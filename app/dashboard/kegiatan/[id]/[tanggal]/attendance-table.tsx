@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Search } from "lucide-react";
 import { setAttendanceAction } from "@/app/dashboard/kegiatan/actions";
 import { SortIcon, TableCard, tableClass, tdClass, thClass, theadRowClass, trClass } from "@/components/data-table";
+import { touchField } from "@/components/ui/touch";
 import { MAX_ATTENDANCE_NOTE_LENGTH } from "@/lib/constants";
 import type { SortDir } from "@/lib/sort";
 import { cn } from "@/lib/utils";
@@ -30,8 +31,11 @@ const STATUS_BADGE: Record<AttendanceStatus | "NONE", string> = {
   NONE: "bg-muted text-muted-foreground",
 };
 
-const controlClass =
-  "h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+// Below `md` each member is a stacked card-like row (name + status, then big Hadir/Izin
+// buttons, then the reason) so nothing needs sideways scrolling on a phone.
+
+const stackedRow = "grid grid-cols-[1fr_auto] gap-x-2 gap-y-2 px-4 py-3 md:table-row md:p-0";
+const stackedCell = "block px-0 py-0 whitespace-normal md:table-cell md:px-4 md:py-2.5 md:whitespace-nowrap";
 
 function StatTile({ label, value, className }: { label: string; value: number; className?: string }) {
   return (
@@ -64,7 +68,7 @@ function SortTh({
         type="button"
         onClick={() => onSort(column)}
         className={cn(
-          "-mx-1 inline-flex items-center gap-1 rounded px-1 transition-colors hover:text-foreground",
+          "-mx-1 inline-flex min-h-11 items-center gap-1 rounded px-1 transition-colors hover:text-foreground xl:min-h-0",
           dir && "text-foreground",
         )}
       >
@@ -104,7 +108,7 @@ function NoteInput({
       maxLength={MAX_ATTENDANCE_NOTE_LENGTH}
       placeholder="Tulis alasan…"
       aria-label={`Alasan izin ${memberName}`}
-      className={cn(controlClass, "h-8 w-full min-w-40")}
+      className={cn(touchField, "md:min-w-40")}
     />
   );
 }
@@ -213,21 +217,21 @@ export function AttendanceTable({
         toolbar={
           <>
             <div className="relative w-full sm:w-56">
-              <Search aria-hidden className="pointer-events-none absolute top-2.5 left-3 size-4 text-muted-foreground" />
+              <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Cari nama…"
                 aria-label="Cari nama anggota"
-                className={cn(controlClass, "w-full pl-9")}
+                className={cn(touchField, "pl-9")}
               />
             </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
               aria-label="Filter status"
-              className={controlClass}
+              className={cn(touchField, "sm:w-auto")}
             >
               <option value="ALL">Semua status</option>
               <option value="HADIR">Hadir</option>
@@ -239,7 +243,7 @@ export function AttendanceTable({
                 value={groupFilter}
                 onChange={(e) => setGroupFilter(e.target.value === "ALL" ? "ALL" : Number(e.target.value))}
                 aria-label="Filter grup"
-                className={controlClass}
+                className={cn(touchField, "sm:w-auto")}
               >
                 <option value="ALL">Semua grup</option>
                 {groups.map((g) => (
@@ -253,8 +257,8 @@ export function AttendanceTable({
         }
       >
         <div className="overflow-x-auto">
-          <table className={tableClass}>
-            <thead>
+          <table className={cn(tableClass, "block md:table")}>
+            <thead className="hidden md:table-header-group">
               <tr className={theadRowClass}>
                 <SortTh label="Nama" column="name" sort={sort} onSort={onSort} />
                 <SortTh label="Status" column="status" sort={sort} onSort={onSort} />
@@ -268,23 +272,30 @@ export function AttendanceTable({
                 )}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="block md:table-row-group">
               {visible.map((row) => {
                 const status = statusOf(row.id);
                 const note = entries[row.id]?.note ?? "";
                 const busy = pending.has(row.id);
+                const showNote = (status === "IZIN" && editable) || note !== "";
                 return (
-                  <tr key={row.id} className={trClass}>
-                    <td className={tdClass}>
+                  <tr key={row.id} className={cn(trClass, stackedRow)}>
+                    <td className={stackedCell}>
                       <p className="font-medium">{row.name}</p>
                       {groups.length > 1 && <p className="text-xs text-muted-foreground">{row.groupName}</p>}
                     </td>
-                    <td className={tdClass}>
+                    <td className={cn(stackedCell, "self-start")}>
                       <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", STATUS_BADGE[status])}>
                         {STATUS_LABEL[status]}
                       </span>
                     </td>
-                    <td className={cn(tdClass, "whitespace-normal")}>
+                    <td
+                      className={cn(
+                        stackedCell,
+                        "order-last col-span-2 md:order-none md:whitespace-normal",
+                        !showNote && "hidden md:table-cell",
+                      )}
+                    >
                       {status === "IZIN" && editable ? (
                         <NoteInput
                           key={note}
@@ -298,8 +309,8 @@ export function AttendanceTable({
                       )}
                     </td>
                     {editable && (
-                      <td className={cn(tdClass, "text-right")}>
-                        <div className="inline-flex gap-1">
+                      <td className={cn(stackedCell, "col-span-2 md:text-right")}>
+                        <div className="grid grid-cols-2 gap-2 md:inline-flex md:gap-1">
                           {(["HADIR", "IZIN"] as const).map((value) => (
                             <button
                               key={value}
@@ -309,7 +320,7 @@ export function AttendanceTable({
                               aria-pressed={status === value}
                               aria-label={`Tandai ${row.name} ${STATUS_LABEL[value].toLowerCase()}`}
                               className={cn(
-                                "h-8 min-w-14 rounded-md border px-2 text-xs transition-colors disabled:opacity-50",
+                                "h-11 rounded-md border px-2 text-base font-medium transition-colors disabled:opacity-50 md:min-w-14 xl:h-8 xl:text-xs xl:font-normal",
                                 status === value
                                   ? "border-primary bg-primary text-primary-foreground"
                                   : "border-input hover:bg-muted",
@@ -326,7 +337,7 @@ export function AttendanceTable({
               })}
               {visible.length === 0 && (
                 <tr>
-                  <td colSpan={editable ? 4 : 3} className={cn(tdClass, "py-6 text-center text-muted-foreground")}>
+                  <td colSpan={editable ? 4 : 3} className={cn(tdClass, "block py-6 text-center whitespace-normal text-muted-foreground md:table-cell")}>
                     {rows.length === 0 ? "Tidak ada anggota yang diharapkan hadir." : "Tidak ada anggota yang cocok."}
                   </td>
                 </tr>
