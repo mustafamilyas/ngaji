@@ -4,7 +4,7 @@
  * for; earlier entries are client-supplied and ignored. Falls back to
  * `X-Real-IP`; null if neither is present.
  */
-export function getClientIp(request: Request): string | null {
+export function getClientIp(request: Pick<Request, "headers">): string | null {
   const forwarded = request.headers.get("x-forwarded-for");
   const lastHop = forwarded?.split(",").at(-1)?.trim();
   if (lastHop) return lastHop;

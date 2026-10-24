@@ -38,7 +38,7 @@
 ## 7. Interest sign-up
 
 - [x] 7.1 Add `/daftar` to the public allowlist in `lib/auth/public-paths.ts`; verify the proxy test: anonymous `/daftar` returns 200, `/dashboard/*` still redirects (verified at allowlist level in `public-paths.test.ts`: `/daftar` allowed, `/Daftar`, `/daftar/`, `/daftar/1` and `/dashboard/*` rejected; the HTTP 200 check moves to 10.8 because the page does not exist until 7.3)
-- [ ] 7.2 Add the public `submitInterest` action (honeypot, AuditLog-based per-IP limit under keyed lock, lead + `lead.create` in one transaction, returns `wa.me` URL or null); verify action tests for success, honeypot, rate limit, tampered input, missing `DAHAN_WHATSAPP`, and that `lead.create` is absent from every org's audit viewer
+- [x] 7.2 Add the public `submitInterest` action (honeypot, AuditLog-based per-IP limit under keyed lock, lead + `lead.create` in one transaction, returns `wa.me` URL or null); verify action tests for success, honeypot, rate limit, tampered input, missing `DAHAN_WHATSAPP`, and that `lead.create` is absent from every org's audit viewer
 - [ ] 7.3 Build the `/daftar` page (form, consent, success state with WhatsApp link, redirect) and point the landing and `/ormas` CTA to `/daftar`; verify in the browser preview: submit opens the prefilled WhatsApp URL, no external requests, usable at 360px
 - [ ] 7.4 Add `scripts/leads.ts` (`pnpm leads [--csv]`, read-only); verify by running it against the dev DB with two seeded leads
 
@@ -64,6 +64,10 @@
 - [ ] 10.7 The settings form's save-then-display behavior has no automated test, because the repo has no jsdom/component test setup (found at 6.2; only verified manually in the browser). Decide whether to add a client-component test harness or keep browser verification for client forms
 
 - [ ] 10.8 The repo has no test of `proxy.ts` itself (only the pure `isPublicPath`), so "anonymous `/daftar` returns 200 while `/dashboard/*` redirects" was not checked end to end at 7.1 (found at 7.1). After 7.3, verify in the browser preview with no session: `/daftar` returns 200 and `/dashboard/anggota` redirects to `/login`; decide whether a proxy-level test is worth adding
+
+- [ ] 10.9 The generated Prisma client (`lib/generated/prisma`, git-ignored) was stale after the 1.1 migration: it had no `InterestLead`, so the new `submitInterest` tests failed with `tx.interestLead` undefined until `pnpm prisma generate` was run by hand (found at 7.2). Make `pnpm test` (global setup) or a `pretest`/`postinstall` script regenerate the client, and verify a fresh checkout runs `pnpm test` without a manual generate
+- [ ] 10.10 `submitInterest` cannot rate-limit a request whose client IP is unknown (no `x-forwarded-for` / `x-real-ip`): it stores the lead unlimited (found at 7.2; same behavior as the login limiter). Decide whether to refuse or apply a global cap in that case, and confirm the production nginx always sets the header (DEPLOYMENT.md)
+- [ ] 10.11 The rate-limit message ("Terlalu banyak pendaftaran dari jaringan ini, coba lagi nanti") and the generic "Data tidak valid" for tampered input are server-side only; the 7.3 form must show client-side field errors from `interestSchema` and surface these two messages as a form-level error (found at 7.2)
 
 ## 11. Mobile and tablet quality
 
