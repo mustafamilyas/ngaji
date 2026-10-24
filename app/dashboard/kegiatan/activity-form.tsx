@@ -7,14 +7,14 @@ import { useForm, useWatch } from "react-hook-form";
 import { Save } from "lucide-react";
 import { createActivityAction, splitActivityAction, updateActivityAction } from "@/app/dashboard/kegiatan/actions";
 import { Button } from "@/components/ui/button";
+import { touchField, touchLgButton } from "@/components/ui/touch";
 import { cn } from "@/lib/utils";
 import { activityUpdateSchema, type ActivityUpdateInput } from "@/lib/validation/activity";
 import { FREQS } from "@/lib/validation/enums";
 
-const inputClass =
-  "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+const inputClass = touchField;
 const textareaClass =
-  "min-h-16 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+  "min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 xl:min-h-16 xl:text-sm";
 
 const FREQ_LABELS: Record<(typeof FREQS)[number], string> = {
   ONCE: "Sekali",
@@ -171,10 +171,11 @@ export function ActivityForm(props: ActivityFormProps) {
             {WEEKDAY_LABELS.map((label, day) => (
               <label
                 key={day}
-                className="flex items-center gap-1.5 rounded-md border border-input px-2 py-1 text-sm"
+                className="flex min-h-11 items-center gap-2 rounded-md border border-input px-3 text-base xl:min-h-8 xl:px-2 xl:text-sm"
               >
                 <input
                   type="checkbox"
+                  className="size-5 xl:size-4"
                   checked={weekdays.includes(day)}
                   onChange={() => toggleWeekday(day)}
                 />
@@ -217,7 +218,7 @@ export function ActivityForm(props: ActivityFormProps) {
       )}
 
       <div className="flex justify-end border-t pt-4 sm:col-span-2">
-        <Button type="submit" size="lg" disabled={pending} className="w-full sm:w-auto">
+        <Button type="submit" size="lg" disabled={pending} className={cn(touchLgButton, "w-full sm:w-auto")}>
           <Save />
           {pending ? "Menyimpan…" : "Simpan"}
         </Button>
