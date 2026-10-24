@@ -10,7 +10,7 @@ import { ACTIVITY_LIST_DATE_RANGE, PRINT_MAX_MONTHS } from "@/lib/constants";
 import { isWithinMonths, today, weekdayOf } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
 import { formatDate, formatDateRange, parseGroupIds, parseSearch, resolveDateRange } from "@/lib/filters";
-import { getOrganizationName } from "@/lib/organization";
+import { getOrganization } from "@/lib/organization";
 import { cn } from "@/lib/utils";
 import { PrintButton } from "./print-button";
 import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
@@ -48,7 +48,7 @@ export default async function PrintSchedulePage({
       throw error;
     }
   }
-  const organizationName = await getOrganizationName();
+  const { name: organizationName } = await getOrganization(session);
 
   function filterParams(): URLSearchParams {
     const sp = new URLSearchParams();

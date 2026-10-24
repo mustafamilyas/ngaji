@@ -6,24 +6,24 @@ vi.mock("next/font/google", () => ({
   Roboto: () => ({ variable: "" }),
   Geist_Mono: () => ({ variable: "" }),
 }));
-vi.mock("@/lib/organization", () => ({ getOrganizationName: vi.fn() }));
+vi.mock("@/lib/organization", () => ({ getOrganization: vi.fn() }));
 vi.mock("./globals.css", () => ({}));
 
 import { auth } from "@/auth";
-import { getOrganizationName } from "@/lib/organization";
+import { getOrganization } from "@/lib/organization";
 import { generateMetadata } from "./layout";
 
 describe("root generateMetadata", () => {
   beforeEach(() => {
-    vi.mocked(getOrganizationName).mockReset();
-    vi.mocked(getOrganizationName).mockResolvedValue("Pengajian Al-Ikhlas");
+    vi.mocked(getOrganization).mockReset();
+    vi.mocked(getOrganization).mockResolvedValue({ name: "Pengajian Al-Ikhlas", timeZone: "Asia/Jakarta" });
   });
 
   it("uses the Dahan title and never reads the organization for public pages", async () => {
     vi.mocked(auth).mockResolvedValue(null as never);
     const { title } = await generateMetadata();
     expect(title).toEqual({ default: "Dahan", template: "%s · Dahan" });
-    expect(getOrganizationName).not.toHaveBeenCalled();
+    expect(getOrganization).not.toHaveBeenCalled();
   });
 
   it("puts the organization name first for logged-in pages", async () => {
