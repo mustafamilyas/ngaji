@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { StickyNote } from "lucide-react";
 import type { ActivityListEntry } from "@/lib/activity/list";
 import { addDays, monthEndOf, monthStartOf, sundayOf } from "@/lib/dates";
 
@@ -43,7 +44,7 @@ export function ActivityCalendar({
           <div key={label}>{label}</div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
         {days.map((date) => {
           const dayEntries = entriesByDate.get(date) ?? [];
           const inMonth = date >= monthStart && date <= monthEnd;
@@ -59,8 +60,29 @@ export function ActivityCalendar({
               }`}
             >
               <span className="text-xs font-medium">{Number(date.slice(-2))}</span>
+              {/* Phones: cells are about 45px wide, so show one dot per occurrence and open the day for the text. */}
+              {dayEntries.length > 0 && (
+                <span data-day-dots className="mt-0.5 flex flex-wrap items-center gap-0.5 sm:hidden">
+                  {visible.map((entry) => (
+                    <span
+                      key={`${entry.activityId}:${entry.key}`}
+                      aria-hidden="true"
+                      className={`size-1.5 rounded-full ${
+                        entry.status === "CANCELLED"
+                          ? "bg-muted-foreground/40"
+                          : entry.hasConflict
+                            ? "bg-destructive"
+                            : "bg-primary"
+                      }`}
+                    />
+                  ))}
+                  {visible.some((entry) => entry.effectiveNotes) && (
+                    <StickyNote data-notes-marker aria-hidden="true" className="size-2.5 text-muted-foreground" />
+                  )}
+                </span>
+              )}
               {visible.map((entry) => (
-                <div key={`${entry.activityId}:${entry.key}`} className="flex flex-col gap-0.5">
+                <div key={`${entry.activityId}:${entry.key}`} className="hidden flex-col gap-0.5 sm:flex">
                   <span className="truncate text-[10px] leading-tight">
                     {entry.effectiveStartTime} {entry.activityName}
                   </span>
@@ -91,7 +113,7 @@ export function ActivityCalendar({
                   )}
                 </div>
               ))}
-              {overflow > 0 && <span className="text-[9px] text-muted-foreground">+{overflow} lagi</span>}
+              {overflow > 0 && <span className="hidden text-[9px] text-muted-foreground sm:block">+{overflow} lagi</span>}
             </Link>
           );
         })}

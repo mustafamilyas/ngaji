@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { MoreVertical } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,10 +17,10 @@ export type RowAction = { label: string; href: string; icon?: React.ReactNode; e
  * Kebab menu at the end of a table row. Links only: destructive actions stay
  * in the detail page's danger zone, where their consequence is explained.
  */
-export function RowActions({ label, actions }: { label: string; actions: RowAction[] }) {
+export function RowActions({ label, actions, className }: { label: string; actions: RowAction[]; className?: string }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger aria-label={`Aksi untuk ${label}`} className={buttonVariants({ variant: "ghost", size: "icon" })}>
+      <DropdownMenuTrigger aria-label={`Aksi untuk ${label}`} className={cn(buttonVariants({ variant: "ghost", size: "icon" }), className)}>
         <MoreVertical />
       </DropdownMenuTrigger>
       <DropdownMenuContent>

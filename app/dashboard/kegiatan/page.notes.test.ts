@@ -168,4 +168,37 @@ describe("ActivityListPage Keterangan", () => {
     expect(html).not.toContain("Kajian Leaf Saja");
     expect(html).not.toContain("Rahasia leaf");
   });
+
+  it("lays the list out as stacked rows below md and as a table from md, in the same markup", async () => {
+    const fixture = await buildPageFixture("notes-stacked");
+    const { admin } = await weekly(fixture, "leaf", "Kajian Bertumpuk", "Bawa mushaf");
+
+    const html = await render(admin);
+
+    expect(html).toMatch(/<table[^>]*class="[^"]*\bblock\b[^"]*\bmd:table\b/);
+    expect(html).toMatch(/<thead[^>]*class="[^"]*\bhidden\b[^"]*\bmd:table-header-group\b/);
+    expect(html).toMatch(/<tbody[^>]*class="[^"]*\bblock\b[^"]*\bmd:table-row-group\b/);
+    const rows = html.match(/<tr\b[^>]*class="[^"]*"[^>]*>/g) ?? [];
+    const bodyRows = rows.filter((tag) => tag.includes("md:table-row") && tag.includes("grid"));
+    expect(bodyRows).toHaveLength(5);
+    expect(count(html, ">Kajian Bertumpuk</a>")).toBe(5);
+    expect(html).toMatch(/aria-label="Aksi untuk Kajian Bertumpuk[^"]*"[^>]*class="[^"]*\bsize-11\b[^"]*\bxl:size-8\b/);
+  });
+
+  it("shows marker dots instead of text lines in calendar cells below sm", async () => {
+    const fixture = await buildPageFixture("notes-calendar-dots");
+    const { admin, activity } = await weekly(fixture, "leaf", "Kajian Titik");
+    await overrideOccurrence(admin, {
+      activityId: activity.id,
+      date: "2026-03-23",
+      status: "SCHEDULED",
+      overrideNotes: "Pengajar: Ilyas",
+    });
+
+    const html = await render(admin, { view: "calendar" });
+
+    expect(count(html, "data-day-dots")).toBe(5); // one per Monday with an occurrence
+    expect(count(html, "data-notes-marker")).toBe(1); // only 03-23 has notes
+    expect(html).toMatch(/class="hidden flex-col gap-0\.5 sm:flex"[^>]*>(?:(?!<\/a>).)*data-occurrence-notes/); // text lines only from sm
+  });
 });

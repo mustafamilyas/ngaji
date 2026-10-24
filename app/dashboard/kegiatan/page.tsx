@@ -38,6 +38,9 @@ import { pageHref, paginate } from "@/lib/pagination";
 import { parseSort, sortHref, sortPreserve } from "@/lib/sort";
 import { cn } from "@/lib/utils";
 
+/** Table cell that becomes a plain stacked block below md. */
+const stackedCell = "block px-0 py-0 whitespace-normal md:table-cell md:px-4 md:py-2.5 md:whitespace-nowrap";
+
 export default async function ActivityListPage({
   searchParams,
 }: {
@@ -220,8 +223,9 @@ export default async function ActivityListPage({
           </div>
         ) : entries.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className={tableClass}>
-              <thead>
+            {/* Below md the same table markup is laid out as stacked rows (no sideways scrolling); sort headers are table-only. */}
+            <table className={cn(tableClass, "block md:table")}>
+              <thead className="hidden md:table-header-group">
                 <tr className={theadRowClass}>
                   {th("tanggal", "Tanggal")}
                   {th("kegiatan", "Kegiatan")}
@@ -232,20 +236,23 @@ export default async function ActivityListPage({
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="block md:table-row-group">
                 {listPage.items.map((entry) => {
                   const cancelled = entry.status === "CANCELLED";
                   const attendanceHref = `/dashboard/kegiatan/${entry.activityId}/${entry.key}`;
                   const canRecordNow = entry.canRecord && !cancelled && entry.effectiveDate <= now;
                   return (
-                    <tr key={`${entry.activityId}:${entry.key}`} className={trClass}>
-                      <td className={cn(tdClass, "tabular-nums")}>
+                    <tr
+                      key={`${entry.activityId}:${entry.key}`}
+                      className={cn(trClass, "grid grid-cols-[1fr_auto] gap-x-2 px-4 py-3 md:table-row md:p-0")}
+                    >
+                      <td className={cn(tdClass, stackedCell, "col-start-1 tabular-nums")}>
                         <span className={cn(cancelled && "text-muted-foreground line-through")}>
                           {WEEKDAY_LABELS[weekdayOf(entry.effectiveDate)].slice(0, 3)}, {formatDate(entry.effectiveDate)}
                         </span>
                         <span className="block text-xs text-muted-foreground">{entry.effectiveStartTime}</span>
                       </td>
-                      <td className={tdClass}>
+                      <td className={cn(tdClass, stackedCell, "col-start-1")}>
                         <Link href={`/dashboard/kegiatan/${entry.activityId}`} className="font-medium hover:underline">
                           {entry.activityName}
                         </Link>
@@ -260,12 +267,18 @@ export default async function ActivityListPage({
                         </span>
                         <OccurrenceNotes notes={entry.effectiveNotes} />
                       </td>
-                      <td className={tdClass}>{entry.groupName}</td>
-                      <td className={cn(tdClass, "max-w-56 truncate text-muted-foreground")} title={entry.effectiveLocation}>
+                      <td className={cn(tdClass, stackedCell, "col-start-1 text-xs text-muted-foreground md:text-sm md:text-foreground")}>
+                        {entry.groupName}
+                      </td>
+                      <td
+                        className={cn(tdClass, stackedCell, "col-start-1 text-xs text-muted-foreground md:max-w-56 md:truncate md:text-sm")}
+                        title={entry.effectiveLocation}
+                      >
                         {entry.effectiveLocation}
                       </td>
-                      <td className="px-2 py-1 text-right">
+                      <td className="col-start-2 row-start-1 row-span-2 self-start px-0 py-0 text-right md:px-2 md:py-1">
                         <RowActions
+                          className="size-11 xl:size-8"
                           label={`${entry.activityName} ${formatDate(entry.effectiveDate)}`}
                           actions={[
                             {
