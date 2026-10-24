@@ -32,7 +32,7 @@
 
 ## 6. Organization settings
 
-- [ ] 6.1 Add `updateOrganization` mutation + server action (name, timezone, audit with before/after); verify action tests for success and both denial cases
+- [x] 6.1 Add `updateOrganization` mutation + server action (name, timezone, audit with before/after); verify action tests for success and both denial cases
 - [ ] 6.2 Build `/dashboard/pengaturan` (org form + level renaming), redirect `/dashboard/pengaturan/jenjang`, show "Pengaturan" nav only to root OWNERs; verify page tests for root OWNER (forms shown) and others (no-permission message), and check in the browser preview at 360px
 
 ## 7. Interest sign-up

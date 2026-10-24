@@ -5,6 +5,14 @@ import { usernameSchema } from "./username";
 
 const nameSchema = z.string().trim().min(1, "Nama wajib diisi").max(100, "Nama terlalu panjang");
 
+/** Settings form + Server Action (organization-settings spec); never carries an organization id. */
+export const updateOrganizationSchema = z.object({
+  name: nameSchema,
+  timezone: z.enum(TIMEZONES, { error: "Zona waktu tidak didukung" }),
+});
+/** Raw form values: validated (timezone narrowed to `Timezone`) by `updateOrganizationSchema`. */
+export type UpdateOrganizationInput = { name: string; timezone: string };
+
 /** Input of `provisionOrganization` (organization-provisioning spec); the CLI builds it from environment variables. */
 export const provisionOrganizationSchema = z.object({
   organizationName: nameSchema,
