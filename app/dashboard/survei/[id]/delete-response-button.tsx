@@ -5,6 +5,8 @@ import { useState, useTransition } from "react";
 import { Trash2 } from "lucide-react";
 import { deleteSurveyResponseAction } from "@/app/dashboard/survei/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { touchIconButton, touchLgButton } from "@/components/ui/touch";
+import { cn } from "@/lib/utils";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 /** Trash button that asks for confirmation before removing one member's response. */
@@ -39,7 +41,7 @@ export function DeleteResponseButton({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         aria-label={`Hapus respons ${memberName}`}
-        className={buttonVariants({ variant: "ghost", size: "icon" })}
+        className={cn(buttonVariants({ variant: "ghost", size: "icon" }), touchIconButton)}
       >
         <Trash2 />
       </DialogTrigger>
@@ -54,8 +56,8 @@ export function DeleteResponseButton({
           </p>
         )}
         <div className="mt-5 flex justify-end gap-2">
-          <DialogClose className={buttonVariants({ variant: "outline", size: "lg" })}>Batal</DialogClose>
-          <Button variant="destructive" size="lg" onClick={confirm} disabled={pending}>
+          <DialogClose className={cn(buttonVariants({ variant: "outline", size: "lg" }), touchLgButton)}>Batal</DialogClose>
+          <Button variant="destructive" size="lg" className={touchLgButton} onClick={confirm} disabled={pending}>
             {pending ? "Menghapus…" : "Hapus"}
           </Button>
         </div>
