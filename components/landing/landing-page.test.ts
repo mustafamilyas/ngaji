@@ -8,7 +8,9 @@ vi.mock("next/font/google", () => ({
 import { db } from "@/lib/db";
 import { buildPageFixture } from "@/lib/test/fixtures";
 import OrmasPage from "@/app/ormas/page";
+import { Footer } from "./footer";
 import { LandingPage } from "./landing-page";
+import { TopBar } from "./top-bar";
 
 function renderGeneric() {
   return renderToStaticMarkup(LandingPage({}));
@@ -102,5 +104,30 @@ describe("OrmasPage", () => {
   it("sets the page title", async () => {
     const { metadata } = await import("@/app/ormas/page");
     expect(metadata.title).toBe("Untuk ormas");
+  });
+});
+
+describe("landing tap targets", () => {
+  const links = (html: string) => html.match(/<a\b[^>]*>/g) ?? [];
+
+  it("makes every footer link at least 44px tall", () => {
+    const tags = links(renderToStaticMarkup(Footer()));
+    expect(tags).toHaveLength(3);
+    for (const tag of tags) expect(tag).toMatch(/\bmin-h-11\b/);
+  });
+
+  it("makes the top-bar logo and login links at least 44px tall", () => {
+    const tags = links(renderToStaticMarkup(TopBar({ segmentLink: null })));
+    const logo = tags.find((tag) => tag.includes('href="/"'));
+    const login = tags.find((tag) => tag.includes('href="/login"'));
+    expect(logo).toMatch(/\bmin-h-11\b/);
+    expect(login).toMatch(/\bmin-h-11\b/);
+  });
+
+  it("makes the top-bar section links at least 44px tall for tablets", () => {
+    const tags = links(renderToStaticMarkup(TopBar({ segmentLink: { href: "/ormas", label: "Untuk ormas" } })));
+    const sections = tags.filter((tag) => tag.includes('href="#') || tag.includes('href="/ormas"'));
+    expect(sections).toHaveLength(3);
+    for (const tag of sections) expect(tag).toMatch(/\bmin-h-11\b/);
   });
 });
