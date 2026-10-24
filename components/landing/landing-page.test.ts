@@ -39,26 +39,25 @@ describe("LandingPage (generic)", () => {
     expect(renderGeneric().toLowerCase()).not.toContain("harga");
   });
 
-  it("links the WhatsApp CTA to the configured number, opening a new tab safely", () => {
+  it("links the contact CTA to /daftar in the hero and the closing section, never straight to wa.me", () => {
     vi.stubEnv("DAHAN_WHATSAPP", "0812-3456-7890");
     const html = renderGeneric();
-    expect(html).toContain('href="https://wa.me/6281234567890"');
-    expect(html).toContain('target="_blank"');
-    expect(html).toContain('rel="noopener noreferrer"');
-    expect(html).toContain("Hubungi via WhatsApp");
-  });
-
-  it("renders without a CTA when no number is configured", () => {
-    vi.stubEnv("DAHAN_WHATSAPP", "");
-    const html = renderGeneric();
+    expect(html.match(/href="\/daftar"/g)).toHaveLength(2);
+    expect(html).toContain("Daftar minat");
     expect(html).not.toContain("wa.me");
     expect(html).not.toContain("Hubungi via WhatsApp");
+  });
+
+  it.each(["", "abc"])("still renders the CTA to /daftar when DAHAN_WHATSAPP is %j", (value) => {
+    vi.stubEnv("DAHAN_WHATSAPP", value);
+    const html = renderGeneric();
+    expect(html.match(/href="\/daftar"/g)).toHaveLength(2);
+    expect(html).not.toContain("wa.me");
     expect(html).toContain('href="/login"');
   });
 
-  it("renders without a CTA when the configured number is invalid", () => {
-    vi.stubEnv("DAHAN_WHATSAPP", "abc");
-    expect(renderGeneric()).not.toContain("wa.me");
+  it("opens /daftar in the same tab", () => {
+    expect(renderGeneric()).not.toMatch(/href="\/daftar"[^>]*target="_blank"/);
   });
 
   it("exposes no organization or group names and makes no database query", async () => {
@@ -92,10 +91,11 @@ describe("OrmasPage", () => {
     }
   });
 
-  it("has the same contact CTA and login link", () => {
-    vi.stubEnv("DAHAN_WHATSAPP", "0812-3456-7890");
+  it("has the same contact CTA to /daftar and login link", () => {
+    vi.stubEnv("DAHAN_WHATSAPP", "");
     const html = renderToStaticMarkup(OrmasPage());
-    expect(html).toContain('href="https://wa.me/6281234567890"');
+    expect(html.match(/href="\/daftar"/g)).toHaveLength(2);
+    expect(html).not.toContain("wa.me");
     expect(html).toContain('href="/login"');
   });
 

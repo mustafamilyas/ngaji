@@ -1,4 +1,3 @@
-import { contactWhatsappUrl } from "@/lib/landing/contact";
 import { GENERIC_LANDING, type LandingContent } from "./content";
 import { CtaSection } from "./cta-section";
 import { DataProtection } from "./data-protection";
@@ -10,10 +9,9 @@ import { TopBar } from "./top-bar";
 
 /**
  * Public marketing page. Static copy only: it must not read the database or show any
- * organization data (spec: landing-page). The only runtime input is `DAHAN_WHATSAPP`.
+ * organization data (spec: landing-page). The contact CTA links to `/daftar`, which owns the WhatsApp handoff.
  */
 export function LandingPage({ content = GENERIC_LANDING }: { content?: LandingContent }) {
-  const whatsappHref = contactWhatsappUrl();
   return (
     <div
       className={`${landingHeading.variable} landing min-h-dvh overflow-x-clip bg-(--l-paper) text-(--l-ink)`}
@@ -22,10 +20,10 @@ export function LandingPage({ content = GENERIC_LANDING }: { content?: LandingCo
       <div className="mx-auto max-w-[1120px] px-4 sm:px-6">
         <TopBar segmentLink={content.segmentLink} />
         <main>
-          <Hero content={content} whatsappHref={whatsappHref} />
+          <Hero content={content} />
           <HowItWorks content={content} />
           <DataProtection protection={content.protection} />
-          {whatsappHref && <CtaSection cta={content.cta} href={whatsappHref} />}
+          <CtaSection cta={content.cta} />
         </main>
         <Footer />
       </div>

@@ -37,7 +37,7 @@ const PROTECTION_POINTS = [
   "Dirancang dengan memperhatikan Undang-Undang Pelindungan Data Pribadi (UU PDP).",
 ];
 
-const CTA_BUTTON = "Hubungi via WhatsApp";
+const CTA_BUTTON = "Daftar minat";
 
 export const GENERIC_LANDING: LandingContent = {
   headline: "Kelola anggota dan kegiatan organisasi yang berjenjang.",
