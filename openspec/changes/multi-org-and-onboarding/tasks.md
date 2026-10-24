@@ -40,7 +40,7 @@
 - [x] 7.1 Add `/daftar` to the public allowlist in `lib/auth/public-paths.ts`; verify the proxy test: anonymous `/daftar` returns 200, `/dashboard/*` still redirects (verified at allowlist level in `public-paths.test.ts`: `/daftar` allowed, `/Daftar`, `/daftar/`, `/daftar/1` and `/dashboard/*` rejected; the HTTP 200 check moves to 10.8 because the page does not exist until 7.3)
 - [x] 7.2 Add the public `submitInterest` action (honeypot, AuditLog-based per-IP limit under keyed lock, lead + `lead.create` in one transaction, returns `wa.me` URL or null); verify action tests for success, honeypot, rate limit, tampered input, missing `DAHAN_WHATSAPP`, and that `lead.create` is absent from every org's audit viewer
 - [x] 7.3 Build the `/daftar` page (form, consent, success state with WhatsApp link, redirect) and point the landing and `/ormas` CTA to `/daftar`; verify in the browser preview: submit opens the prefilled WhatsApp URL, no external requests, usable at 360px
-- [ ] 7.4 Add `scripts/leads.ts` (`pnpm leads [--csv]`, read-only); verify by running it against the dev DB with two seeded leads
+- [x] 7.4 Add `scripts/leads.ts` (`pnpm leads [--csv]`, read-only); verify by running it against the dev DB with two seeded leads
 
 ## 8. Keterangan and compact print
 
@@ -72,6 +72,9 @@
 - [ ] 10.12 `/daftar` form behavior (client validation, success state, redirect to WhatsApp, server-error alert) has no automated test, only a manual browser check at 7.3 (360px and 768px); same gap as 10.7. Decide together with 10.7 whether to add a jsdom/component harness
 - [ ] 10.13 The server-error path of the `/daftar` form (rate limit and "Data tidak valid" shown as a form-level alert) was not exercised in the browser at 7.3; trigger it (6 submissions from one IP) and check the alert at 360px
 - [ ] 10.14 The two test leads created in `prisma/dev.db` during the 7.3 browser check ("Uji Dahan", "Uji Tablet") stay there and are reused for the 7.4 check; remove them before using the dev DB for anything real (no delete path exists by design; use sqlite3)
+
+- [ ] 10.15 `pnpm leads` prints the table time in UTC (`waktu (UTC)`), matching the CSV, because leads belong to no organization and so have no timezone to use (found at 7.4). Decide whether the maintainer would rather see local time (e.g. Asia/Jakarta) in the table
+- [ ] 10.16 `scripts/leads.ts` has no automated test of the script itself (argument handling and query ordering are tested in `lib/interest/leads.test.ts`; the run against the dev DB was manual at 7.4, including that row and audit counts did not change)
 
 ## 11. Mobile and tablet quality
 
