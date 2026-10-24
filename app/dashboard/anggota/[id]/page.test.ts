@@ -12,7 +12,7 @@ vi.mock("next/navigation", async (importOriginal) => {
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { buildPageFixture, mockAuthSession, sessionFor } from "@/lib/test/fixtures";
+import { buildOrgFixture, buildPageFixture, mockAuthSession, sessionFor } from "@/lib/test/fixtures";
 import MemberDetailPage from "./page";
 
 describe("MemberDetailPage", () => {
@@ -72,5 +72,15 @@ describe("MemberDetailPage", () => {
     await expect(MemberDetailPage({ params: Promise.resolve({ id: "1" }), searchParams: Promise.resolve({}) })).rejects.toMatchObject({
       digest: expect.stringContaining("NEXT_REDIRECT"),
     });
+  });
+
+  it("responds 404 for a member of another organization and renders none of their data", async () => {
+    const orgA = await buildOrgFixture("anggota-detail-org-a");
+    const orgB = await buildOrgFixture("anggota-detail-org-b");
+    mockAuthSession(auth, { user: orgA.owner });
+
+    await expect(
+      MemberDetailPage({ params: Promise.resolve({ id: String(orgB.memberId) }), searchParams: Promise.resolve({}) }),
+    ).rejects.toMatchObject({ digest: expect.stringContaining("NEXT_HTTP_ERROR_FALLBACK;404") });
   });
 });

@@ -174,7 +174,7 @@ export async function buildOrgFixture(
     ...base,
     organizationName: organization.name,
     timezone,
-    owner: sessionFor(base.actorId, "OWNER", base.root),
+    owner: sessionFor(base.actorId, "OWNER", { ...base.root, organizationId: organization.id }, timezone),
     levelNames: levels.map((level) => level.name),
   };
 }
