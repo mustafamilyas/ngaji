@@ -8,15 +8,15 @@ import { Save } from "lucide-react";
 import { createMemberAction, updateMemberAction } from "@/app/dashboard/anggota/actions";
 import { GroupAutocomplete, type GroupAutocompleteOption } from "@/components/group-autocomplete";
 import { Button } from "@/components/ui/button";
+import { touchField, touchLgButton } from "@/components/ui/touch";
 import { cn } from "@/lib/utils";
 import { formatEnumLabel, SEX_LABELS } from "@/lib/member/labels";
 import { MARITAL_STATUSES, MEMBER_STATUSES, SEXES, WORK_STATUSES } from "@/lib/validation/enums";
 import { memberFormSchema, type MemberFormValues } from "@/lib/validation/member";
 
-const inputClass =
-  "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+const inputClass = touchField;
 const textareaClass =
-  "min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+  "min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 xl:min-h-20 xl:text-sm";
 
 function Field({
   label,
@@ -120,11 +120,11 @@ export function MemberForm(props: MemberFormProps) {
       )}
 
       <Field label="Nama" htmlFor="name" error={errors.name?.message} wide>
-        <input id="name" className={inputClass} {...register("name")} />
+        <input id="name" className={inputClass} autoComplete="off" {...register("name")} />
       </Field>
 
       <Field label="Tempat lahir" htmlFor="birthPlace" error={errors.birthPlace?.message}>
-        <input id="birthPlace" className={inputClass} {...register("birthPlace")} />
+        <input id="birthPlace" className={inputClass} autoComplete="off" {...register("birthPlace")} />
       </Field>
 
       <Field label="Tanggal lahir" htmlFor="birthDate" error={errors.birthDate?.message}>
@@ -142,11 +142,11 @@ export function MemberForm(props: MemberFormProps) {
       </Field>
 
       <Field label="Alamat" htmlFor="address" error={errors.address?.message} wide>
-        <textarea id="address" className={textareaClass} {...register("address")} />
+        <textarea id="address" className={textareaClass} autoComplete="off" {...register("address")} />
       </Field>
 
       <Field label="No. HP" htmlFor="phone" error={errors.phone?.message}>
-        <input id="phone" className={inputClass} {...register("phone")} />
+        <input id="phone" type="tel" inputMode="tel" autoComplete="off" className={inputClass} {...register("phone")} />
       </Field>
 
       <Field label="Status pernikahan" htmlFor="maritalStatus" error={errors.maritalStatus?.message}>
@@ -170,7 +170,7 @@ export function MemberForm(props: MemberFormProps) {
       </Field>
 
       <Field label="Email (opsional)" htmlFor="email" error={errors.email?.message}>
-        <input id="email" type="email" className={inputClass} {...register("email")} />
+        <input id="email" type="email" inputMode="email" autoComplete="off" className={inputClass} {...register("email")} />
       </Field>
 
       <Field label="Status keanggotaan" htmlFor="status" error={errors.status?.message}>
@@ -200,7 +200,7 @@ export function MemberForm(props: MemberFormProps) {
       )}
 
       <div className="flex justify-end border-t pt-4 sm:col-span-2">
-        <Button type="submit" size="lg" disabled={pending} className="w-full sm:w-auto">
+        <Button type="submit" size="lg" disabled={pending} className={cn("w-full sm:w-auto", touchLgButton)}>
           <Save />
           {pending ? "Menyimpan…" : "Simpan"}
         </Button>
