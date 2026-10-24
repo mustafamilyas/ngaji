@@ -50,7 +50,7 @@
 ## 9. Docs and final checks
 
 - [x] 9.1 Update DESIGN.md (§1 tenancy, §2 schema, §3.2 `organization.update`, §4.5 new audit actions, §7 pages `/daftar` + `/dashboard/pengaturan`, §8 `org:create`, §10 multi-org row), DEPLOYMENT.md (`org:create`, `BOOTSTRAP_TIMEZONE`, `LOGIN_SHOW_ORG_NAME`, `pnpm leads`), CLAUDE.md commands and `openspec/config.yaml` context; verify they match the specs
-- [ ] 9.2 Run `pnpm lint && pnpm tsc --noEmit && pnpm test` and verify everything passes
+- [x] 9.2 Run `pnpm lint && pnpm tsc --noEmit && pnpm test` and verify everything passes (lint clean, tsc exit 0, 130 files / 1304 tests passed; tsc is clean only because `.next/types` was removed earlier, so 10.1 is still open)
 
 ## 10. Additional tasks (failures found during implementation)
 
