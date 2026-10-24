@@ -50,4 +50,10 @@ describe("SurveyListPage phone and tablet layout", () => {
     expect(classOf(html, /<a[^>]*href="\/dashboard\/survei\/\d+"[^>]*>(?=Survei Tata Letak)/)).toMatch(/\bmin-h-11\b/);
     expect(classOf(html, /<a[^>]*href="\/dashboard\/survei\/baru"[^>]*>/)).toMatch(/\bh-11\b/);
   });
+
+  it("offers a phone sort select in the filter bar", async () => {
+    const html = await render("survei-layout-sort");
+
+    expect(html).toMatch(/<select[^>]*aria-label="Urutkan"[^>]*>/);
+  });
 });

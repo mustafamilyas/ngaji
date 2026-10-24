@@ -52,4 +52,10 @@ describe("UsersPage phone and tablet layout", () => {
     expect(classOf(html, /<button[^>]*>(?=(?:(?!<\/button>).)*Tambah pengguna)/)).toMatch(/\bh-11\b/);
     expect(classOf(html, /<input[^>]*type="search"[^>]*>/)).toMatch(/\bh-11\b.*\btext-base\b/);
   });
+
+  it("offers a phone sort select in the filter bar", async () => {
+    const html = await render("pengguna-layout-sort");
+
+    expect(html).toMatch(/<select[^>]*aria-label="Urutkan"[^>]*>/);
+  });
 });

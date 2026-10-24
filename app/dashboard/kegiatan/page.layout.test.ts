@@ -56,4 +56,17 @@ describe("ActivityListPage toolbar phone and tablet sizes", () => {
 
     expect(classOf(html, /<a[^>]*href="\/dashboard\/kegiatan\/\d+"[^>]*>(?=Kegiatan|[A-Z])/)).toMatch(/\bmin-h-11\b/);
   });
+
+  it("offers a phone sort select in the filter bar", async () => {
+    const html = await render("kegiatan-layout-sort");
+
+    expect(html).toMatch(/<select[^>]*aria-label="Urutkan"[^>]*>/);
+  });
+
+  it("gives the calendar 44px day cells and a legend on phones", async () => {
+    const html = await render("kegiatan-calendar-cells", { view: "calendar" });
+
+    expect(html).toMatch(/<div class="[^"]*\bp-1\b[^"]*\bsm:p-4\b[^"]*"><div class="flex flex-col gap-1">/);
+    expect(html).toMatch(/<p[^>]*data-calendar-legend[^>]*class="[^"]*\bsm:hidden\b/);
+  });
 });

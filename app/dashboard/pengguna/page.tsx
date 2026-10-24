@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { SortableTh, TableCard, tableClass, tdClass, thClass, theadRowClass, trClass } from "@/components/data-table";
 import { FilterBar, SearchFilter } from "@/components/filters/filter-bar";
 import { GroupFilter } from "@/components/filters/group-filter";
+import { SortSelect } from "@/components/filters/sort-select";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -12,7 +13,7 @@ import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
 import { parseGroupIds, parsePage, parseSearch } from "@/lib/filters";
 import { pageHref } from "@/lib/pagination";
-import { parseSort, sortHref, sortPreserve } from "@/lib/sort";
+import { parseSort, sortHref } from "@/lib/sort";
 import { DEFAULT_USER_SORT, listUsers, USER_SORT_KEYS, type UserSortKey } from "@/lib/user/queries";
 import { userRowPermissions } from "@/lib/user/row-permissions";
 import { cn, initials } from "@/lib/utils";
@@ -96,12 +97,16 @@ export default async function UsersPage({
         toolbar={
           <FilterBar
             action="/dashboard/pengguna"
-            preserve={sortPreserve(sort, DEFAULT_USER_SORT)}
             isFiltered={isFiltered}
             resetHref="/dashboard/pengguna"
           >
             <SearchFilter value={q} placeholder="Cari nama atau username…" />
             <GroupFilter groups={groups} selected={groupIds ?? []} hint="Termasuk semua grup di bawahnya." />
+            <SortSelect
+              options={[{ key: "nama", label: "Nama" }, ...COLUMNS]}
+              current={sort}
+              fallback={DEFAULT_USER_SORT}
+            />
           </FilterBar>
         }
         footer={

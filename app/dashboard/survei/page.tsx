@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { SortableTh, StatTile, StatTiles, TableCard, tableClass, tdClass, thClass, theadRowClass, trClass } from "@/components/data-table";
 import { FilterBar, SearchFilter } from "@/components/filters/filter-bar";
 import { GroupFilter } from "@/components/filters/group-filter";
+import { SortSelect } from "@/components/filters/sort-select";
 import { MetaItem, PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { RowActions, type RowAction } from "@/components/row-actions";
@@ -16,7 +17,7 @@ import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
 import { formatDate, parseGroupIds, parsePage, parseSearch } from "@/lib/filters";
 import { pageHref } from "@/lib/pagination";
-import { parseSort, sortHref, sortPreserve } from "@/lib/sort";
+import { parseSort, sortHref } from "@/lib/sort";
 import { listSurveys } from "@/lib/survey/list";
 import { DEFAULT_SURVEY_SORT, SURVEY_SORT_KEYS, type SurveySortKey } from "@/lib/survey/list-sort";
 import { cn } from "@/lib/utils";
@@ -102,7 +103,6 @@ export default async function SurveyListPage({
         toolbar={
           <FilterBar
             action="/dashboard/survei"
-            preserve={sortPreserve(sort, DEFAULT_SURVEY_SORT)}
             isFiltered={isFiltered}
             resetHref="/dashboard/survei"
           >
@@ -113,6 +113,16 @@ export default async function SurveyListPage({
               active={Boolean(groupIds)}
               withDescendantsAction
               hint="Menampilkan survei yang berlaku untuk grup terpilih, termasuk dari grup induknya."
+            />
+            <SortSelect
+              options={[
+                { key: "judul", label: "Judul" },
+                { key: "grup", label: "Grup pemilik" },
+                { key: "respons", label: "Respons" },
+                { key: "dibuat", label: "Dibuat" },
+              ]}
+              current={sort}
+              fallback={DEFAULT_SURVEY_SORT}
             />
           </FilterBar>
         }

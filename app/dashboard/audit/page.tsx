@@ -6,6 +6,7 @@ import { Pagination } from "@/components/pagination";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { FilterBar, SelectFilter } from "@/components/filters/filter-bar";
 import { GroupFilter } from "@/components/filters/group-filter";
+import { SortSelect } from "@/components/filters/sort-select";
 import { visibleGroupsWhere } from "@/lib/authz";
 import { AUDIT_ACTIONS, AUDIT_DATE_RANGE } from "@/lib/constants";
 import { db } from "@/lib/db";
@@ -14,7 +15,7 @@ import { NotFoundError } from "@/lib/errors";
 import { parseGroupIds, parsePage, resolveDateRange } from "@/lib/filters";
 import { AUDIT_SORT_KEYS, type AuditSortKey, DEFAULT_AUDIT_SORT, listAuditLog } from "@/lib/audit-log/queries";
 import { pageHref } from "@/lib/pagination";
-import { parseSort, sortHref, sortPreserve } from "@/lib/sort";
+import { parseSort, sortHref } from "@/lib/sort";
 import { listUsersInScope } from "@/lib/user/queries";
 import { cn } from "@/lib/utils";
 import { AuditDetailDialog } from "./audit-detail-dialog";
@@ -98,7 +99,6 @@ export default async function AuditPage({
         toolbar={
           <FilterBar
             action="/dashboard/audit"
-            preserve={sortPreserve(sort, DEFAULT_AUDIT_SORT)}
             isFiltered={isFiltered}
             resetHref="/dashboard/audit"
           >
@@ -121,6 +121,16 @@ export default async function AuditPage({
               label="Aktor"
               allLabel="Semua aktor"
               options={actors.map((role) => ({ value: String(role.user.id), label: role.user.name }))}
+            />
+            <SortSelect
+              options={[
+                { key: "waktu", label: "Waktu" },
+                { key: "aksi", label: "Aksi" },
+                { key: "aktor", label: "Aktor" },
+                { key: "entitas", label: "Entitas" },
+              ]}
+              current={sort}
+              fallback={DEFAULT_AUDIT_SORT}
             />
           </FilterBar>
         }

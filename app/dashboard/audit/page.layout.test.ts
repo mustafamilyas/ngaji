@@ -57,4 +57,10 @@ describe("AuditPage phone and tablet layout", () => {
 
     expect(classOf(html, /<button[^>]*aria-label="Detail member.create"[^>]*>/)).toMatch(/\bsize-11\b.*\bxl:size-8\b/);
   });
+
+  it("offers a phone sort select in the filter bar", async () => {
+    const html = await render("audit-layout-sort");
+
+    expect(html).toMatch(/<select[^>]*aria-label="Urutkan"[^>]*>/);
+  });
 });

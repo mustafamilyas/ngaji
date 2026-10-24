@@ -23,6 +23,7 @@ import { Pagination } from "@/components/pagination";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { FilterBar, SearchFilter } from "@/components/filters/filter-bar";
 import { GroupFilter } from "@/components/filters/group-filter";
+import { SortSelect } from "@/components/filters/sort-select";
 import { ActivityCalendar } from "./activity-calendar";
 import { OccurrenceNotes } from "./occurrence-notes";
 import { WEEKDAY_LABELS } from "@/lib/activity/labels";
@@ -193,10 +194,7 @@ export default async function ActivityListPage({
         toolbar={
           <FilterBar
             action="/dashboard/kegiatan"
-            preserve={{
-              view: view === "calendar" ? "calendar" : undefined,
-              ...sortPreserve(sort, DEFAULT_ACTIVITY_SORT),
-            }}
+            preserve={{ view: view === "calendar" ? "calendar" : undefined }}
             isFiltered={isFiltered}
             resetHref={view === "calendar" ? "/dashboard/kegiatan?view=calendar" : "/dashboard/kegiatan"}
           >
@@ -209,6 +207,18 @@ export default async function ActivityListPage({
               hint="Menampilkan kegiatan yang berlaku untuk grup terpilih, termasuk dari grup induknya."
             />
             <DateRangeFilter range={dateRange} {...ACTIVITY_LIST_DATE_RANGE} today={now} />
+            {view === "list" && (
+              <SortSelect
+                options={[
+                  { key: "tanggal", label: "Tanggal" },
+                  { key: "kegiatan", label: "Kegiatan" },
+                  { key: "grup", label: "Grup" },
+                  { key: "lokasi", label: "Lokasi" },
+                ]}
+                current={sort}
+                fallback={DEFAULT_ACTIVITY_SORT}
+              />
+            )}
           </FilterBar>
         }
         footer={
@@ -218,7 +228,7 @@ export default async function ActivityListPage({
         }
       >
         {view === "calendar" ? (
-          <div className="p-4">
+          <div className="p-1 sm:p-4">
             <ActivityCalendar entries={entries} month={from} dayHref={dayHref} />
           </div>
         ) : entries.length > 0 ? (

@@ -7,6 +7,7 @@ import { ColumnToggle } from "@/components/column-toggle";
 import { StatTile, StatTiles, TableCard } from "@/components/data-table";
 import { FilterBar, SearchFilter, SelectFilter } from "@/components/filters/filter-bar";
 import { GroupFilter } from "@/components/filters/group-filter";
+import { SortSelect } from "@/components/filters/sort-select";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { buttonVariants } from "@/components/ui/button";
@@ -20,7 +21,7 @@ import { MEMBER_STATUS_LABELS } from "@/lib/member/labels";
 import { DEFAULT_MEMBER_SORT, listMembers, MEMBER_SORT_KEYS } from "@/lib/member/queries";
 import { cn } from "@/lib/utils";
 import { pageHref } from "@/lib/pagination";
-import { parseSort, sortHref, sortPreserve } from "@/lib/sort";
+import { parseSort, sortHref } from "@/lib/sort";
 import { MEMBER_STATUSES, type MemberStatus } from "@/lib/validation/enums";
 import { setMemberColumnsAction } from "./actions";
 import { MembersTable } from "./members-table";
@@ -104,7 +105,6 @@ export default async function MembersPage({
           <>
             <FilterBar
               action="/dashboard/anggota"
-              preserve={sortPreserve(sort, DEFAULT_MEMBER_SORT)}
               isFiltered={isFiltered}
               resetHref="/dashboard/anggota"
             >
@@ -116,6 +116,14 @@ export default async function MembersPage({
                 label="Status"
                 allLabel="Semua status"
                 options={MEMBER_STATUSES.map((value) => ({ value, label: MEMBER_STATUS_LABELS[value] }))}
+              />
+              <SortSelect
+                options={sortable.map((key) => ({
+                  key,
+                  label: key === "nama" ? "Nama" : (MEMBER_COLUMNS.find((c) => c.key === key)?.label ?? key),
+                }))}
+                current={sort}
+                fallback={DEFAULT_MEMBER_SORT}
               />
             </FilterBar>
             <ColumnToggle columns={MEMBER_COLUMNS} visible={columns} action={setMemberColumnsAction} />

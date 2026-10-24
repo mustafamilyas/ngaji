@@ -71,4 +71,10 @@ describe("MembersPage phone and tablet layout", () => {
       expect(classOf(html, control), String(control)).toMatch(/\btext-base\b/);
     }
   });
+
+  it("offers a phone sort select in the filter bar", async () => {
+    const html = await render("anggota-layout-sort");
+
+    expect(html).toMatch(/<select[^>]*aria-label="Urutkan"[^>]*>/);
+  });
 });

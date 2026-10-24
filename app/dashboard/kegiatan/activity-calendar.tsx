@@ -118,6 +118,21 @@ export function ActivityCalendar({
           );
         })}
       </div>
+      {/* Phones only: the day cells show dots instead of text, so say what they mean. */}
+      <p data-calendar-legend className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground sm:hidden">
+        <span className="inline-flex items-center gap-1">
+          <span aria-hidden className="size-2 rounded-full bg-primary" /> Jadwal
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span aria-hidden className="size-2 rounded-full bg-destructive" /> Konflik
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span aria-hidden className="size-2 rounded-full bg-muted-foreground/40" /> Batal
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <StickyNote aria-hidden className="size-3" /> Ada keterangan
+        </span>
+      </p>
     </div>
   );
 }
