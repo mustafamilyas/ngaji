@@ -9,6 +9,7 @@ import { createSurveyAction, updateSurveyAction } from "@/app/dashboard/survei/a
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { touchButton, touchInput } from "@/components/ui/touch";
 import { Textarea } from "@/components/ui/textarea";
 import { SURVEY_MAX_QUESTIONS } from "@/lib/constants";
 import type { QuestionType } from "@/lib/validation/enums";
@@ -109,12 +110,12 @@ export function SurveyForm({
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
             <Label htmlFor="title">Judul</Label>
-            <Input id="title" readOnly={readOnly} {...register("title")} />
+            <Input id="title" className={touchInput} readOnly={readOnly} {...register("title")} />
             <FieldError message={errors.title?.message} />
           </div>
           <div className="flex flex-col gap-1">
             <Label htmlFor="description">Deskripsi (opsional)</Label>
-            <Textarea id="description" readOnly={readOnly} {...register("description")} />
+            <Textarea id="description" className="text-base md:text-base xl:text-sm" readOnly={readOnly} {...register("description")} />
             <FieldError message={errors.description?.message} />
           </div>
         </CardContent>
@@ -143,13 +144,20 @@ export function SurveyForm({
             <Button
               type="button"
               variant="outline"
+              className={touchButton}
               disabled={atLimit}
               onClick={() => append(blankQuestion("SHORT_TEXT"))}
             >
               <Plus />
               Tambah pertanyaan
             </Button>
-            <Button type="button" variant="outline" disabled={atLimit} onClick={() => append(yesNoQuestion(""))}>
+            <Button
+              type="button"
+              variant="outline"
+              className={touchButton}
+              disabled={atLimit}
+              onClick={() => append(yesNoQuestion(""))}
+            >
               <ToggleLeft />
               Tambah Ya/Tidak
             </Button>
@@ -167,7 +175,7 @@ export function SurveyForm({
           )}
 
           <div className="flex justify-end border-t pt-4">
-            <Button type="submit" size="lg" disabled={pending} className="w-full sm:w-auto">
+            <Button type="submit" size="lg" disabled={pending} className="h-11 w-full text-base sm:w-auto xl:h-9 xl:text-sm">
               <Save />
               {pending ? "Menyimpan…" : surveyId === undefined ? "Simpan survei" : "Simpan perubahan"}
             </Button>

@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { touchIconButton, touchInput } from "@/components/ui/touch";
 import type { QuestionType } from "@/lib/validation/enums";
 import {
   FieldError,
@@ -18,6 +19,8 @@ import {
   type SurveyFormMethods,
   TYPE_ITEMS,
 } from "./form-shared";
+
+const touchRestore = "h-11 text-base xl:h-7 xl:text-[0.8rem]";
 
 /** Which stored questions/options already have answers — see `lib/survey/locks.ts`. */
 export type FormLocks = { questions: ReadonlySet<number>; options: ReadonlySet<number> };
@@ -67,6 +70,7 @@ function OptionList({
                   type="button"
                   variant="ghost"
                   size="sm"
+                  className={touchRestore}
                   aria-label={`Pulihkan pilihan ${oi + 1}`}
                   onClick={() => setValue(`questions.${index}.options.${oi}.archived`, false, { shouldDirty: true })}
                 >
@@ -84,6 +88,7 @@ function OptionList({
               <Input
                 aria-label={`Pilihan ${oi + 1}`}
                 placeholder={`Pilihan ${oi + 1}`}
+                className={touchInput}
                 readOnly={readOnly}
                 {...register(`questions.${index}.options.${oi}.label`)}
               />
@@ -92,6 +97,7 @@ function OptionList({
                   type="button"
                   variant="ghost"
                   size="icon"
+                  className={touchIconButton}
                   aria-label={locked ? `Arsipkan pilihan ${oi + 1}` : `Hapus pilihan ${oi + 1}`}
                   onClick={() => removeOption(oi)}
                 >
@@ -108,7 +114,13 @@ function OptionList({
       })}
       <FieldError message={listError} />
       {!readOnly && (
-        <Button type="button" variant="outline" size="sm" className="self-start" onClick={() => append({ label: "" })}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-11 self-start text-base xl:h-7 xl:text-[0.8rem]"
+          onClick={() => append({ label: "" })}
+        >
           <Plus />
           Tambah pilihan
         </Button>
@@ -152,7 +164,7 @@ export function QuestionCard({
           </h3>
           <Badge variant="outline">Diarsipkan</Badge>
           {!readOnly && (
-            <Button type="button" variant="ghost" size="sm" onClick={() => onRestore(index)}>
+            <Button type="button" variant="ghost" size="sm" className={touchRestore} onClick={() => onRestore(index)}>
               <RotateCcw />
               Pulihkan
             </Button>
@@ -173,6 +185,7 @@ export function QuestionCard({
                 type="button"
                 variant="ghost"
                 size="icon"
+                className={touchIconButton}
                 aria-label={`Naikkan pertanyaan ${index + 1}`}
                 disabled={index === 0}
                 onClick={() => onMove(index, index - 1)}
@@ -183,6 +196,7 @@ export function QuestionCard({
                 type="button"
                 variant="ghost"
                 size="icon"
+                className={touchIconButton}
                 aria-label={`Turunkan pertanyaan ${index + 1}`}
                 disabled={index === total - 1}
                 onClick={() => onMove(index, index + 1)}
@@ -193,6 +207,7 @@ export function QuestionCard({
                 type="button"
                 variant="ghost"
                 size="icon"
+                className={touchIconButton}
                 aria-label={locked ? `Arsipkan pertanyaan ${index + 1}` : `Hapus pertanyaan ${index + 1}`}
                 onClick={() => onRemove(index)}
               >
@@ -214,12 +229,15 @@ export function QuestionCard({
                 disabled={locked || readOnly}
                 onValueChange={(value) => onTypeChange(index, value as QuestionType)}
               >
-                <SelectTrigger id={`q-${index}-type`} className="w-full">
+                <SelectTrigger
+                  id={`q-${index}-type`}
+                  className="w-full text-base data-[size=default]:h-11 xl:text-sm xl:data-[size=default]:h-8"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {TYPE_ITEMS.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
+                    <SelectItem key={item.value} value={item.value} className="min-h-11 text-base xl:min-h-0 xl:text-sm">
                       {item.label}
                     </SelectItem>
                   ))}
@@ -237,13 +255,13 @@ export function QuestionCard({
 
         <div className="flex flex-col gap-1">
           <Label htmlFor={`q-${index}-label`}>Pertanyaan</Label>
-          <Input id={`q-${index}-label`} readOnly={readOnly} {...register(`questions.${index}.label`)} />
+          <Input id={`q-${index}-label`} className={touchInput} readOnly={readOnly} {...register(`questions.${index}.label`)} />
           <FieldError message={questionErrors?.label?.message} />
         </div>
 
         <div className="flex flex-col gap-1">
           <Label htmlFor={`q-${index}-help`}>Keterangan (opsional)</Label>
-          <Input id={`q-${index}-help`} readOnly={readOnly} {...register(`questions.${index}.helpText`)} />
+          <Input id={`q-${index}-help`} className={touchInput} readOnly={readOnly} {...register(`questions.${index}.helpText`)} />
           <FieldError message={questionErrors?.helpText?.message} />
         </div>
 
@@ -257,6 +275,8 @@ export function QuestionCard({
               <Input
                 id={`q-${index}-min`}
                 type="number"
+                className={touchInput}
+                inputMode="numeric"
                 readOnly={locked || readOnly}
                 {...register(`questions.${index}.scaleMin`, { valueAsNumber: true })}
               />
@@ -267,6 +287,8 @@ export function QuestionCard({
               <Input
                 id={`q-${index}-max`}
                 type="number"
+                className={touchInput}
+                inputMode="numeric"
                 readOnly={locked || readOnly}
                 {...register(`questions.${index}.scaleMax`, { valueAsNumber: true })}
               />
@@ -279,8 +301,9 @@ export function QuestionCard({
           control={control}
           name={`questions.${index}.required`}
           render={({ field }) => (
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex min-h-11 items-center gap-3 text-base xl:min-h-0 xl:gap-2 xl:text-sm">
               <Checkbox
+                className="size-5 xl:size-4"
                 checked={field.value}
                 disabled={readOnly}
                 onCheckedChange={(checked) => field.onChange(checked === true)}
