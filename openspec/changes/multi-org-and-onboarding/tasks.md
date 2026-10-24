@@ -23,7 +23,7 @@
 
 - [x] 4.1 Sweep all `findFirst`/`findMany`/`count`/`findUnique` calls that are not path- or organization-scoped and fix any that can cross orgs; record the checklist in `isolation-checklist.md`; verify cross-org tests (member, activity, occurrence, attendance, survey, member view, user, level, audit log) return 404/empty for org A's root OWNER on org B's data
 - [x] 4.2 Verify username uniqueness across orgs: test that creating a user in org B with an org A username fails with the generic message
-- [ ] 4.3 Add authz action `organization.update` (root OWNER only) with tests for ADMIN-at-root and OWNER-below-root denial; verify `pnpm test lib/authz`
+- [x] 4.3 Add authz action `organization.update` (root OWNER only) with tests for ADMIN-at-root and OWNER-below-root denial; verify `pnpm test lib/authz`
 
 ## 5. Organization provisioning CLI
 

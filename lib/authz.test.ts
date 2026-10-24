@@ -510,6 +510,28 @@ describe("authorize level.rename", () => {
   });
 });
 
+describe("authorize organization.update", () => {
+  it("root OWNER can update the organization", () => {
+    const s = session("OWNER", 1, ROOT);
+    expect(() => authorize(s, "organization.update")).not.toThrow();
+  });
+
+  it("an OWNER below the root cannot update the organization", () => {
+    const s = session("OWNER", 2, DAERAH);
+    expect(() => authorize(s, "organization.update")).toThrow(ForbiddenError);
+  });
+
+  it("an ADMIN at the root cannot update the organization", () => {
+    const s = session("ADMIN", 1, ROOT);
+    expect(() => authorize(s, "organization.update")).toThrow(ForbiddenError);
+  });
+
+  it("a USER at the root cannot update the organization", () => {
+    const s = session("USER", 1, ROOT);
+    expect(() => authorize(s, "organization.update")).toThrow(ForbiddenError);
+  });
+});
+
 describe("authorize audit.view", () => {
   it("OWNER can view audit", () => {
     const s = session("OWNER", 2, DAERAH);

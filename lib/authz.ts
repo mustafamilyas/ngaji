@@ -33,6 +33,7 @@ export type Action =
   | "user.setActive"
   | "user.resetPassword"
   | "level.rename"
+  | "organization.update"
   | "audit.view"
   | "member_view.view"
   | "member_view.create"
@@ -192,7 +193,7 @@ export function authorize(
   action: "member_view.view" | "member_view.update" | "member_view.delete" | "member_view.transfer",
   target: MemberViewTarget,
 ): void;
-export function authorize(session: SessionUser, action: "level.rename"): void;
+export function authorize(session: SessionUser, action: "level.rename" | "organization.update"): void;
 export function authorize(session: SessionUser, action: "audit.view"): void;
 export function authorize(session: SessionUser, action: Action, target?: unknown): void {
   switch (action) {
@@ -342,7 +343,9 @@ export function authorize(session: SessionUser, action: Action, target?: unknown
       return;
     }
 
-    case "level.rename": {
+    case "level.rename":
+    case "organization.update": {
+      // Always the caller's own organization; no target to name another one.
       if (session.role !== "OWNER" || !isRootPath(session.groupPath)) {
         throw new ForbiddenError();
       }
