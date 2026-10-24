@@ -1,5 +1,6 @@
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 
@@ -56,8 +57,8 @@ describe("ActivityListPage", () => {
       durationMinutes: 60,
       freq: "WEEKLY",
       interval: 1,
-      weekdays: [weekdayOf(today())],
-      startsOn: addDays(today(), -30),
+      weekdays: [weekdayOf(today(DEFAULT_TIMEZONE))],
+      startsOn: addDays(today(DEFAULT_TIMEZONE), -30),
     });
 
     const branchAdmin = sessionFor(fixture.actorId, "ADMIN", fixture.branch);
@@ -86,8 +87,8 @@ describe("ActivityListPage", () => {
       durationMinutes: 60,
       freq: "WEEKLY",
       interval: 1,
-      weekdays: [weekdayOf(today())],
-      startsOn: addDays(today(), -30),
+      weekdays: [weekdayOf(today(DEFAULT_TIMEZONE))],
+      startsOn: addDays(today(DEFAULT_TIMEZONE), -30),
     });
 
     const session = sessionFor(fixtureA.actorId, "ADMIN", fixtureA.leaf);
@@ -111,7 +112,7 @@ describe("ActivityListPage", () => {
     const html = renderToStaticMarkup(
       await ActivityListPage({ searchParams: Promise.resolve({ range: "hari" }) }),
     );
-    expect(html).toContain(formatDateRange(today(), today()));
+    expect(html).toContain(formatDateRange(today(DEFAULT_TIMEZONE), today(DEFAULT_TIMEZONE)));
   });
 
   it("computes the calendar month bounds for range=bulan", async () => {
@@ -122,7 +123,7 @@ describe("ActivityListPage", () => {
     const html = renderToStaticMarkup(
       await ActivityListPage({ searchParams: Promise.resolve({ range: "bulan" }) }),
     );
-    expect(html).toContain(formatDateRange(monthStartOf(today()), monthEndOf(today())));
+    expect(html).toContain(formatDateRange(monthStartOf(today(DEFAULT_TIMEZONE)), monthEndOf(today(DEFAULT_TIMEZONE))));
   });
 
   it("keeps the given from/to as-is for range=custom", async () => {
@@ -150,8 +151,8 @@ describe("ActivityListPage", () => {
       freq: "ONCE",
       interval: 1,
       weekdays: [],
-      startsOn: today(),
-      endsOn: today(),
+      startsOn: today(DEFAULT_TIMEZONE),
+      endsOn: today(DEFAULT_TIMEZONE),
     });
 
     const session = sessionFor(fixture.actorId, "ADMIN", fixture.leaf);
@@ -161,7 +162,7 @@ describe("ActivityListPage", () => {
       await ActivityListPage({ searchParams: Promise.resolve({ view: "calendar" }) }),
     );
 
-    const month = sundayOf(today());
+    const month = sundayOf(today(DEFAULT_TIMEZONE));
     const gridStart = sundayOf(monthStartOf(month));
     const gridEnd = addDays(sundayOf(monthEndOf(month)), 6);
     const expectedCells = daysBetween(gridStart, gridEnd) + 1;

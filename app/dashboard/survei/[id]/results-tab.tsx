@@ -15,6 +15,7 @@ import { pageHref } from "@/lib/pagination";
 import type { BreakdownRow, QuestionResult, SurveyDemographics, SurveyStatistics } from "@/lib/survey/stats";
 import { MARITAL_STATUSES, SEXES, WORK_STATUSES } from "@/lib/validation/enums";
 import { ResultChart } from "./result-chart";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -288,7 +289,7 @@ function QuestionBody({ question, path, params }: { question: QuestionResult; pa
               <li key={i} className="flex flex-col gap-0.5 px-3 py-2 text-sm">
                 <span className="whitespace-pre-line">{answer.text}</span>
                 <span className="text-xs text-muted-foreground">
-                  {answer.memberName} · {formatDate(dateOf(answer.updatedAt))}
+                  {answer.memberName} · {formatDate(dateOf(answer.updatedAt, DEFAULT_TIMEZONE))}
                 </span>
               </li>
             ))}

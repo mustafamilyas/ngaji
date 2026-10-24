@@ -45,6 +45,7 @@ import { ActivityAttendanceChart } from "./attendance-chart";
 import { DeleteActivityForm } from "./delete-activity-form";
 import { EndActivityForm } from "./end-activity-form";
 import { OccurrenceOverrideDialog } from "./occurrence-override-dialog";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 const TABS = ["absensi", "jadwal", "pengaturan"] as const;
 type Tab = (typeof TABS)[number];
@@ -78,7 +79,7 @@ export default async function ActivityDetailPage({
   const canRecord = isInScope(session.user.groupPath, activity.group.path);
   const path = `/dashboard/kegiatan/${activity.id}`;
 
-  const now = today();
+  const now = today(DEFAULT_TIMEZONE);
   const scheduleTo = addDays(now, CONFLICT_HORIZON_DAYS);
   const rows = await loadOccurrenceRows(activity.id, now, scheduleTo);
   const occurrences = occurrencesFor(toActivityTemplate(activity), now, scheduleTo, rows);

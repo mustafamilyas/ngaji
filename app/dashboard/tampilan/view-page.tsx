@@ -21,6 +21,7 @@ import { ViewActions } from "./view-actions";
 import { ViewToolbar } from "./view-toolbar";
 import { ViewSections } from "./view-sections";
 import { ViewMembersTable, type ViewMemberRow } from "./view-table";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -59,7 +60,7 @@ export async function ViewPage({ viewId, searchParams }: { viewId: number | null
     throw error;
   }
   const { view, definition, isDraft, draftUnreadable, warnings } = loaded;
-  const asOf = today();
+  const asOf = today(DEFAULT_TIMEZONE);
   const isOwner = view !== null && view.ownerId === Number(session.user.id);
   const canTransfer = view !== null && canTakeOver(session.user, view);
   const basePath = viewId === null ? "/dashboard/tampilan/baru" : `/dashboard/tampilan/${viewId}`;
@@ -96,7 +97,7 @@ export async function ViewPage({ viewId, searchParams }: { viewId: number | null
           view ? (
             <>
               <span>Pemilik: {view.ownerName}</span>
-              <span>Diperbarui {formatDate(dateOf(view.updatedAt))}</span>
+              <span>Diperbarui {formatDate(dateOf(view.updatedAt, DEFAULT_TIMEZONE))}</span>
             </>
           ) : undefined
         }

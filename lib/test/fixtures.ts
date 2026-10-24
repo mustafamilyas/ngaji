@@ -3,6 +3,7 @@ import type { Mock } from "vitest";
 import type { SessionUser } from "@/lib/auth/session-user";
 import { db } from "@/lib/db";
 import { addDays, today, weekdayOf } from "@/lib/dates";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 /** Hand-built `SessionUser` — no real login/JWT involved, just the shape every `lib/**` and page function expects. */
 export function sessionFor(
@@ -115,8 +116,8 @@ export async function buildPageFixture(label: string): Promise<PageFixture> {
       durationMinutes: 60,
       freq: "WEEKLY",
       interval: 1,
-      weekdays: [weekdayOf(today())],
-      startsOn: addDays(today(), -30),
+      weekdays: [weekdayOf(today(DEFAULT_TIMEZONE))],
+      startsOn: addDays(today(DEFAULT_TIMEZONE), -30),
       createdById: actor.id,
     },
   });

@@ -1,5 +1,6 @@
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("next/navigation", async (importOriginal) => {
@@ -27,7 +28,7 @@ describe("CheckInPage", () => {
 
     const html = renderToStaticMarkup(
       await CheckInPage({
-        params: Promise.resolve({ id: String(fixture.activityId), tanggal: today() }),
+        params: Promise.resolve({ id: String(fixture.activityId), tanggal: today(DEFAULT_TIMEZONE) }),
         searchParams: Promise.resolve({}),
       }),
     );
@@ -50,8 +51,8 @@ describe("CheckInPage", () => {
         durationMinutes: 60,
         freq: "WEEKLY",
         interval: 1,
-        weekdays: [weekdayOf(today())],
-        startsOn: addDays(today(), -30),
+        weekdays: [weekdayOf(today(DEFAULT_TIMEZONE))],
+        startsOn: addDays(today(DEFAULT_TIMEZONE), -30),
         createdById: fixture.actorId,
       },
     });
@@ -63,7 +64,7 @@ describe("CheckInPage", () => {
 
     const html = renderToStaticMarkup(
       await CheckInPage({
-        params: Promise.resolve({ id: String(activity.id), tanggal: today() }),
+        params: Promise.resolve({ id: String(activity.id), tanggal: today(DEFAULT_TIMEZONE) }),
         searchParams: Promise.resolve({}),
       }),
     );
@@ -78,7 +79,7 @@ describe("CheckInPage", () => {
 
     await expect(
       CheckInPage({
-        params: Promise.resolve({ id: String(fixture.activityId), tanggal: today() }),
+        params: Promise.resolve({ id: String(fixture.activityId), tanggal: today(DEFAULT_TIMEZONE) }),
         searchParams: Promise.resolve({}),
       }),
     ).rejects.toMatchObject({ digest: expect.stringContaining("NEXT_REDIRECT") });
@@ -87,7 +88,7 @@ describe("CheckInPage", () => {
   it("redirects to /login when there is no session", async () => {
     mockAuthSession(auth, null);
     await expect(
-      CheckInPage({ params: Promise.resolve({ id: "1", tanggal: today() }), searchParams: Promise.resolve({}) }),
+      CheckInPage({ params: Promise.resolve({ id: "1", tanggal: today(DEFAULT_TIMEZONE) }), searchParams: Promise.resolve({}) }),
     ).rejects.toMatchObject({ digest: expect.stringContaining("NEXT_REDIRECT") });
   });
 });

@@ -1,5 +1,6 @@
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("next/navigation", async (importOriginal) => {
@@ -28,7 +29,7 @@ describe("AttendancePage", () => {
 
     const html = renderToStaticMarkup(
       await AttendancePage({
-        params: Promise.resolve({ id: String(fixture.activityId), tanggal: today() }),
+        params: Promise.resolve({ id: String(fixture.activityId), tanggal: today(DEFAULT_TIMEZONE) }),
         searchParams: Promise.resolve({}),
       }),
     );
@@ -43,7 +44,7 @@ describe("AttendancePage", () => {
     mockAuthSession(auth, { user: session });
 
     const occurrence = await db.activityOccurrence.create({
-      data: { activityId: fixture.activityId, date: today() },
+      data: { activityId: fixture.activityId, date: today(DEFAULT_TIMEZONE) },
     });
     await db.attendance.create({
       data: {
@@ -57,7 +58,7 @@ describe("AttendancePage", () => {
 
     const html = renderToStaticMarkup(
       await AttendancePage({
-        params: Promise.resolve({ id: String(fixture.activityId), tanggal: today() }),
+        params: Promise.resolve({ id: String(fixture.activityId), tanggal: today(DEFAULT_TIMEZONE) }),
         searchParams: Promise.resolve({}),
       }),
     );
@@ -71,7 +72,7 @@ describe("AttendancePage", () => {
       mockAuthSession(auth, { user: sessionFor(fixture.actorId, role, fixture.leaf) });
       return renderToStaticMarkup(
         await AttendancePage({
-          params: Promise.resolve({ id: String(fixture.activityId), tanggal: addDays(today(), 7) }),
+          params: Promise.resolve({ id: String(fixture.activityId), tanggal: addDays(today(DEFAULT_TIMEZONE), 7) }),
           searchParams: Promise.resolve({}),
         }),
       );
@@ -89,7 +90,7 @@ describe("AttendancePage", () => {
     mockAuthSession(auth, { user: session });
 
     const occurrence = await db.activityOccurrence.create({
-      data: { activityId: fixture.activityId, date: today() },
+      data: { activityId: fixture.activityId, date: today(DEFAULT_TIMEZONE) },
     });
     await db.attendance.create({
       data: { occurrenceId: occurrence.id, memberId: fixture.memberId, status: "HADIR", recordedById: fixture.actorId },
@@ -97,7 +98,7 @@ describe("AttendancePage", () => {
 
     const html = renderToStaticMarkup(
       await AttendancePage({
-        params: Promise.resolve({ id: String(fixture.activityId), tanggal: today() }),
+        params: Promise.resolve({ id: String(fixture.activityId), tanggal: today(DEFAULT_TIMEZONE) }),
         searchParams: Promise.resolve({}),
       }),
     );
@@ -123,7 +124,7 @@ describe("AttendancePage", () => {
     mockAuthSession(auth, null);
     await expect(
       AttendancePage({
-        params: Promise.resolve({ id: "1", tanggal: today() }),
+        params: Promise.resolve({ id: "1", tanggal: today(DEFAULT_TIMEZONE) }),
         searchParams: Promise.resolve({}),
       }),
     ).rejects.toMatchObject({ digest: expect.stringContaining("NEXT_REDIRECT") });

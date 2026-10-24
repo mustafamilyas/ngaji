@@ -3,6 +3,7 @@ import type { SessionUser } from "@/lib/auth/session-user";
 import { PAGE_SIZE } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { today as todayInJakarta } from "@/lib/dates";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 import type { MemberColumnKey } from "@/lib/member/columns";
 import { clampPage } from "@/lib/pagination";
 import { resolveDefinitionGroupsLenient } from "@/lib/resolve";
@@ -52,7 +53,7 @@ export type PreparedView = {
 export async function prepareView(
   session: SessionUser,
   definition: Definition,
-  today: string = todayInJakarta(),
+  today: string = todayInJakarta(DEFAULT_TIMEZONE),
 ): Promise<PreparedView> {
   const { definition: resolved, dropped } = await resolveDefinitionGroupsLenient(session, definition);
 

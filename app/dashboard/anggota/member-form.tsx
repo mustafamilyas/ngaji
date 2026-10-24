@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { formatEnumLabel, SEX_LABELS } from "@/lib/member/labels";
 import { MARITAL_STATUSES, MEMBER_STATUSES, SEXES, WORK_STATUSES } from "@/lib/validation/enums";
 import { memberFormSchema, type MemberFormValues } from "@/lib/validation/member";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 const inputClass =
   "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
@@ -64,7 +65,7 @@ const emptyDefaults: MemberFormValues = {
   workStatus: "BEKERJA",
   email: undefined,
   status: "AKTIF",
-  joinedAt: today(),
+  joinedAt: today(DEFAULT_TIMEZONE),
   exitedAt: undefined,
 };
 

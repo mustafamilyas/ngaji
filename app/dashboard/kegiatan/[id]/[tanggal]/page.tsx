@@ -20,6 +20,7 @@ import { isInScope } from "@/lib/scope";
 import { expected } from "@/lib/stats";
 import type { AttendanceStatus, MemberStatus } from "@/lib/validation/enums";
 import { AttendanceTable } from "./attendance-table";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -61,7 +62,7 @@ export default async function AttendancePage({
   if (!occurrence) notFound();
 
   const isCancelled = occurrence.status === "CANCELLED";
-  const isFuture = occurrence.effectiveDate > today();
+  const isFuture = occurrence.effectiveDate > today(DEFAULT_TIMEZONE);
   const moved = occurrence.effectiveDate !== occurrence.key;
   const activityHref = `/dashboard/kegiatan/${activity.id}`;
 

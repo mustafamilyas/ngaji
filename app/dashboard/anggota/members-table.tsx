@@ -13,6 +13,7 @@ import { MEMBER_SORT_KEYS, type listMembers, type MemberSortKey } from "@/lib/me
 import type { SortState } from "@/lib/sort";
 import { cn, initials } from "@/lib/utils";
 import type { Sex } from "@/lib/validation/enums";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 type MemberRow = Awaited<ReturnType<typeof listMembers>>["members"][number];
 
@@ -82,7 +83,7 @@ export function MembersTable({
   sort: SortState<MemberSortKey>;
   sortHrefFor: (key: MemberSortKey) => string;
 }) {
-  const asOf = today();
+  const asOf = today(DEFAULT_TIMEZONE);
   const visible = MEMBER_COLUMNS.filter((c) => columns.includes(c.key));
 
   return (

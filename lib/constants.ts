@@ -86,6 +86,11 @@ export const LOGIN_RATE_LIMIT_MAX_PER_IP = 20;
 export const INTEREST_RATE_LIMIT_MAX_PER_IP = 5;
 export const INTEREST_RATE_LIMIT_WINDOW_MINUTES = 60;
 
+/** Bounds for the public interest form fields. */
+export const INTEREST_MAX_FIELD_LENGTH = 100;
+export const INTEREST_MAX_MESSAGE_LENGTH = 1000;
+export const INTEREST_MAX_MEMBER_COUNT = 100_000;
+
 /** Every `AuditLog.action` value the app writes (audit-log spec "Logged actions"), for the `/dashboard/audit` action filter. */
 export const AUDIT_ACTIONS = [
   "auth.login",

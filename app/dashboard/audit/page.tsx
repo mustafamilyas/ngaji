@@ -18,6 +18,7 @@ import { parseSort, sortHref, sortPreserve } from "@/lib/sort";
 import { listUsersInScope } from "@/lib/user/queries";
 import { cn } from "@/lib/utils";
 import { AuditDetailDialog } from "./audit-detail-dialog";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 function formatDateTime(date: Date): string {
   return new Intl.DateTimeFormat("id-ID", {
@@ -42,7 +43,7 @@ export default async function AuditPage({
       : undefined;
   const actorParam = typeof params.aktor === "string" ? Number(params.aktor) : NaN;
   const actorId = Number.isInteger(actorParam) && actorParam > 0 ? actorParam : undefined;
-  const now = today();
+  const now = today(DEFAULT_TIMEZONE);
   const dateRange = resolveDateRange(params, AUDIT_DATE_RANGE, now);
   const { from, to } = dateRange;
   const groupIds = parseGroupIds(params.grup);

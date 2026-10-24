@@ -11,6 +11,7 @@ import { getMaxDepth } from "@/lib/group/levels";
 import { resolveActivity } from "@/lib/resolve";
 import { ancestorPathsOf, isInScope } from "@/lib/scope";
 import { CheckInForm } from "./check-in-form";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -58,7 +59,7 @@ export default async function CheckInPage({
   const closedReason =
     occurrence.status === "CANCELLED"
       ? "Kegiatan ini dibatalkan pada tanggal ini."
-      : occurrence.effectiveDate > today()
+      : occurrence.effectiveDate > today(DEFAULT_TIMEZONE)
         ? "Tanggal ini belum terjadi; absensi belum bisa diisi."
         : undefined;
 

@@ -11,6 +11,7 @@ import { today } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { activityUpdateSchema, type ActivityUpdateInput } from "@/lib/validation/activity";
 import { FREQS } from "@/lib/validation/enums";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 const inputClass =
   "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
@@ -70,7 +71,7 @@ const emptyDefaults: ActivityUpdateInput = {
   interval: 1,
   weekdays: [0],
   monthDay: undefined,
-  startsOn: today(),
+  startsOn: today(DEFAULT_TIMEZONE),
   endsOn: undefined,
 };
 

@@ -23,6 +23,7 @@ import { parseSort, sortHref, sortPreserve } from "@/lib/sort";
 import { MEMBER_STATUSES, type MemberStatus } from "@/lib/validation/enums";
 import { setMemberColumnsAction } from "./actions";
 import { MembersTable } from "./members-table";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 function isMemberStatus(value: string): value is MemberStatus {
   return (MEMBER_STATUSES as readonly string[]).includes(value);
@@ -64,7 +65,7 @@ export default async function MembersPage({
       }),
       db.member.count({ where: scope }),
       db.member.count({ where: { ...scope, status: "AKTIF" } }),
-      db.member.count({ where: { ...scope, joinedAt: { gte: monthStartOf(today()) } } }),
+      db.member.count({ where: { ...scope, joinedAt: { gte: monthStartOf(today(DEFAULT_TIMEZONE)) } } }),
     ]);
   const isFiltered = Boolean(q || groupIds || status);
 

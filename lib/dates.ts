@@ -1,4 +1,3 @@
-const TIMEZONE = "Asia/Jakarta";
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MS = 86_400_000;
 
@@ -33,19 +32,19 @@ function formatUtc(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-/** The Asia/Jakarta calendar date (YYYY-MM-DD) of an instant, independent of the host's local timezone. */
-export function dateOf(instant: Date): string {
+/** The calendar date (YYYY-MM-DD) of an instant in `timeZone`, independent of the host's local timezone. */
+export function dateOf(instant: Date, timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", {
-    timeZone: TIMEZONE,
+    timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(instant);
 }
 
-/** Today's date in Asia/Jakarta, independent of the host's local timezone. */
-export function today(): string {
-  return dateOf(new Date());
+/** Today's date in `timeZone`, independent of the host's local timezone. */
+export function today(timeZone: string): string {
+  return dateOf(new Date(), timeZone);
 }
 
 /** Validates a YYYY-MM-DD string before it is written to a Prisma String date column. */

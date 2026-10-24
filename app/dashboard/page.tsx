@@ -12,12 +12,13 @@ import { DEFAULT_STATS_RANGE_DAYS } from "@/lib/constants";
 import { addDays, today } from "@/lib/dates";
 import { activityStatistics, memberStatistics, newMembersCount, recentMembers } from "@/lib/stats";
 import { cn, initials } from "@/lib/utils";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 export default async function DashboardPage() {
   const session = await auth();
   if (!session) redirect("/login");
 
-  const now = today();
+  const now = today(DEFAULT_TIMEZONE);
   const statsFrom = addDays(now, -DEFAULT_STATS_RANGE_DAYS);
 
   const [memberStats, activityStats, upcoming, todayOccurrences, newMembers, latestMembers] = await Promise.all([

@@ -60,6 +60,9 @@ export type ViewVisibility = (typeof VIEW_VISIBILITIES)[number];
 export const TIMEZONES = ["Asia/Jakarta", "Asia/Makassar", "Asia/Jayapura"] as const;
 export type Timezone = (typeof TIMEZONES)[number];
 
+/** Interim zone for callers that do not have the session timezone yet (removed in multi-org task 3.3). */
+export const DEFAULT_TIMEZONE: Timezone = "Asia/Jakarta";
+
 export const TIMEZONE_LABELS: Record<Timezone, string> = {
   "Asia/Jakarta": "WIB",
   "Asia/Makassar": "WITA",

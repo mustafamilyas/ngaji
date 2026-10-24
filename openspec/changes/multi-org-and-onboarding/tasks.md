@@ -8,9 +8,9 @@
 
 ## 2. Pure logic (tests first)
 
-- [ ] 2.1 Change `today(timeZone)` / `dateOf(instant, timeZone)` to a required timezone; add tests for the WIB/WIT midnight boundary from the organization-settings spec; verify `pnpm test lib/dates`
-- [ ] 2.2 Add `loginBrand(flag, orgs)` with tests for flag off / on + one org / on + two orgs / on + none; verify the tests pass
-- [ ] 2.3 Add interest validation schema (shared form/server), WhatsApp prefilled-text builder and leads CSV formatter with tests (consent required, invalid phone, quoting of commas/newlines); verify the tests pass
+- [x] 2.1 Change `today(timeZone)` / `dateOf(instant, timeZone)` to a required timezone; add tests for the WIB/WIT midnight boundary from the organization-settings spec; verify `pnpm test lib/dates`
+- [x] 2.2 Add `loginBrand(flag, orgs)` with tests for flag off / on + one org / on + two orgs / on + none; verify the tests pass
+- [x] 2.3 Add interest validation schema (shared form/server), WhatsApp prefilled-text builder and leads CSV formatter with tests (consent required, invalid phone, quoting of commas/newlines); verify the tests pass
 
 ## 3. Session and org context
 

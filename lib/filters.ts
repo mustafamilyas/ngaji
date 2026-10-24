@@ -7,6 +7,7 @@
  */
 import { MAX_GROUP_FILTER_IDS } from "@/lib/constants";
 import { addDays, addMonthsOnDay, daysBetween, isDateString, monthStartOf, rangeForMode, today as todayInJakarta } from "@/lib/dates";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 type Param = string | string[] | undefined;
 
@@ -82,7 +83,7 @@ function rangeOf(mode: Exclude<DateRangeMode, "custom">, anchor: string): { from
 export function resolveDateRange(
   params: { range?: Param; anchor?: Param; from?: Param; to?: Param },
   config: DateRangeConfig,
-  today: string = todayInJakarta(),
+  today: string = todayInJakarta(DEFAULT_TIMEZONE),
 ): DateRange {
   const rawMode = first(params.range);
   const rawFrom = first(params.from);

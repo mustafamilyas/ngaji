@@ -35,8 +35,16 @@ describe("ageInYears", () => {
 
 describe("dateOf", () => {
   it("returns the Jakarta calendar date, which is ahead of UTC after 17:00", () => {
-    expect(dateOf(new Date("2026-01-01T16:59:00Z"))).toBe("2026-01-01");
-    expect(dateOf(new Date("2026-01-01T17:00:00Z"))).toBe("2026-01-02");
+    expect(dateOf(new Date("2026-01-01T16:59:00Z"), "Asia/Jakarta")).toBe("2026-01-01");
+    expect(dateOf(new Date("2026-01-01T17:00:00Z"), "Asia/Jakarta")).toBe("2026-01-02");
+  });
+
+  it("uses the given zone: the same instant is a day later in WIT than in WIB", () => {
+    // 23:30 on 2026-10-24 in Jakarta = 01:30 on 2026-10-25 in Jayapura
+    const instant = new Date("2026-10-24T16:30:00Z");
+    expect(dateOf(instant, "Asia/Jakarta")).toBe("2026-10-24");
+    expect(dateOf(instant, "Asia/Makassar")).toBe("2026-10-25");
+    expect(dateOf(instant, "Asia/Jayapura")).toBe("2026-10-25");
   });
 });
 
@@ -49,13 +57,29 @@ describe("today", () => {
     // 2024-01-01T17:30:00Z = 2024-01-02T00:30 in Asia/Jakarta (UTC+7)
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-01T17:30:00Z"));
-    expect(today()).toBe("2024-01-02");
+    expect(today("Asia/Jakarta")).toBe("2024-01-02");
   });
 
-  it("uses the Asia/Jakarta calendar date regardless of host TZ (independent of process.env.TZ)", () => {
+  it("uses the requested zone regardless of host TZ (independent of process.env.TZ)", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-06-15T10:00:00Z")); // 17:00 in Jakarta, same day
-    expect(today()).toBe("2024-06-15");
+    expect(today("Asia/Jakarta")).toBe("2024-06-15");
+  });
+
+  it("WIB/WIT midnight boundary: 23:30 WIB is already tomorrow in WIT", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-24T16:30:00Z"));
+    expect(today("Asia/Jakarta")).toBe("2026-10-24");
+    expect(today("Asia/Jayapura")).toBe("2026-10-25");
+  });
+
+  it("WIT rolls over at 15:00Z, two hours before WIB does", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-24T14:59:00Z")); // 21:59 WIB, 23:59 WIT
+    expect(today("Asia/Jayapura")).toBe("2026-10-24");
+    vi.setSystemTime(new Date("2026-10-24T15:00:00Z")); // 22:00 WIB, 00:00 WIT
+    expect(today("Asia/Jayapura")).toBe("2026-10-25");
+    expect(today("Asia/Jakarta")).toBe("2026-10-24");
   });
 });
 

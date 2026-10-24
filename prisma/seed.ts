@@ -7,6 +7,7 @@ import { AGE_BRACKETS } from "../lib/constants";
 import type { Prisma } from "../lib/generated/prisma/client";
 import { definitionSchema, newViewDefinition } from "../lib/validation/member-view";
 import type { AttendanceStatus, MemberStatus, Role } from "../lib/validation/enums";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 const LEVEL_NAMES = ["pusat", "daerah", "desa", "kelompok"];
 
@@ -380,7 +381,7 @@ async function main() {
   const recentJoiner = mentengMembers[mentengMembers.length - 1];
   await db.member.update({
     where: { id: recentJoiner.id },
-    data: { joinedAt: addDays(today(), -20) },
+    data: { joinedAt: addDays(today(DEFAULT_TIMEZONE), -20) },
   });
 
   // Edge case: a member who left only 14 days ago — still `expected()` (and
@@ -399,7 +400,7 @@ async function main() {
       workStatus: "IBU_RUMAH_TANGGA",
       status: "KELUAR",
       joinedAt: "2023-01-01",
-      exitedAt: addDays(today(), -14),
+      exitedAt: addDays(today(DEFAULT_TIMEZONE), -14),
       createdById: owner.id,
     },
   });
@@ -548,8 +549,8 @@ async function main() {
       interval: 1,
       weekdays: [],
       monthDay: null,
-      startsOn: addDays(today(), 4),
-      endsOn: addDays(today(), 4),
+      startsOn: addDays(today(DEFAULT_TIMEZONE), 4),
+      endsOn: addDays(today(DEFAULT_TIMEZONE), 4),
       createdById: owner.id,
     },
   });
@@ -575,8 +576,8 @@ async function main() {
 
   // --- Historical occurrences & attendance ------------------------------
 
-  const historyFrom = addDays(today(), -63);
-  const historyTo = addDays(today(), -1);
+  const historyFrom = addDays(today(DEFAULT_TIMEZONE), -63);
+  const historyTo = addDays(today(DEFAULT_TIMEZONE), -1);
   const historyDatesA = expandDates(
     { freq: "WEEKLY", interval: 1, weekdays: [4], monthDay: null, startsOn: "2023-01-05", endsOn: null },
     historyFrom,
@@ -588,9 +589,9 @@ async function main() {
 
   const activityAMembers = [...mentengMembers.slice(0, -1), recentJoiner, recentLeaver].map((m) => ({
     id: m.id,
-    joinedAt: m.id === recentJoiner.id ? addDays(today(), -20) : m.joinedAt,
+    joinedAt: m.id === recentJoiner.id ? addDays(today(DEFAULT_TIMEZONE), -20) : m.joinedAt,
     status: m.id === recentLeaver.id ? "KELUAR" : m.status,
-    exitedAt: m.id === recentLeaver.id ? addDays(today(), -14) : m.exitedAt,
+    exitedAt: m.id === recentLeaver.id ? addDays(today(DEFAULT_TIMEZONE), -14) : m.exitedAt,
   }));
 
   await seedHistory(activityA.id, historyDatesA, activityAMembers, userKelompok.id, {
@@ -604,8 +605,8 @@ async function main() {
   // turnout against an org-wide `expected()` denominator.
   const monthlyDatesC = expandDates(
     { freq: "MONTHLY", interval: 1, weekdays: [], monthDay: 31, startsOn: "2023-01-31", endsOn: null },
-    addDays(today(), -360),
-    addDays(today(), -30),
+    addDays(today(DEFAULT_TIMEZONE), -360),
+    addDays(today(DEFAULT_TIMEZONE), -30),
   );
   const pastMonthlyDate = monthlyDatesC[monthlyDatesC.length - 1];
   if (pastMonthlyDate) {

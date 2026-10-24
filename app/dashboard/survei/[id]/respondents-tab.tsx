@@ -12,6 +12,7 @@ import { pageHref } from "@/lib/pagination";
 import type { listRespondents } from "@/lib/survey/respondents";
 import { cn } from "@/lib/utils";
 import { DeleteResponseButton } from "./delete-response-button";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 const timeFormat = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" });
 
@@ -94,7 +95,7 @@ export function RespondentsTab({
                   <td className={tdClass}>{r.groupName}</td>
                   <td className={tdClass}>{r.recordedByName}</td>
                   <td className={cn(tdClass, "tabular-nums text-muted-foreground")}>
-                    {formatDate(dateOf(r.updatedAt))} {timeFormat.format(r.updatedAt)}
+                    {formatDate(dateOf(r.updatedAt, DEFAULT_TIMEZONE))} {timeFormat.format(r.updatedAt)}
                   </td>
                   {canRecord && (
                     <td className="px-2 py-1 text-right whitespace-nowrap">

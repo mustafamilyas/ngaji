@@ -8,6 +8,7 @@ import { resolveActivity } from "@/lib/resolve";
 import { today } from "@/lib/dates";
 import type { ActivityUpdateInput } from "@/lib/validation/activity";
 import { ActivityForm } from "../../activity-form";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 export default async function SplitActivityPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -41,7 +42,7 @@ export default async function SplitActivityPage({ params }: { params: Promise<{ 
     interval: activity.interval,
     weekdays: activity.weekdays as number[],
     monthDay: activity.monthDay ?? undefined,
-    startsOn: today(),
+    startsOn: today(DEFAULT_TIMEZONE),
     endsOn: activity.endsOn ?? undefined,
   };
 

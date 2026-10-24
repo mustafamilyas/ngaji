@@ -16,6 +16,7 @@ import {
   type Sex,
   type WorkStatus,
 } from "@/lib/validation/enums";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 /** The subset of Member needed to decide whether they were expected on a date. */
 export type ExpectedMember = {
@@ -95,7 +96,7 @@ export async function memberStatistics(session: SessionUser, groupId?: number): 
   const byWorkStatus = Object.fromEntries(WORK_STATUSES.map((s) => [s, 0])) as Record<WorkStatus, number>;
   const byAgeBracket = Object.fromEntries(AGE_BRACKETS.map((b) => [b.label, 0])) as Record<string, number>;
 
-  const asOf = today();
+  const asOf = today(DEFAULT_TIMEZONE);
   for (const member of members) {
     bySex[member.sex as Sex]++;
     byMaritalStatus[member.maritalStatus as MaritalStatus]++;
@@ -155,7 +156,7 @@ export async function activityStatistics(
   const members = await db.member.findMany({ where: { group: { path: { startsWith: scope.path } } } });
   const membersTyped = members.map((m) => ({ ...m, status: m.status as MemberStatus }));
 
-  const todayStr = today();
+  const todayStr = today(DEFAULT_TIMEZONE);
   const occurrenceStats: OccurrenceStat[] = [];
 
   for (const activity of activities) {
@@ -298,7 +299,7 @@ export async function activityAttendanceSummary(
   const members = await db.member.findMany({ where: { group: { path: { startsWith: groupPath } } } });
   const membersTyped = members.map((m) => ({ ...m, status: m.status as MemberStatus }));
 
-  const todayStr = today();
+  const todayStr = today(DEFAULT_TIMEZONE);
   const occurrences: ActivityOccurrenceAttendance[] = [];
   const memberTally = new Map(membersTyped.map((m) => [m.id, { occurrenceCount: 0, hadir: 0, izin: 0 }]));
 
@@ -457,7 +458,7 @@ export async function participationStatistics(
     include: { group: { select: { path: true } } },
   });
 
-  const todayStr = today();
+  const todayStr = today(DEFAULT_TIMEZONE);
   return members.map((member) => {
     const windowStart = maxDate(from, member.joinedAt);
     const windowEnd = minDate(to, member.exitedAt ?? todayStr);

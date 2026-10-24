@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { addDays, today } from "@/lib/dates";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 import { saveAttendance } from "./save";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 let actorId: number;
 
@@ -311,17 +312,17 @@ describe("lib/attendance/save saveAttendance", () => {
   });
 });
 
-/** A Monday in the past relative to `today()`, always a valid key for the WEEKLY(weekdays=[1]) fixtures above. */
+/** A Monday in the past relative to `today(DEFAULT_TIMEZONE)`, always a valid key for the WEEKLY(weekdays=[1]) fixtures above. */
 function pastMonday(): string {
-  const base = today();
+  const base = today(DEFAULT_TIMEZONE);
   const weekday = new Date(`${base}T00:00:00Z`).getUTCDay();
   const daysSinceMonday = (weekday + 6) % 7;
   return addDays(base, -(daysSinceMonday === 0 ? 7 : daysSinceMonday));
 }
 
-/** The next Monday strictly after `today()` (1-7 days out). */
+/** The next Monday strictly after `today(DEFAULT_TIMEZONE)` (1-7 days out). */
 function futureMonday(): string {
-  const base = today();
+  const base = today(DEFAULT_TIMEZONE);
   const weekday = new Date(`${base}T00:00:00Z`).getUTCDay();
   const daysUntilNextMonday = ((1 - weekday + 7) % 7) || 7;
   return addDays(base, daysUntilNextMonday);

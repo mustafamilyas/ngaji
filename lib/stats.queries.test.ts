@@ -6,6 +6,7 @@ import type { SessionUser } from "@/lib/auth/session-user";
 import { db } from "@/lib/db";
 import { addDays, today } from "@/lib/dates";
 import { activityStatistics, memberStatistics, participationStatistics } from "./stats";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 let actorId: number;
 
@@ -73,7 +74,7 @@ describe("lib/stats DB-backed statistics", () => {
 
   describe("memberStatistics", () => {
     it("counts a member turning 60 today in the lansia (>=60) bracket", async () => {
-      const birthDate = addDays(today(), -60 * 365 - 15); // comfortably >= 60 years ago
+      const birthDate = addDays(today(DEFAULT_TIMEZONE), -60 * 365 - 15); // comfortably >= 60 years ago
       await makeMember(leaf.id, { name: "Lansia Uji", birthDate });
 
       const stats = await memberStatistics(session, leaf.id);

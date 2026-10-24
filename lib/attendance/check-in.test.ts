@@ -4,6 +4,7 @@ import { today } from "@/lib/dates";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 import { buildPageFixture, sessionFor } from "@/lib/test/fixtures";
 import { checkInMember, listCheckInMembers } from "./check-in";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 describe("lib/attendance/check-in", () => {
   afterAll(async () => {
@@ -28,12 +29,12 @@ describe("lib/attendance/check-in", () => {
         createdById: f.actorId,
       },
     });
-    const occurrence = await db.activityOccurrence.create({ data: { activityId: f.activityId, date: today() } });
+    const occurrence = await db.activityOccurrence.create({ data: { activityId: f.activityId, date: today(DEFAULT_TIMEZONE) } });
     await db.attendance.create({
       data: { occurrenceId: occurrence.id, memberId: other.id, status: "IZIN", recordedById: f.actorId },
     });
 
-    const input = { activityId: f.activityId, groupId: f.leaf.id, date: today(), memberId: f.memberId };
+    const input = { activityId: f.activityId, groupId: f.leaf.id, date: today(DEFAULT_TIMEZONE), memberId: f.memberId };
     const first = await checkInMember(session, input);
     expect(first).toMatchObject({ memberName: "Anggota Uji", alreadyCheckedIn: false });
     const second = await checkInMember(session, input);
@@ -46,7 +47,7 @@ describe("lib/attendance/check-in", () => {
     const logs = await db.auditLog.count({ where: { entityId: occurrence.id, action: "attendance.save" } });
     expect(logs).toBe(1);
 
-    const listed = await listCheckInMembers(session, { activityId: f.activityId, groupId: f.leaf.id, date: today() });
+    const listed = await listCheckInMembers(session, { activityId: f.activityId, groupId: f.leaf.id, date: today(DEFAULT_TIMEZONE) });
     expect(listed.members.find((m) => m.id === f.memberId)?.checkedIn).toBe(true);
     expect(listed.members.find((m) => m.id === other.id)?.checkedIn).toBe(false);
   });
@@ -55,7 +56,7 @@ describe("lib/attendance/check-in", () => {
     const f = await buildPageFixture("check-in-other-group");
     const session = sessionFor(f.actorId, "OWNER", f.leaf);
     await expect(
-      checkInMember(session, { activityId: f.activityId, groupId: f.leaf.id, date: today(), memberId: 999_999 }),
+      checkInMember(session, { activityId: f.activityId, groupId: f.leaf.id, date: today(DEFAULT_TIMEZONE), memberId: 999_999 }),
     ).rejects.toBeInstanceOf(ValidationError);
   });
 
@@ -63,7 +64,7 @@ describe("lib/attendance/check-in", () => {
     const f = await buildPageFixture("check-in-guards");
     const session = sessionFor(f.actorId, "OWNER", f.leaf);
     await expect(
-      checkInMember(session, { activityId: f.activityId, groupId: f.branch.id, date: today(), memberId: f.memberId }),
+      checkInMember(session, { activityId: f.activityId, groupId: f.branch.id, date: today(DEFAULT_TIMEZONE), memberId: f.memberId }),
     ).rejects.toThrow();
     await expect(
       checkInMember(session, { activityId: f.activityId, groupId: f.leaf.id, date: "2999-01-01", memberId: f.memberId }),
@@ -74,11 +75,11 @@ describe("lib/attendance/check-in", () => {
     const f = await buildPageFixture("check-in-scope");
     const leafUser = sessionFor(f.actorId, "USER", f.leaf);
     await expect(
-      checkInMember(leafUser, { activityId: f.activityId, groupId: f.otherLeaf.id, date: today(), memberId: f.memberId }),
+      checkInMember(leafUser, { activityId: f.activityId, groupId: f.otherLeaf.id, date: today(DEFAULT_TIMEZONE), memberId: f.memberId }),
     ).rejects.toBeInstanceOf(NotFoundError);
     const rootUser = sessionFor(f.actorId, "OWNER", f.root);
     await expect(
-      checkInMember(rootUser, { activityId: f.activityId, groupId: f.leaf.id, date: today(), memberId: f.memberId }),
+      checkInMember(rootUser, { activityId: f.activityId, groupId: f.leaf.id, date: today(DEFAULT_TIMEZONE), memberId: f.memberId }),
     ).rejects.toBeInstanceOf(ForbiddenError);
   });
 });
