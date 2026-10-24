@@ -82,6 +82,10 @@ export const LOGIN_RATE_LIMIT_WINDOW_MINUTES = 15;
 export const LOGIN_RATE_LIMIT_MAX_PER_USERNAME = 5;
 export const LOGIN_RATE_LIMIT_MAX_PER_IP = 20;
 
+/** Public interest form (/daftar) rate limiting, computed from AuditLog `lead.create` rows per IP. */
+export const INTEREST_RATE_LIMIT_MAX_PER_IP = 5;
+export const INTEREST_RATE_LIMIT_WINDOW_MINUTES = 60;
+
 /** Every `AuditLog.action` value the app writes (audit-log spec "Logged actions"), for the `/dashboard/audit` action filter. */
 export const AUDIT_ACTIONS = [
   "auth.login",

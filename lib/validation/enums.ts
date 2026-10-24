@@ -55,3 +55,13 @@ export type ViewSource = (typeof VIEW_SOURCES)[number];
 
 export const VIEW_VISIBILITIES = ["GROUP"] as const;
 export type ViewVisibility = (typeof VIEW_VISIBILITIES)[number];
+
+/** IANA zones an organization may use; `Organization.timezone` stays a plain String column. */
+export const TIMEZONES = ["Asia/Jakarta", "Asia/Makassar", "Asia/Jayapura"] as const;
+export type Timezone = (typeof TIMEZONES)[number];
+
+export const TIMEZONE_LABELS: Record<Timezone, string> = {
+  "Asia/Jakarta": "WIB",
+  "Asia/Makassar": "WITA",
+  "Asia/Jayapura": "WIT",
+};
