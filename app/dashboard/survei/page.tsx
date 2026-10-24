@@ -21,6 +21,14 @@ import { listSurveys } from "@/lib/survey/list";
 import { DEFAULT_SURVEY_SORT, SURVEY_SORT_KEYS, type SurveySortKey } from "@/lib/survey/list-sort";
 import { cn } from "@/lib/utils";
 
+// Below md the same table markup is laid out as one card per survey (no sideways scrolling); sort headers are table-only.
+const stackedCell =
+  "col-span-2 flex items-center justify-between gap-3 px-0 py-0 text-sm whitespace-normal md:table-cell md:px-4 md:py-2.5 md:whitespace-nowrap";
+
+function PhoneLabel({ children }: { children: React.ReactNode }) {
+  return <span className="shrink-0 text-xs text-muted-foreground md:hidden">{children}</span>;
+}
+
 export default async function SurveyListPage({
   searchParams,
 }: {
@@ -70,7 +78,7 @@ export default async function SurveyListPage({
         meta={<MetaItem icon={Network}>Data dalam cakupan Anda</MetaItem>}
         actions={
           canCreate ? (
-            <Link href="/dashboard/survei/baru" className={buttonVariants({ size: "lg" })}>
+            <Link href="/dashboard/survei/baru" className={cn(buttonVariants({ size: "lg" }), "h-11 w-full text-base sm:w-auto xl:h-9 xl:text-sm")}>
               <Plus />
               Buat survei
             </Link>
@@ -120,9 +128,9 @@ export default async function SurveyListPage({
         }
       >
         {surveys.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className={tableClass}>
-              <thead>
+          <div className="relative overflow-x-auto">
+            <table className={cn(tableClass, "block md:table")}>
+              <thead className="hidden md:table-header-group">
                 <tr className={theadRowClass}>
                   {th("judul", "Judul")}
                   {th("grup", "Grup pemilik")}
@@ -133,7 +141,7 @@ export default async function SurveyListPage({
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="block md:table-row-group">
                 {surveys.map((survey) => {
                   const actions: RowAction[] = [
                     { label: "Lihat hasil", href: `/dashboard/survei/${survey.id}`, icon: <Eye /> },
@@ -144,9 +152,15 @@ export default async function SurveyListPage({
                     actions.push({ label: "Ubah formulir", href: `/dashboard/survei/${survey.id}?tab=formulir`, icon: <FilePenLine /> });
                   }
                   return (
-                    <tr key={survey.id} className={trClass}>
-                      <td className={tdClass}>
-                        <Link href={`/dashboard/survei/${survey.id}`} className="font-medium hover:underline">
+                    <tr
+                      key={survey.id}
+                      className={cn(trClass, "grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1 px-4 py-3 md:table-row md:p-0")}
+                    >
+                      <td className={cn(tdClass, "block min-w-0 p-0 whitespace-normal md:table-cell md:px-4 md:py-2.5 md:whitespace-nowrap")}>
+                        <Link
+                          href={`/dashboard/survei/${survey.id}`}
+                          className="inline-flex min-h-11 items-center font-medium hover:underline xl:min-h-0"
+                        >
                           {survey.title}
                         </Link>
                         {survey.inherited && (
@@ -155,13 +169,20 @@ export default async function SurveyListPage({
                           </span>
                         )}
                       </td>
-                      <td className={tdClass}>{survey.group.name}</td>
-                      <td className={cn(tdClass, "tabular-nums")}>{survey.responseCount}</td>
-                      <td className={cn(tdClass, "tabular-nums text-muted-foreground")}>
-                        {formatDate(dateOf(survey.createdAt, user.timeZone))}
+                      <td className={stackedCell}>
+                        <PhoneLabel>Grup pemilik</PhoneLabel>
+                        <span>{survey.group.name}</span>
                       </td>
-                      <td className="px-2 py-1 text-right">
-                        <RowActions label={survey.title} actions={actions} />
+                      <td className={cn(stackedCell, "tabular-nums")}>
+                        <PhoneLabel>Respons</PhoneLabel>
+                        <span>{survey.responseCount}</span>
+                      </td>
+                      <td className={cn(stackedCell, "tabular-nums text-muted-foreground")}>
+                        <PhoneLabel>Dibuat</PhoneLabel>
+                        <span>{formatDate(dateOf(survey.createdAt, user.timeZone))}</span>
+                      </td>
+                      <td className="col-start-2 row-start-1 p-0 text-right md:px-2 md:py-1">
+                        <RowActions className="size-11 xl:size-8" label={survey.title} actions={actions} />
                       </td>
                     </tr>
                   );
