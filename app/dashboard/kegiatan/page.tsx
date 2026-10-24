@@ -139,11 +139,11 @@ export default async function ActivityListPage({
         }
         actions={
           <>
-            <Link href={printHref} className={buttonVariants({ size: "lg", variant: "outline" })}>
+            <Link href={printHref} className={cn(buttonVariants({ size: "lg", variant: "outline" }), "h-11 text-base xl:h-9 xl:text-sm")}>
               <Printer />
               Cetak
             </Link>
-            <Link href="/dashboard/kegiatan/baru" className={buttonVariants({ size: "lg" })}>
+            <Link href="/dashboard/kegiatan/baru" className={cn(buttonVariants({ size: "lg" }), "h-11 text-base xl:h-9 xl:text-sm")}>
               <Plus />
               Kegiatan baru
             </Link>
@@ -174,7 +174,7 @@ export default async function ActivityListPage({
                   scroll={false}
                   aria-current={view === key ? "page" : undefined}
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm",
+                    "inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 py-1 text-base xl:min-h-0 xl:px-2.5 xl:text-sm",
                     view === key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
@@ -253,7 +253,10 @@ export default async function ActivityListPage({
                         <span className="block text-xs text-muted-foreground">{entry.effectiveStartTime}</span>
                       </td>
                       <td className={cn(tdClass, stackedCell, "col-start-1")}>
-                        <Link href={`/dashboard/kegiatan/${entry.activityId}`} className="font-medium hover:underline">
+                        <Link
+                          href={`/dashboard/kegiatan/${entry.activityId}`}
+                          className="inline-flex min-h-11 items-center font-medium hover:underline xl:min-h-0"
+                        >
                           {entry.activityName}
                         </Link>
                         <span className="mt-0.5 flex flex-wrap gap-1">
