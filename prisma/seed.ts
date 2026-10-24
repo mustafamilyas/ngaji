@@ -157,6 +157,88 @@ async function seedHistory(
   }
 }
 
+/**
+ * A second, fully separate organization (3 levels, WITA) so cross-organization
+ * isolation can be exercised by hand and in tests. Shares nothing with the
+ * main tree: own levels, root group, OWNER, members and activities.
+ */
+async function seedSecondOrganization() {
+  const organization = await db.organization.create({
+    data: { name: "Majelis An-Nur", timezone: "Asia/Makassar" },
+  });
+  for (const [depth, name] of ["pusat", "cabang", "kelompok"].entries()) {
+    await db.level.create({ data: { organizationId: organization.id, depth, name } });
+  }
+
+  const pusat = await createGroup(organization.id, null, 0, "Majelis Pusat");
+  const cabangMakassar = await createGroup(organization.id, pusat, 1, "Cabang Makassar");
+  const kelompokSatu = await createGroup(organization.id, cabangMakassar, 2, "Kelompok Satu");
+  const kelompokDua = await createGroup(organization.id, cabangMakassar, 2, "Kelompok Dua");
+
+  const owner = await createUser("admin_annur", "annur123", "Admin An-Nur", pusat.id, "OWNER");
+
+  const people = [
+    { name: "Hasan Basri", sex: "L", group: kelompokSatu },
+    { name: "Siti Aisyah", sex: "P", group: kelompokSatu },
+    { name: "Yusuf Daeng", sex: "L", group: kelompokSatu },
+    { name: "Nurhaliza", sex: "P", group: kelompokDua },
+    { name: "Andi Mappanyukki", sex: "L", group: kelompokDua },
+    { name: "Fatimah Azzahra", sex: "P", group: kelompokDua },
+  ] as const;
+  for (const [i, person] of people.entries()) {
+    await db.member.create({
+      data: {
+        groupId: person.group.id,
+        name: person.name,
+        birthPlace: "Makassar",
+        birthDate: `${1980 + i * 5}-0${i + 1}-1${i}`,
+        sex: person.sex,
+        address: `Jl. Pelita No. ${i + 1}, Makassar`,
+        phone: `0813${String(2000000 + i).padStart(7, "0")}`,
+        maritalStatus: "MENIKAH",
+        workStatus: "BEKERJA",
+        status: "AKTIF",
+        joinedAt: "2024-01-01",
+        createdById: owner.id,
+      },
+    });
+  }
+
+  await db.activity.create({
+    data: {
+      groupId: kelompokSatu.id,
+      name: "Kajian Ba'da Maghrib",
+      location: "Musala An-Nur Satu",
+      notes: "Kajian mingguan Kelompok Satu",
+      startTime: "18:30",
+      durationMinutes: 60,
+      freq: "WEEKLY",
+      interval: 1,
+      weekdays: [5], // Friday
+      monthDay: null,
+      startsOn: "2024-01-05",
+      endsOn: null,
+      createdById: owner.id,
+    },
+  });
+  await db.activity.create({
+    data: {
+      groupId: cabangMakassar.id,
+      name: "Pertemuan Cabang Makassar",
+      location: "Aula Cabang Makassar",
+      startTime: "09:00",
+      durationMinutes: 120,
+      freq: "MONTHLY",
+      interval: 1,
+      weekdays: [],
+      monthDay: 15,
+      startsOn: "2024-01-15",
+      endsOn: null,
+      createdById: owner.id,
+    },
+  });
+}
+
 async function main() {
   const existing = await db.user.findUnique({ where: { username: "admin" } });
   if (existing) {
@@ -659,8 +741,10 @@ async function main() {
     });
   }
 
+  await seedSecondOrganization();
+
   console.log(
-    `Seed complete: ${index + 2} members, ${kelompokGroups.length} kelompok groups, 7 activities (1 conflicted, 1 monthly-edge, 1 ended, 1 split, 1 upcoming, 1 soft-deleted), 1 survey with responses, 2 member views, historical attendance over ${historyDatesA.length} weeks.`,
+    `Seed complete: ${index + 2} members, ${kelompokGroups.length} kelompok groups, 7 activities (1 conflicted, 1 monthly-edge, 1 ended, 1 split, 1 upcoming, 1 soft-deleted), 1 survey with responses, 2 member views, historical attendance over ${historyDatesA.length} weeks. Second organization \"Majelis An-Nur\" (admin_annur): 6 members, 2 activities.`,
   );
 }
 

@@ -132,3 +132,44 @@ export async function buildPageFixture(label: string): Promise<PageFixture> {
     activityId: activity.id,
   };
 }
+
+export type OrgFixture = PageFixture & {
+  organizationName: string;
+  timezone: string;
+  /** Active OWNER whose own group is `root`. */
+  owner: SessionUser;
+  levelNames: string[];
+};
+
+/**
+ * A complete second organization for cross-organization isolation tests: own
+ * levels (3), root group, an OWNER with a `UserGroupRole` at the root, a
+ * member and an activity. Builds on `buildPageFixture`, so `label` must be
+ * unique per test file for the same reason. Call it twice (two labels) to get
+ * org A and org B.
+ */
+export async function buildOrgFixture(
+  label: string,
+  options: { timezone?: string } = {},
+): Promise<OrgFixture> {
+  const base = await buildPageFixture(label);
+  const timezone = options.timezone ?? "Asia/Jakarta";
+  const organization = await db.organization.update({
+    where: { id: base.organizationId },
+    data: { timezone },
+  });
+  await db.userGroupRole.create({
+    data: { userId: base.actorId, groupId: base.root.id, role: "OWNER" },
+  });
+  const levels = await db.level.findMany({
+    where: { organizationId: organization.id },
+    orderBy: { depth: "asc" },
+  });
+  return {
+    ...base,
+    organizationName: organization.name,
+    timezone,
+    owner: sessionFor(base.actorId, "OWNER", base.root),
+    levelNames: levels.map((level) => level.name),
+  };
+}

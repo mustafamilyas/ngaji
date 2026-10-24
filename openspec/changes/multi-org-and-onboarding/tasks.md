@@ -4,7 +4,7 @@
 
 - [x] 1.1 Add `Organization.logoUrl String?` and the `InterestLead` model; run `pnpm prisma migrate dev` and verify the migration applies on a copy of the current dev DB with no data change to existing orgs
 - [x] 1.2 Add `TIMEZONES` (+ WIB/WITA/WIT labels) to `lib/validation/enums.ts` and `INTEREST_RATE_LIMIT_MAX_PER_IP`, `INTEREST_RATE_LIMIT_WINDOW_MINUTES` to `lib/constants.ts`; verify `pnpm tsc --noEmit`
-- [ ] 1.3 Extend `prisma/seed.ts` and `lib/test/fixtures.ts` with a second organization (own levels, root group, OWNER, members, activities); verify `pnpm prisma db seed` creates both and existing tests still pass
+- [x] 1.3 Extend `prisma/seed.ts` and `lib/test/fixtures.ts` with a second organization (own levels, root group, OWNER, members, activities); verify `pnpm prisma db seed` creates both and existing tests still pass
 
 ## 2. Pure logic (tests first)
 
