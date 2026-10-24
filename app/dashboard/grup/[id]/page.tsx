@@ -21,7 +21,8 @@ import { groupTrail } from "@/lib/group/trail";
 import { clampPage, pageHref, paginate } from "@/lib/pagination";
 import { resolveGroup } from "@/lib/resolve";
 import { parseTab } from "@/lib/tabs";
-import { initials } from "@/lib/utils";
+import { touchLgButton } from "@/components/ui/touch";
+import { cn, initials } from "@/lib/utils";
 import { AddSubgroupDialog } from "./add-subgroup-dialog";
 import { DeleteGroupForm } from "./delete-group-form";
 import { RenameGroupForm } from "./rename-group-form";
@@ -29,7 +30,7 @@ import { RenameGroupForm } from "./rename-group-form";
 const TABS = ["subgrup", "anggota", "kegiatan", "pengguna", "pengaturan"] as const;
 type Tab = (typeof TABS)[number];
 
-const rowClass = "-mx-2 flex items-center justify-between gap-3 rounded-md px-2 py-2.5 hover:bg-muted";
+const rowClass = "-mx-2 flex min-h-11 items-center justify-between gap-3 rounded-md px-2 py-2.5 hover:bg-muted";
 
 function EmptyRow({ children }: { children: React.ReactNode }) {
   return <p className="py-6 text-center text-sm text-muted-foreground">{children}</p>;
@@ -114,12 +115,12 @@ export default async function GroupDetailPage({
         badges={levelName && <Badge variant="secondary">{levelName}</Badge>}
         actions={
           <>
-            <Link href={`/dashboard/anggota?grup=${group.id}`} className={buttonVariants({ variant: "outline", size: "lg" })}>
+            <Link href={`/dashboard/anggota?grup=${group.id}`} className={cn(buttonVariants({ variant: "outline", size: "lg" }), touchLgButton)}>
               <Users />
               Lihat semua anggota
             </Link>
             {isLeaf ? (
-              <Link href={`/dashboard/anggota/baru?grup=${group.id}`} className={buttonVariants({ size: "lg" })}>
+              <Link href={`/dashboard/anggota/baru?grup=${group.id}`} className={cn(buttonVariants({ size: "lg" }), touchLgButton)}>
                 <UserPlus />
                 Tambah anggota
               </Link>

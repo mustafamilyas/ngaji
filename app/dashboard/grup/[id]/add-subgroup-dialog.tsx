@@ -5,6 +5,8 @@ import { Plus } from "lucide-react";
 import { createGroupAction } from "@/app/dashboard/grup/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { touchField, touchLgButton } from "@/components/ui/touch";
+import { cn } from "@/lib/utils";
 import type { ActionResult } from "@/lib/errors";
 import type { Group } from "@/lib/generated/prisma/client";
 
@@ -31,7 +33,7 @@ export function AddSubgroupDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className={buttonVariants({ size: "lg" })}>
+      <DialogTrigger className={cn(buttonVariants({ size: "lg" }), touchLgButton)}>
         <Plus />
         Tambah {noun.toLowerCase()}
       </DialogTrigger>
@@ -49,7 +51,7 @@ export function AddSubgroupDialog({
               name="name"
               required
               autoFocus
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className={touchField}
             />
           </div>
           {state && !state.ok && (
@@ -58,8 +60,8 @@ export function AddSubgroupDialog({
             </p>
           )}
           <div className="flex justify-end gap-2">
-            <DialogClose className={buttonVariants({ variant: "ghost", size: "lg" })}>Batal</DialogClose>
-            <Button type="submit" size="lg" disabled={pending}>
+            <DialogClose className={cn(buttonVariants({ variant: "ghost", size: "lg" }), touchLgButton)}>Batal</DialogClose>
+            <Button type="submit" size="lg" disabled={pending} className={touchLgButton}>
               {pending ? "Menyimpan…" : "Simpan"}
             </Button>
           </div>

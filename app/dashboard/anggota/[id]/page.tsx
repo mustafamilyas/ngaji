@@ -8,6 +8,7 @@ import { MetaItem, PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { TabNav } from "@/components/tab-nav";
 import { buttonVariants } from "@/components/ui/button";
+import { touchLgButton } from "@/components/ui/touch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { WhatsAppButton } from "@/components/whatsapp-button";
 import { attendanceHistoryForMember } from "@/lib/attendance/history";
@@ -96,7 +97,7 @@ export default async function MemberDetailPage({
                 <span key={g.id}>
                   {i > 0 && " › "}
                   {g.href ? (
-                    <Link href={g.href} className="hover:text-foreground hover:underline">
+                    <Link href={g.href} className="inline-flex min-h-11 items-center hover:text-foreground hover:underline xl:min-h-0">
                       {g.name}
                     </Link>
                   ) : (
@@ -112,7 +113,7 @@ export default async function MemberDetailPage({
         actions={
           <>
             {tab !== "ubah" && (
-              <Link href={tabHref(path, "ubah", "profil")} className={buttonVariants({ variant: "outline", size: "lg" })}>
+              <Link href={tabHref(path, "ubah", "profil")} className={cn(buttonVariants({ variant: "outline", size: "lg" }), touchLgButton)}>
                 <Pencil />
                 Ubah data
               </Link>
@@ -170,7 +171,7 @@ export default async function MemberDetailPage({
                     <li key={entry.id}>
                       <Link
                         href={`/dashboard/kegiatan/${entry.activityId}/${entry.date}`}
-                        className="-mx-2 flex items-center justify-between gap-3 rounded-md px-2 py-2.5 hover:bg-muted"
+                        className="-mx-2 flex min-h-11 items-center justify-between gap-3 rounded-md px-2 py-2.5 hover:bg-muted"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">{entry.activityName}</p>
