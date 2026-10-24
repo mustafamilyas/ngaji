@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore, useTransition } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { touchButton } from "@/components/ui/touch";
 import type { MemberColumnKey } from "@/lib/member/columns";
 import type { SectionView } from "@/lib/member-view/sections";
 import { loadSectionAction } from "./actions";
@@ -130,7 +131,7 @@ export function ViewSections({
               type="button"
               aria-expanded={expanded}
               onClick={() => toggle(section)}
-              className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium hover:bg-muted"
+              className="flex min-h-11 w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium hover:bg-muted"
             >
               {expanded ? <ChevronDown className="size-4" aria-hidden /> : <ChevronRight className="size-4" aria-hidden />}
               {section.label}
@@ -148,6 +149,7 @@ export function ViewSections({
                   <Button
                     type="button"
                     variant="outline"
+                    className={touchButton}
                     disabled={loadingKey === section.key}
                     onClick={() => load(section.key, section.members.length)}
                   >

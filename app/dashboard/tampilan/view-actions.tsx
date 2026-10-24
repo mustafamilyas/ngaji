@@ -9,12 +9,13 @@ import {
   updateMemberViewAction,
 } from "@/app/dashboard/tampilan/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { touchField, touchLgButton } from "@/components/ui/touch";
+import { cn } from "@/lib/utils";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { ActionResult } from "@/lib/errors";
 import type { Definition } from "@/lib/validation/member-view";
 
-const inputClass =
-  "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+const inputClass = touchField;
 
 /** Dialog with one name field; `onSubmit` returns the server action's result so errors show inline. */
 function NameDialog({
@@ -58,7 +59,7 @@ function NameDialog({
         }
       }}
     >
-      <DialogTrigger className={buttonVariants({ variant: "outline", size: "lg" })}>{trigger}</DialogTrigger>
+      <DialogTrigger className={cn(buttonVariants({ variant: "outline", size: "lg" }), touchLgButton)}>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>
@@ -82,8 +83,8 @@ function NameDialog({
             </p>
           )}
           <div className="flex justify-end gap-2">
-            <DialogClose className={buttonVariants({ variant: "ghost", size: "lg" })}>Batal</DialogClose>
-            <Button type="submit" size="lg" disabled={pending}>
+            <DialogClose className={cn(buttonVariants({ variant: "ghost", size: "lg" }), touchLgButton)}>Batal</DialogClose>
+            <Button type="submit" size="lg" className={touchLgButton} disabled={pending}>
               {pending ? "Menyimpan…" : submitLabel}
             </Button>
           </div>
@@ -139,6 +140,7 @@ export function ViewActions({
         <Button
           variant="outline"
           size="lg"
+          className={touchLgButton}
           disabled={pending}
           onClick={() =>
             run(
@@ -189,12 +191,13 @@ export function ViewActions({
       />
       {isOwner && viewId !== null && isDraft && (
         <>
-          <Button variant="ghost" size="lg" disabled={pending} onClick={() => router.replace(basePath, { scroll: false })}>
+          <Button variant="ghost" size="lg" className={touchLgButton} disabled={pending} onClick={() => router.replace(basePath, { scroll: false })}>
             <Undo2 />
             Batalkan
           </Button>
           <Button
             size="lg"
+            className={touchLgButton}
             disabled={pending}
             onClick={() =>
               run(

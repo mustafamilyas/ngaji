@@ -12,3 +12,6 @@ export const touchButton = "h-11 px-4 text-base xl:h-8 xl:px-2.5 xl:text-sm";
 export const touchInput = "h-11 text-base md:text-base xl:h-8 xl:text-sm";
 
 export const touchIconButton = "size-11 xl:size-8";
+
+/** For `size="lg"` buttons (36px on desktop): 44px below `xl`. */
+export const touchLgButton = "h-11 text-base xl:h-9 xl:text-sm";

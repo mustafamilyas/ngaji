@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Filter, Plus, X } from "lucide-react";
 import { filterTriggerClass } from "@/components/filters/filter-bar";
 import { Button } from "@/components/ui/button";
+import { touchButton, touchIconButton, touchLgButton } from "@/components/ui/touch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { VIEW_MAX_RULE_GROUPS } from "@/lib/constants";
@@ -97,7 +98,7 @@ export function ViewToolbar({
               {index > 0 && (
                 <button
                   type="button"
-                  className="rounded-md px-1.5 py-0.5 text-xs font-medium text-muted-foreground hover:bg-muted"
+                  className="min-h-11 min-w-11 rounded-md px-1.5 py-0.5 text-sm font-medium text-muted-foreground hover:bg-muted xl:min-h-0 xl:min-w-0 xl:text-xs"
                   onClick={() => apply(setFilterOp(definition, op === "AND" ? "OR" : "AND"))}
                   aria-label={`Gabungan filter: ${op === "AND" ? "DAN" : "ATAU"}. Klik untuk mengganti`}
                 >
@@ -118,6 +119,7 @@ export function ViewToolbar({
                 type="button"
                 variant="ghost"
                 size="icon-sm"
+                className={touchIconButton}
                 aria-label="Hapus filter"
                 onClick={() => apply(removeRuleGroup(definition, index))}
               >
@@ -125,14 +127,21 @@ export function ViewToolbar({
               </Button>
             </span>
           ))}
-          <Button type="button" variant="outline" size="lg" disabled={groups.length >= VIEW_MAX_RULE_GROUPS} onClick={addGroup}>
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className={touchLgButton}
+            disabled={groups.length >= VIEW_MAX_RULE_GROUPS}
+            onClick={addGroup}
+          >
             <Plus />
             Tambah filter
           </Button>
         </div>
 
         {/* Mobile: one button, bottom sheet */}
-        <Button type="button" variant="outline" size="lg" className="sm:hidden" onClick={() => setSheetOpen(true)}>
+        <Button type="button" variant="outline" size="lg" className={`${touchLgButton} sm:hidden`} onClick={() => setSheetOpen(true)}>
           <Filter />
           Filter{groups.length > 0 ? ` (${groups.length})` : ""}
         </Button>
@@ -155,7 +164,7 @@ export function ViewToolbar({
                 {editor(group, index)}
               </div>
             ))}
-            <Button type="button" variant="outline" disabled={groups.length >= VIEW_MAX_RULE_GROUPS} onClick={() => apply(addRuleGroup(definition, { ...NEW_RULE, value: [...NEW_RULE.value] }))}>
+            <Button type="button" variant="outline" className={touchButton} disabled={groups.length >= VIEW_MAX_RULE_GROUPS} onClick={() => apply(addRuleGroup(definition, { ...NEW_RULE, value: [...NEW_RULE.value] }))}>
               <Plus />
               Tambah filter
             </Button>

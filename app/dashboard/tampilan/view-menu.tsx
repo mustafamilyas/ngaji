@@ -5,6 +5,8 @@ import { Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 import { filterTriggerClass } from "@/components/filters/filter-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { touchButton, touchIconButton, touchInput } from "@/components/ui/touch";
+import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { VIEW_MAX_AGE_BUCKETS } from "@/lib/constants";
 import { ageBucketsFromBrackets } from "@/lib/member-view/edit";
@@ -45,10 +47,10 @@ function AgeBucketEditor({ buckets, onCommit }: { buckets: Buckets; onCommit: (b
     <div className="flex flex-col gap-2">
       <ul className="flex flex-col gap-2">
         {rows.map((bucket, index) => (
-          <li key={`${rows.length}-${index}`} className="flex items-center gap-1.5">
+          <li key={`${rows.length}-${index}`} className="flex flex-wrap items-center gap-1.5 sm:flex-nowrap">
             <Input
               aria-label="Nama kelompok"
-              className="min-w-0 flex-1"
+              className={cn(touchInput, "min-w-full flex-1 sm:min-w-0")}
               defaultValue={bucket.label}
               onBlur={(e) => update(rows.map((b, i) => (i === index ? { ...b, label: e.currentTarget.value } : b)))}
             />
@@ -56,7 +58,8 @@ function AgeBucketEditor({ buckets, onCommit }: { buckets: Buckets; onCommit: (b
               aria-label="Usia minimum"
               type="number"
               min={0}
-              className="w-[4.5rem] shrink-0 px-1.5"
+              className={cn(touchInput, "w-[4.5rem] shrink-0 px-1.5")}
+              inputMode="numeric"
               defaultValue={bucket.min}
               onBlur={(e) => update(rows.map((b, i) => (i === index ? { ...b, min: Number(e.currentTarget.value) } : b)))}
             />
@@ -65,7 +68,8 @@ function AgeBucketEditor({ buckets, onCommit }: { buckets: Buckets; onCommit: (b
               aria-label="Usia maksimum (kosong = tanpa batas)"
               type="number"
               min={0}
-              className="w-[4.5rem] shrink-0 px-1.5"
+              className={cn(touchInput, "w-[4.5rem] shrink-0 px-1.5")}
+              inputMode="numeric"
               placeholder="∞"
               defaultValue={bucket.max ?? ""}
               onBlur={(e) => update(rows.map((b, i) => (i === index ? { ...b, max: num(e.currentTarget.value) } : b)))}
@@ -74,6 +78,7 @@ function AgeBucketEditor({ buckets, onCommit }: { buckets: Buckets; onCommit: (b
               type="button"
               variant="ghost"
               size="icon-sm"
+              className={touchIconButton}
               aria-label="Hapus kelompok"
               disabled={rows.length <= 1}
               onClick={() => update(rows.filter((_, i) => i !== index))}
@@ -93,6 +98,7 @@ function AgeBucketEditor({ buckets, onCommit }: { buckets: Buckets; onCommit: (b
           type="button"
           variant="outline"
           size="sm"
+          className={cn(touchButton, "xl:h-7")}
           disabled={rows.length >= VIEW_MAX_AGE_BUCKETS}
           onClick={() => {
             const last = rows[rows.length - 1];
@@ -103,7 +109,7 @@ function AgeBucketEditor({ buckets, onCommit }: { buckets: Buckets; onCommit: (b
           <Plus />
           Tambah kelompok
         </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={() => update(ageBucketsFromBrackets())}>
+        <Button type="button" variant="ghost" size="sm" className={cn(touchButton, "xl:h-7")} onClick={() => update(ageBucketsFromBrackets())}>
           Atur ulang
         </Button>
       </div>
@@ -143,7 +149,7 @@ export function ViewMenu({
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[min(25rem,calc(100vw-24px))] overflow-y-auto">
         <div className="flex max-h-[min(32rem,var(--available-height))] flex-col gap-4 overflow-y-auto p-3">
-          <label className="flex flex-col gap-1 text-sm">
+          <label className="flex flex-col gap-1 text-base xl:text-sm">
             <span className="text-xs font-medium text-muted-foreground">Kelompokkan menurut</span>
             <select className={nativeSelectClass} value={groupByValue(groupBy)} onChange={(e) => setGroupBy(e.target.value)}>
               <option value="">Tanpa pengelompokan</option>
@@ -196,8 +202,8 @@ export function ViewMenu({
             <legend className="mb-1 text-xs font-medium text-muted-foreground">Kolom (nama selalu tampil)</legend>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1">
               {MEMBER_COLUMNS.map((column) => (
-                <label key={column.key} className="flex cursor-pointer items-center gap-1.5">
-                  <input type="checkbox" checked={columns.includes(column.key)} onChange={(e) => toggleColumn(column.key, e.target.checked)} />
+                <label key={column.key} className="flex min-h-11 cursor-pointer items-center gap-2.5 text-base xl:min-h-0 xl:gap-1.5 xl:text-sm">
+                  <input type="checkbox" className="size-5 xl:size-4" checked={columns.includes(column.key)} onChange={(e) => toggleColumn(column.key, e.target.checked)} />
                   {column.label}
                 </label>
               ))}

@@ -35,7 +35,7 @@ export default async function MemberViewsPage({
         title="Tampilan"
         meta="Daftar anggota tersimpan milik grup Anda. Hasilnya tetap dibatasi scope Anda."
         actions={
-          <Link href="/dashboard/tampilan/baru" className={buttonVariants({ size: "lg" })}>
+          <Link href="/dashboard/tampilan/baru" className={cn(buttonVariants({ size: "lg" }), "h-11 w-full text-base sm:w-auto xl:h-9 xl:text-sm")}>
             <Plus />
             Buat tampilan
           </Link>
@@ -79,7 +79,7 @@ export default async function MemberViewsPage({
                 {views.map((view) => (
                   <tr key={view.id} className={trClass}>
                     <th scope="row" className={cn(tdClass, "text-left font-medium")}>
-                      <Link href={`/dashboard/tampilan/${view.id}`} className="hover:underline">
+                      <Link href={`/dashboard/tampilan/${view.id}`} className="inline-flex min-h-11 items-center hover:underline xl:min-h-0">
                         {view.name}
                       </Link>
                     </th>
