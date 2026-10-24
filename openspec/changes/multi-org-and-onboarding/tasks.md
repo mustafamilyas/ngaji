@@ -37,7 +37,7 @@
 
 ## 7. Interest sign-up
 
-- [ ] 7.1 Add `/daftar` to the public allowlist in `lib/auth/public-paths.ts`; verify the proxy test: anonymous `/daftar` returns 200, `/dashboard/*` still redirects
+- [x] 7.1 Add `/daftar` to the public allowlist in `lib/auth/public-paths.ts`; verify the proxy test: anonymous `/daftar` returns 200, `/dashboard/*` still redirects (verified at allowlist level in `public-paths.test.ts`: `/daftar` allowed, `/Daftar`, `/daftar/`, `/daftar/1` and `/dashboard/*` rejected; the HTTP 200 check moves to 10.8 because the page does not exist until 7.3)
 - [ ] 7.2 Add the public `submitInterest` action (honeypot, AuditLog-based per-IP limit under keyed lock, lead + `lead.create` in one transaction, returns `wa.me` URL or null); verify action tests for success, honeypot, rate limit, tampered input, missing `DAHAN_WHATSAPP`, and that `lead.create` is absent from every org's audit viewer
 - [ ] 7.3 Build the `/daftar` page (form, consent, success state with WhatsApp link, redirect) and point the landing and `/ormas` CTA to `/daftar`; verify in the browser preview: submit opens the prefilled WhatsApp URL, no external requests, usable at 360px
 - [ ] 7.4 Add `scripts/leads.ts` (`pnpm leads [--csv]`, read-only); verify by running it against the dev DB with two seeded leads
@@ -62,6 +62,8 @@
 - [ ] 10.5 Form inputs, selects and submit buttons on `/dashboard/pengaturan` are 32–36px tall at 360px, below the 44px tap-target minimum of section 11 (found at 6.2; `fieldClass` in `organization-form.tsx` and `rename-level-form.tsx` use `h-9`, buttons use the default size). Fix with a shared touch-friendly size on small screens and verify heights ≥ 44px at 360px; covered by 11.1
 - [x] 10.6 In the settings form, the timezone `<select>` reverted to its first-mount value after a successful save (DB and audit were correct; only the display lied) because React 19 resets the form to first-mount defaults after the action (found at 6.2 in the 360px browser check). Fixed by keying the select on the saved timezone so it remounts with the new default; verified in the browser (WIT to WIB shows WIB with "Tersimpan.")
 - [ ] 10.7 The settings form's save-then-display behavior has no automated test, because the repo has no jsdom/component test setup (found at 6.2; only verified manually in the browser). Decide whether to add a client-component test harness or keep browser verification for client forms
+
+- [ ] 10.8 The repo has no test of `proxy.ts` itself (only the pure `isPublicPath`), so "anonymous `/daftar` returns 200 while `/dashboard/*` redirects" was not checked end to end at 7.1 (found at 7.1). After 7.3, verify in the browser preview with no session: `/daftar` returns 200 and `/dashboard/anggota` redirects to `/login`; decide whether a proxy-level test is worth adding
 
 ## 11. Mobile and tablet quality
 
