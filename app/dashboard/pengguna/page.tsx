@@ -27,6 +27,13 @@ const COLUMNS: { key: UserSortKey; label: string }[] = [
   { key: "status", label: "Status" },
 ];
 
+const stackedCell =
+  "col-span-2 flex items-center justify-between gap-3 px-0 py-0 text-sm whitespace-normal md:table-cell md:px-4 md:py-2.5 md:whitespace-nowrap";
+
+function PhoneLabel({ children }: { children: React.ReactNode }) {
+  return <span className="shrink-0 text-xs text-muted-foreground md:hidden">{children}</span>;
+}
+
 export default async function UsersPage({
   searchParams,
 }: {
@@ -70,6 +77,7 @@ export default async function UsersPage({
     />
   );
 
+  // Below md the same table markup is laid out as one card per user (no sideways scrolling); sort headers are table-only.
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -108,9 +116,9 @@ export default async function UsersPage({
         }
       >
         {roles.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className={tableClass}>
-              <thead>
+          <div className="relative overflow-x-auto">
+            <table className={cn(tableClass, "block md:table")}>
+              <thead className="hidden md:table-header-group">
                 <tr className={theadRowClass}>
                   {th("nama", "Nama")}
                   {COLUMNS.map((c) => th(c.key, c.label))}
@@ -119,7 +127,7 @@ export default async function UsersPage({
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="block md:table-row-group">
                 {roles.map((userRole) => {
                   const role = userRole.role as (typeof ROLES)[number];
                   const { canManage, canReset } = userRowPermissions({
@@ -130,8 +138,11 @@ export default async function UsersPage({
                     isSelf: String(userRole.user.id) === session.user.id,
                   });
                   return (
-                    <tr key={userRole.id} className={trClass}>
-                      <th scope="row" className={cn(tdClass, "text-left font-medium")}>
+                    <tr
+                      key={userRole.id}
+                      className={cn(trClass, "grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1 px-4 py-3 md:table-row md:p-0")}
+                    >
+                      <th scope="row" className={cn(tdClass, "block p-0 text-left font-medium whitespace-normal md:table-cell md:px-4 md:py-2.5 md:whitespace-nowrap")}>
                         <span className="flex items-center gap-2.5">
                           <Avatar size="sm">
                             <AvatarFallback>{initials(userRole.user.name)}</AvatarFallback>
@@ -139,12 +150,20 @@ export default async function UsersPage({
                           {userRole.user.name}
                         </span>
                       </th>
-                      <td className={cn(tdClass, "text-muted-foreground")}>@{userRole.user.username}</td>
-                      <td className={tdClass}>
+                      <td className={cn(stackedCell, "text-muted-foreground")}>
+                        <PhoneLabel>Username</PhoneLabel>
+                        <span>@{userRole.user.username}</span>
+                      </td>
+                      <td className={stackedCell}>
+                        <PhoneLabel>Peran</PhoneLabel>
                         <Badge variant="secondary">{role}</Badge>
                       </td>
-                      <td className={tdClass}>{userRole.group.name}</td>
-                      <td className={tdClass}>
+                      <td className={stackedCell}>
+                        <PhoneLabel>Grup</PhoneLabel>
+                        <span>{userRole.group.name}</span>
+                      </td>
+                      <td className={stackedCell}>
+                        <PhoneLabel>Status</PhoneLabel>
                         {userRole.user.isActive ? (
                           <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
                             Aktif
@@ -155,7 +174,7 @@ export default async function UsersPage({
                           </span>
                         )}
                       </td>
-                      <td className="px-2 py-1 text-right">
+                      <td className="col-start-2 row-start-1 p-0 text-right md:px-2 md:py-1">
                         {(canManage || canReset) && (
                           <ManageUserDialog
                             userId={userRole.user.id}

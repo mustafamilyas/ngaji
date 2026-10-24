@@ -4,14 +4,15 @@ import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { GroupAutocomplete, withParentNames } from "@/components/group-autocomplete";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { touchButton, touchField } from "@/components/ui/touch";
+import { cn } from "@/lib/utils";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { CreatedUserDto } from "@/lib/user/dto";
 import type { ActionResult } from "@/lib/errors";
 import type { Role } from "@/lib/validation/enums";
 import { createUserAction } from "./actions";
 
-const inputClass =
-  "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+const inputClass = touchField;
 
 type GroupOption = { id: number; name: string; parentId: number | null };
 
@@ -59,7 +60,7 @@ export function CreateUserDialog({
 
   return (
     <Dialog>
-      <DialogTrigger className={buttonVariants({ size: "lg" })}>
+      <DialogTrigger className={cn(buttonVariants({ size: "lg" }), "h-11 w-full text-base sm:w-auto xl:h-9 xl:text-sm")}>
         <UserPlus />
         Tambah pengguna
       </DialogTrigger>
@@ -79,7 +80,7 @@ export function CreateUserDialog({
           <Field label="Nama" htmlFor="new-user-name">
             <input id="new-user-name" name="name" required className={inputClass} />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Username" htmlFor="new-user-username">
               <input id="new-user-username" name="username" required className={inputClass} />
             </Field>
@@ -114,8 +115,8 @@ export function CreateUserDialog({
           )}
 
           <div className="flex justify-end gap-2">
-            <DialogClose className={buttonVariants({ variant: "ghost", size: "lg" })}>Tutup</DialogClose>
-            <Button type="submit" size="lg" disabled={pending || groupId === undefined}>
+            <DialogClose className={cn(buttonVariants({ variant: "ghost", size: "lg" }), touchButton)}>Tutup</DialogClose>
+            <Button type="submit" size="lg" className={touchButton} disabled={pending || groupId === undefined}>
               {pending ? "Menyimpan…" : "Buat pengguna"}
             </Button>
           </div>

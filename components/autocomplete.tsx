@@ -8,7 +8,7 @@ export type AutocompleteItem = { id: number; label: string; hint?: string; badge
 const LIMIT = 8;
 
 export const autocompleteCompactInputClass =
-  "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60";
+  "h-11 w-full rounded-md border border-input bg-background px-3 text-base outline-none transition-colors xl:h-9 xl:text-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60";
 
 export const autocompleteInputClass =
   "h-12 w-full rounded-xl border border-input bg-background px-4 text-base outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60";
@@ -138,7 +138,7 @@ export function Autocomplete({
                   }}
                   className={cn(
                     "flex w-full items-center justify-between gap-3 text-left hover:bg-muted",
-                    compact ? "px-3 py-2 text-sm" : "px-4 py-3 text-base",
+                    compact ? "min-h-11 px-3 py-2 text-base xl:min-h-0 xl:text-sm" : "px-4 py-3 text-base",
                     i === highlight && "bg-muted",
                   )}
                 >

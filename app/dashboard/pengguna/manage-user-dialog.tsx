@@ -4,6 +4,8 @@ import { useActionState, useMemo, useState } from "react";
 import { KeyRound, Settings2, UserX } from "lucide-react";
 import { GroupAutocomplete, withParentNames } from "@/components/group-autocomplete";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { touchButton, touchField } from "@/components/ui/touch";
+import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { UserGroupRole } from "@/lib/generated/prisma/client";
 import type { UserDto } from "@/lib/user/dto";
@@ -11,8 +13,7 @@ import type { ActionResult } from "@/lib/errors";
 import { ROLES, type Role } from "@/lib/validation/enums";
 import { moveUserAction, resetUserPasswordAction, setUserActiveAction, updateUserRoleAction } from "./actions";
 
-const selectClass =
-  "h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+const selectClass = cn(touchField, "min-w-0 flex-1");
 
 type GroupOption = { id: number; name: string; parentId: number | null };
 
@@ -44,7 +45,7 @@ function RoleForm({ userId, currentRole }: { userId: number; currentRole: string
             </option>
           ))}
         </select>
-        <Button type="submit" variant="outline" disabled={pending}>
+        <Button type="submit" variant="outline" disabled={pending} className={touchButton}>
           {pending ? "…" : "Simpan"}
         </Button>
       </div>
@@ -78,7 +79,12 @@ function MoveForm({ userId, currentGroupId, groups }: { userId: number; currentG
             name="groupId"
           />
         </div>
-        <Button type="submit" variant="outline" disabled={pending || groupId === undefined || groupId === currentGroupId}>
+        <Button
+          type="submit"
+          variant="outline"
+          disabled={pending || groupId === undefined || groupId === currentGroupId}
+          className={touchButton}
+        >
           {pending ? "…" : "Pindahkan"}
         </Button>
       </div>
@@ -100,7 +106,7 @@ function ActiveToggleForm({ userId, isActive }: { userId: number; isActive: bool
     <form action={formAction} className="flex flex-col gap-1">
       <input type="hidden" name="userId" value={userId} />
       <input type="hidden" name="isActive" value={String(!isActive)} />
-      <Button type="submit" variant={isActive ? "destructive" : "outline"} disabled={pending} className="self-start">
+      <Button type="submit" variant={isActive ? "destructive" : "outline"} disabled={pending} className={cn(touchButton, "self-start")}>
         {isActive && <UserX />}
         {pending ? "…" : isActive ? "Nonaktifkan" : "Aktifkan"}
       </Button>
@@ -121,7 +127,7 @@ function ResetPasswordForm({ userId }: { userId: number }) {
   return (
     <form action={formAction} className="flex flex-col gap-1">
       <input type="hidden" name="userId" value={userId} />
-      <Button type="submit" variant="outline" disabled={pending} className="self-start">
+      <Button type="submit" variant="outline" disabled={pending} className={cn(touchButton, "self-start")}>
         <KeyRound />
         {pending ? "…" : "Reset password"}
       </Button>
@@ -162,7 +168,7 @@ export function ManageUserDialog({
 }) {
   return (
     <Dialog>
-      <DialogTrigger className={buttonVariants({ variant: "outline" })} aria-label={`Kelola ${userName}`}>
+      <DialogTrigger className={cn(buttonVariants({ variant: "outline" }), "h-11 min-w-11 xl:h-8 xl:min-w-0")} aria-label={`Kelola ${userName}`}>
         <Settings2 />
         <span className="hidden sm:inline">Kelola</span>
       </DialogTrigger>
