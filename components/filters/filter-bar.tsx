@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 /** Shared look of every filter control's trigger; `active` = the filter narrows the list. */
 export function filterTriggerClass(active = false) {
   return cn(
-    "inline-flex h-9 max-w-full items-center gap-1.5 rounded-lg border bg-background px-3 text-sm whitespace-nowrap transition-colors outline-none hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+    "inline-flex h-11 max-w-full items-center gap-1.5 rounded-lg border bg-background px-3 text-base whitespace-nowrap xl:h-9 xl:text-sm transition-colors outline-none hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
     active && "border-primary/40 bg-primary/5 hover:bg-primary/10",
   );
 }
@@ -74,7 +74,7 @@ export function FilterBar({
         <Link
           href={resetHref}
           scroll={false}
-          className="inline-flex h-9 items-center gap-1 rounded-lg px-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="inline-flex h-11 items-center gap-1 rounded-lg px-2 text-base text-muted-foreground hover:bg-muted hover:text-foreground xl:h-9 xl:text-sm"
         >
           <X className="size-4" />
           Reset
@@ -135,7 +135,7 @@ export function SearchFilter({
         placeholder={placeholder}
         aria-label={placeholder}
         autoComplete="off"
-        className="h-9 w-full rounded-lg border border-input bg-background pr-8 pl-9 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-search-cancel-button]:hidden"
+        className="h-11 w-full rounded-lg border border-input bg-background pr-11 pl-9 text-base outline-none xl:h-9 xl:pr-8 xl:text-sm placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-search-cancel-button]:hidden"
       />
       {text && (
         <button
@@ -147,7 +147,7 @@ export function SearchFilter({
             // Let React flush the cleared value into the input before submitting.
             setTimeout(() => submitFilterForm(inputRef.current));
           }}
-          className="absolute top-1/2 right-2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="absolute top-1/2 right-0 inline-flex size-11 -translate-y-1/2 xl:right-2 xl:size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           <X className="size-3.5" />
         </button>

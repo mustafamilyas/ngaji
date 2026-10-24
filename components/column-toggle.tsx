@@ -45,7 +45,7 @@ export function ColumnToggle({
           <ul className="max-h-80 overflow-y-auto p-1">
             {columns.map((column) => (
               <li key={column.key}>
-                <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted has-focus-visible:ring-2 has-focus-visible:ring-ring/50">
+                <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2.5 text-base hover:bg-muted xl:py-1.5 xl:text-sm has-focus-visible:ring-2 has-focus-visible:ring-ring/50">
                   <input
                     type="checkbox"
                     name={name}

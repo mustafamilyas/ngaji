@@ -18,6 +18,7 @@ import { parseGroupIds, parsePage, parseSearch } from "@/lib/filters";
 import { MEMBER_COLUMNS_COOKIE, MEMBER_COLUMNS, parseMemberColumns } from "@/lib/member/columns";
 import { MEMBER_STATUS_LABELS } from "@/lib/member/labels";
 import { DEFAULT_MEMBER_SORT, listMembers, MEMBER_SORT_KEYS } from "@/lib/member/queries";
+import { cn } from "@/lib/utils";
 import { pageHref } from "@/lib/pagination";
 import { parseSort, sortHref, sortPreserve } from "@/lib/sort";
 import { MEMBER_STATUSES, type MemberStatus } from "@/lib/validation/enums";
@@ -74,7 +75,7 @@ export default async function MembersPage({
         title="Anggota"
         meta="Data anggota di semua grup dalam scope Anda."
         actions={
-          <Link href="/dashboard/anggota/baru" className={buttonVariants({ size: "lg" })}>
+          <Link href="/dashboard/anggota/baru" className={cn(buttonVariants({ size: "lg" }), "h-11 w-full text-base sm:w-auto xl:h-9 xl:text-sm")}>
             <UserPlus />
             Tambah anggota
           </Link>

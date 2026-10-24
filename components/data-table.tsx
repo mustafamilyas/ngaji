@@ -67,7 +67,7 @@ export function SortableTh({
         href={href}
         scroll={false}
         className={cn(
-          "-mx-1 inline-flex items-center gap-1 rounded px-1 transition-colors hover:text-foreground",
+          "-mx-1 inline-flex min-h-11 items-center gap-1 rounded px-1 transition-colors hover:text-foreground xl:min-h-0",
           dir && "text-foreground",
         )}
       >
