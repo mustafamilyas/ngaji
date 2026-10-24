@@ -34,6 +34,8 @@ export const AUDIT_DATE_RANGE: DateRangeConfig = { modes: ["semua", "hari", "7h"
 export const MAX_NAME_LENGTH = 200;
 export const MAX_LOCATION_LENGTH = 200;
 export const MAX_NOTES_LENGTH = 1000;
+/** Notes this long (or multi-line) get a "Selengkapnya" toggle in the activity list; shorter ones are shown as is. */
+export const OCCURRENCE_NOTES_EXPAND_FROM = 60;
 export const MAX_ATTENDANCE_ENTRIES = 1000;
 /** Reason (alasan) stored with an IZIN attendance row. */
 export const MAX_ATTENDANCE_NOTE_LENGTH = 500;

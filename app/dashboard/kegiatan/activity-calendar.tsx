@@ -64,6 +64,15 @@ export function ActivityCalendar({
                   <span className="truncate text-[10px] leading-tight">
                     {entry.effectiveStartTime} {entry.activityName}
                   </span>
+                  {entry.effectiveNotes && (
+                    <span
+                      data-occurrence-notes
+                      title={entry.effectiveNotes}
+                      className="truncate text-[9px] leading-tight text-muted-foreground"
+                    >
+                      {entry.effectiveNotes}
+                    </span>
+                  )}
                   {(entry.inherited || entry.moved || entry.hasConflict || entry.status === "CANCELLED") && (
                     <div className="flex flex-wrap gap-0.5">
                       {entry.inherited && (

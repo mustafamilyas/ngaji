@@ -44,7 +44,7 @@
 
 ## 8. Keterangan and compact print
 
-- [ ] 8.1 Show `effectiveNotes` in the activity list rows and calendar entries (plain text, clamped, full text available); verify page tests for per-date notes, fallback to activity notes and literal markup, and check at 360px in the browser preview
+- [x] 8.1 Show `effectiveNotes` in the activity list rows and calendar entries (plain text, clamped, full text available); verify page tests for per-date notes, fallback to activity notes and literal markup, and check at 360px in the browser preview
 - [ ] 8.2 Rework `/dashboard/kegiatan/cetak` into one table (Tanggal rowspan, repeated header, compact print CSS); update `page.test.ts` for single header row, date shown once, hide-cancelled; verify print preview of a 15-occurrence week fits one A4 page
 
 ## 9. Docs and final checks
@@ -75,6 +75,10 @@
 
 - [ ] 10.15 `pnpm leads` prints the table time in UTC (`waktu (UTC)`), matching the CSV, because leads belong to no organization and so have no timezone to use (found at 7.4). Decide whether the maintainer would rather see local time (e.g. Asia/Jakarta) in the table
 - [ ] 10.16 `scripts/leads.ts` has no automated test of the script itself (argument handling and query ordering are tested in `lib/interest/leads.test.ts`; the run against the dev DB was manual at 7.4, including that row and audit counts did not change)
+
+- [ ] 10.17 At 360px the `/dashboard/kegiatan` list table is 751px wide inside a 328px scroll container, so the Kegiatan column (and the new Keterangan under it) is partly clipped until the user scrolls sideways; the page itself does not overflow (found at 8.1). Make the list readable on a phone without sideways scrolling (e.g. stack date, activity, notes and location in one cell below 640px); covered by 11.5
+- [ ] 10.18 In the calendar at 360px a day cell is 39px wide, so a Keterangan line shows only a few characters (full text via the title tooltip, and via tapping the day, which opens that day's list); at 768px a cell is 95px and the text still truncates (found at 8.1; behavior chosen with the user: clamped line + tap day). Reconsider a phone-specific presentation (e.g. a dot marker instead of text) in 11.5
+- [ ] 10.19 `pnpm dev` login for the browser check needed a throwaway test OWNER because the seed `admin/admin` password had been changed in `prisma/dev.db`; user `uji_browser` (id 7, root group, OWNER) was created for it and deactivated afterwards (`isActive = 0`, no delete path). Remove it with sqlite3 if unwanted, and consider a documented dev-only test user in the seed for future browser checks
 
 ## 11. Mobile and tablet quality
 

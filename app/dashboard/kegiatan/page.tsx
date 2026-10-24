@@ -24,6 +24,7 @@ import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { FilterBar, SearchFilter } from "@/components/filters/filter-bar";
 import { GroupFilter } from "@/components/filters/group-filter";
 import { ActivityCalendar } from "./activity-calendar";
+import { OccurrenceNotes } from "./occurrence-notes";
 import { WEEKDAY_LABELS } from "@/lib/activity/labels";
 import { listActivityOccurrences } from "@/lib/activity/list";
 import { ACTIVITY_SORT_KEYS, type ActivitySortKey, DEFAULT_ACTIVITY_SORT, sortActivityEntries } from "@/lib/activity/list-sort";
@@ -257,6 +258,7 @@ export default async function ActivityListPage({
                             <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300">Konflik</Badge>
                           )}
                         </span>
+                        <OccurrenceNotes notes={entry.effectiveNotes} />
                       </td>
                       <td className={tdClass}>{entry.groupName}</td>
                       <td className={cn(tdClass, "max-w-56 truncate text-muted-foreground")} title={entry.effectiveLocation}>
