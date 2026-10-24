@@ -21,4 +21,14 @@ describe("DashboardPage", () => {
     const html = renderToStaticMarkup(await DashboardPage());
     expect(html).toContain("Dasbor");
   });
+
+  it("makes the links to details and lists 44px tap targets below xl", async () => {
+    const fixture = await buildPageFixture("dashboard-page-links");
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "OWNER", fixture.root) });
+
+    const html = renderToStaticMarkup(await DashboardPage());
+    const classOf = (pattern: RegExp) => (html.match(pattern)?.[0] ?? "").match(/class="([^"]*)"/)?.[1] ?? "";
+    expect(classOf(/<a[^>]*href="\/dashboard\/kegiatan"[^>]*>(?=Lihat semua)/)).toMatch(/\bmin-h-11\b/);
+    expect(classOf(/<a[^>]*href="\/dashboard\/anggota"[^>]*>(?=Lihat semua)/)).toMatch(/\bmin-h-11\b/);
+  });
 });

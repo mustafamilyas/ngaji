@@ -95,7 +95,7 @@ export default async function DashboardPage() {
                 </div>
                 <Link
                   href={`/dashboard/kegiatan/${nextEntry.activityId}`}
-                  className={cn(buttonVariants({ size: "sm" }), "w-fit")}
+                  className={cn(buttonVariants({ size: "sm" }), "h-11 w-fit px-4 text-base xl:h-7 xl:px-2.5 xl:text-[0.8rem]")}
                 >
                   Lihat detail
                 </Link>
@@ -111,7 +111,7 @@ export default async function DashboardPage() {
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Kegiatan 7 hari ke depan</CardTitle>
-            <Link href="/dashboard/kegiatan" className="text-xs text-primary hover:underline">
+            <Link href="/dashboard/kegiatan" className="inline-flex min-h-11 items-center text-sm text-primary hover:underline xl:min-h-0 xl:text-xs">
               Lihat semua
             </Link>
           </CardHeader>
@@ -120,7 +120,7 @@ export default async function DashboardPage() {
               <ul className="flex flex-col divide-y">
                 {upcoming.entries.map((entry) => (
                   <li key={`${entry.activityId}:${entry.key}`} className="flex items-center justify-between gap-2 py-2.5">
-                    <Link href={`/dashboard/kegiatan/${entry.activityId}`} className="min-w-0">
+                    <Link href={`/dashboard/kegiatan/${entry.activityId}`} className="flex min-h-11 min-w-0 flex-col justify-center xl:min-h-0">
                       <p className="truncate text-sm font-medium">{entry.activityName}</p>
                       <p className="truncate text-xs text-muted-foreground">{entry.groupName}</p>
                     </Link>
@@ -154,7 +154,7 @@ export default async function DashboardPage() {
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Anggota terbaru</CardTitle>
-            <Link href="/dashboard/anggota" className="text-xs text-primary hover:underline">
+            <Link href="/dashboard/anggota" className="inline-flex min-h-11 items-center text-sm text-primary hover:underline xl:min-h-0 xl:text-xs">
               Lihat semua
             </Link>
           </CardHeader>
