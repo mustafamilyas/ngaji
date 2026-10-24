@@ -13,6 +13,10 @@ export type SessionUser = {
   role: Role;
   groupId: number;
   groupPath: string;
+  /** `Group.organizationId` of the user's group; re-read on every request. */
+  organizationId: number;
+  /** IANA zone of the user's organization (`Organization.timezone`); re-read on every request. */
+  timeZone: string;
   mustChangePassword: boolean;
   /** Copied into the JWT at sign-in; a mismatch with the DB value revokes the session. Absent on hand-built test sessions. */
   sessionVersion?: number;
@@ -25,7 +29,11 @@ export type ResolvedUser = {
   name: string;
   mustChangePassword: boolean;
   sessionVersion: number;
-  role: { role: string; groupId: number; group: { path: string } };
+  role: {
+    role: string;
+    groupId: number;
+    group: { path: string; organizationId: number; organization: { timezone: string } };
+  };
 };
 
 export function toSessionUser(user: ResolvedUser): SessionUser {
@@ -36,6 +44,8 @@ export function toSessionUser(user: ResolvedUser): SessionUser {
     role: user.role.role as Role,
     groupId: user.role.groupId,
     groupPath: user.role.group.path,
+    organizationId: user.role.group.organizationId,
+    timeZone: user.role.group.organization.timezone,
     mustChangePassword: user.mustChangePassword,
     sessionVersion: user.sessionVersion,
   };

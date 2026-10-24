@@ -17,6 +17,8 @@ function sessionAt(role: SessionUser["role"], groupId: number, groupPath: string
     role,
     groupId,
     groupPath,
+    organizationId: 0,
+    timeZone: "Asia/Jakarta",
     mustChangePassword: false,
   };
 }

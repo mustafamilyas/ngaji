@@ -9,7 +9,8 @@ import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 export function sessionFor(
   actorId: number,
   role: SessionUser["role"],
-  group: { id: number; path: string },
+  group: { id: number; path: string; organizationId?: number },
+  timeZone: string = DEFAULT_TIMEZONE,
 ): SessionUser {
   return {
     id: String(actorId),
@@ -18,6 +19,9 @@ export function sessionFor(
     role,
     groupId: group.id,
     groupPath: group.path,
+    // 0 = "not given": tests that care which org the actor belongs to pass a group carrying its organizationId.
+    organizationId: group.organizationId ?? 0,
+    timeZone,
     mustChangePassword: false,
   };
 }

@@ -18,6 +18,8 @@ function sessionAs(
     role,
     groupId,
     groupPath,
+    organizationId: 0,
+    timeZone: "Asia/Jakarta",
     mustChangePassword: false,
   };
 }

@@ -32,6 +32,8 @@ describe("auditLoginAttempt", () => {
       role: "ADMIN",
       groupId,
       groupPath: "0/",
+      organizationId: 0,
+      timeZone: "Asia/Jakarta",
       mustChangePassword: false,
       ...overrides,
     };

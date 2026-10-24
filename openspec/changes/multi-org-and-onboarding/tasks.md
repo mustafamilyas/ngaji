@@ -14,7 +14,7 @@
 
 ## 3. Session and org context
 
-- [ ] 3.1 In the `jwt` callback, re-read `group.organizationId` and `organization.timezone` per request and expose `session.user.organizationId` / `timeZone`; verify with a test that changing the org timezone in the DB is reflected on the next callback run
+- [x] 3.1 In the `jwt` callback, re-read `group.organizationId` and `organization.timezone` per request and expose `session.user.organizationId` / `timeZone`; verify with a test that changing the org timezone in the DB is reflected on the next callback run
 - [ ] 3.2 Replace `getOrganizationName()` with `getOrganization(session)`; update the dashboard layout, root layout metadata and print header; verify the cross-org test: a user of org B sees org B's name
 - [ ] 3.3 Update every `today()`/`dateOf()` caller and the hardcoded `Intl` timezones to use the session timezone; pass `today` as a prop into the three client components; verify `pnpm tsc --noEmit` is clean and `grep -rn "Asia/Jakarta" app lib components` only hits `lib/validation/enums.ts` and defaults
 - [ ] 3.4 Make `/login` generic via `loginBrand` (page + `Masuk · …` title); verify `app/login/page.test.ts` covers the four flag scenarios
@@ -56,3 +56,4 @@
 
 - [ ] 10.1 `pnpm tsc --noEmit` reports 32 errors, all in the stale, git-ignored `.next/types/validator.ts` (e.g. missing `app/statistik/page.js`); none in source files (found at 1.1). Make tsc robust against stale `.next` output (confirmed at 1.2: `rm -rf .next/types` makes it exit 0; alternatively exclude `.next/types` from `tsconfig.json`) and verify `pnpm tsc --noEmit` exits 0 on a tree with an old `.next`
 - [ ] 10.2 `pnpm test` fails under an AI agent because `vitest.global-setup.ts` runs `prisma db push --accept-data-loss`, which Prisma guards behind `PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION` (found at 1.1; it passed once the user consented, since it only recreates `prisma/test.db`). Replace it with a non-destructive path for the freshly deleted test DB (e.g. `prisma migrate deploy`) and verify `pnpm test` runs without the consent variable
+- [ ] 10.3 `sessionFor()` in `lib/test/fixtures.ts` falls back to `organizationId: 0` when the group argument carries none (found at 3.1; 239 callers pass `{ id, path }` only). Tests that need the actor's real org (3.2 cross-org name, 4.1 sweep) must pass a group with `organizationId`; consider making it required in the fixture group types once those slices land

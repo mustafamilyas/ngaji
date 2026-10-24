@@ -21,6 +21,8 @@ declare module "@auth/core/types" {
     role: Role;
     groupId: number;
     groupPath: string;
+    organizationId: number;
+    timeZone: string;
     mustChangePassword: boolean;
     sessionVersion?: number;
   }
@@ -38,6 +40,8 @@ declare module "@auth/core/jwt" {
     role: Role;
     groupId: number;
     groupPath: string;
+    organizationId: number;
+    timeZone: string;
     mustChangePassword: boolean;
     sessionVersion?: number;
   }

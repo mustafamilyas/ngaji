@@ -10,6 +10,8 @@ export function claimsFromSignIn(token: JWT, user: User): JWT {
   token.role = user.role;
   token.groupId = user.groupId;
   token.groupPath = user.groupPath;
+  token.organizationId = user.organizationId;
+  token.timeZone = user.timeZone;
   token.mustChangePassword = user.mustChangePassword;
   token.sessionVersion = user.sessionVersion;
   return token;
@@ -31,6 +33,8 @@ export async function refreshTokenClaims(token: JWT): Promise<JWT | null> {
   token.role = fresh.role;
   token.groupId = fresh.groupId;
   token.groupPath = fresh.groupPath;
+  token.organizationId = fresh.organizationId;
+  token.timeZone = fresh.timeZone;
   token.mustChangePassword = fresh.mustChangePassword;
   return token;
 }

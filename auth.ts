@@ -39,6 +39,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.user.role = token.role;
       session.user.groupId = token.groupId;
       session.user.groupPath = token.groupPath;
+      session.user.organizationId = token.organizationId;
+      session.user.timeZone = token.timeZone;
       session.user.mustChangePassword = token.mustChangePassword;
       return session;
     },
