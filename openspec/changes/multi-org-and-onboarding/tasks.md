@@ -27,7 +27,7 @@
 
 ## 5. Organization provisioning CLI
 
-- [ ] 5.1 Extract `provisionOrganization(tx, input)` (transaction + `organization.create`/`user.create` audits, `mustChangePassword`) with tests for empty DB, second org, taken username, bad timezone, weak password; verify the tests pass
+- [x] 5.1 Extract `provisionOrganization(tx, input)` (transaction + `organization.create`/`user.create` audits, `mustChangePassword`) with tests for empty DB, second org, taken username, bad timezone, weak password; verify the tests pass
 - [ ] 5.2 Add `prisma/org-create.ts`, `pnpm org:create`, point `pnpm bootstrap` at it, add `BOOTSTRAP_TIMEZONE`; verify by running it twice against a scratch DB (two orgs created, password never printed)
 
 ## 6. Organization settings
