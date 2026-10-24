@@ -16,7 +16,7 @@
 
 - [x] 3.1 In the `jwt` callback, re-read `group.organizationId` and `organization.timezone` per request and expose `session.user.organizationId` / `timeZone`; verify with a test that changing the org timezone in the DB is reflected on the next callback run
 - [x] 3.2 Replace `getOrganizationName()` with `getOrganization(session)`; update the dashboard layout, root layout metadata and print header; verify the cross-org test: a user of org B sees org B's name
-- [ ] 3.3 Update every `today()`/`dateOf()` caller and the hardcoded `Intl` timezones to use the session timezone; pass `today` as a prop into the three client components; verify `pnpm tsc --noEmit` is clean and `grep -rn "Asia/Jakarta" app lib components` only hits `lib/validation/enums.ts` and defaults
+- [x] 3.3 Update every `today()`/`dateOf()` caller and the hardcoded `Intl` timezones to use the session timezone; pass `today` as a prop into the three client components; verify `pnpm tsc --noEmit` is clean and `grep -rn "Asia/Jakarta" app lib components` only hits `lib/validation/enums.ts` and defaults
 - [x] 3.4 Make `/login` generic via `loginBrand` (page + `Masuk · …` title); verify `app/login/page.test.ts` covers the four flag scenarios
 
 ## 4. Isolation sweep and authz

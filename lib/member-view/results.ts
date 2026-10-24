@@ -2,8 +2,7 @@ import type { Prisma } from "@/lib/generated/prisma/client";
 import type { SessionUser } from "@/lib/auth/session-user";
 import { PAGE_SIZE } from "@/lib/constants";
 import { db } from "@/lib/db";
-import { today as todayInJakarta } from "@/lib/dates";
-import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
+import { today as todayIn } from "@/lib/dates";
 import type { MemberColumnKey } from "@/lib/member/columns";
 import { clampPage } from "@/lib/pagination";
 import { resolveDefinitionGroupsLenient } from "@/lib/resolve";
@@ -53,7 +52,7 @@ export type PreparedView = {
 export async function prepareView(
   session: SessionUser,
   definition: Definition,
-  today: string = todayInJakarta(DEFAULT_TIMEZONE),
+  today: string = todayIn(session.timeZone),
 ): Promise<PreparedView> {
   const { definition: resolved, dropped } = await resolveDefinitionGroupsLenient(session, definition);
 

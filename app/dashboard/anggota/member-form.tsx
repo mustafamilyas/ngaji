@@ -8,12 +8,10 @@ import { Save } from "lucide-react";
 import { createMemberAction, updateMemberAction } from "@/app/dashboard/anggota/actions";
 import { GroupAutocomplete, type GroupAutocompleteOption } from "@/components/group-autocomplete";
 import { Button } from "@/components/ui/button";
-import { today } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { formatEnumLabel, SEX_LABELS } from "@/lib/member/labels";
 import { MARITAL_STATUSES, MEMBER_STATUSES, SEXES, WORK_STATUSES } from "@/lib/validation/enums";
 import { memberFormSchema, type MemberFormValues } from "@/lib/validation/member";
-import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 const inputClass =
   "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
@@ -51,10 +49,16 @@ function Field({
 
 
 type MemberFormProps =
-  | { mode: "create"; leafGroups: GroupAutocompleteOption[]; initialGroupId?: number }
+  | {
+      mode: "create";
+      leafGroups: GroupAutocompleteOption[];
+      initialGroupId?: number;
+      /** The organization's "today" (`YYYY-MM-DD`), computed on the server. */
+      today: string;
+    }
   | { mode: "edit"; memberId: number; defaultValues: MemberFormValues };
 
-const emptyDefaults: MemberFormValues = {
+const emptyDefaults = (today: string): MemberFormValues => ({
   name: "",
   birthPlace: "",
   birthDate: "",
@@ -65,9 +69,9 @@ const emptyDefaults: MemberFormValues = {
   workStatus: "BEKERJA",
   email: undefined,
   status: "AKTIF",
-  joinedAt: today(DEFAULT_TIMEZONE),
+  joinedAt: today,
   exitedAt: undefined,
-};
+});
 
 export function MemberForm(props: MemberFormProps) {
   const router = useRouter();
@@ -83,7 +87,7 @@ export function MemberForm(props: MemberFormProps) {
     formState: { errors },
   } = useForm<MemberFormValues>({
     resolver: zodResolver(memberFormSchema),
-    defaultValues: props.mode === "edit" ? props.defaultValues : emptyDefaults,
+    defaultValues: props.mode === "edit" ? props.defaultValues : emptyDefaults(props.today),
   });
   const status = useWatch({ control, name: "status" });
 

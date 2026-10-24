@@ -15,7 +15,6 @@ import { pageHref } from "@/lib/pagination";
 import type { BreakdownRow, QuestionResult, SurveyDemographics, SurveyStatistics } from "@/lib/survey/stats";
 import { MARITAL_STATUSES, SEXES, WORK_STATUSES } from "@/lib/validation/enums";
 import { ResultChart } from "./result-chart";
-import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -35,6 +34,7 @@ export function ResultsTab({
   search,
   groupActive,
   demographics,
+  timeZone,
 }: {
   surveyId: number;
   stats: SurveyStatistics;
@@ -44,6 +44,8 @@ export function ResultsTab({
   /** `?grup=` was given; otherwise the selected group is the page default. */
   groupActive: boolean;
   demographics: SurveyDemographics;
+  /** Organization timezone the free-text answer dates are shown in. */
+  timeZone: string;
 }) {
   const path = `/dashboard/survei/${surveyId}`;
   const isFiltered = Boolean(search || groupActive || Object.keys(demographics).length > 0);
@@ -111,7 +113,7 @@ export function ResultsTab({
         <p className="py-6 text-center text-sm text-muted-foreground">Survei ini belum punya pertanyaan.</p>
       ) : (
         questions.map((question, index) => (
-          <QuestionCard key={question.id} number={index + 1} question={question} path={path} params={params} />
+          <QuestionCard key={question.id} number={index + 1} question={question} path={path} params={params} timeZone={timeZone} />
         ))
       )}
 
@@ -205,11 +207,13 @@ function QuestionCard({
   question,
   path,
   params,
+  timeZone,
 }: {
   number: number;
   question: QuestionResult;
   path: string;
   params: Params;
+  timeZone: string;
 }) {
   return (
     <Card>
@@ -231,14 +235,14 @@ function QuestionCard({
             Belum ada jawaban
           </p>
         ) : (
-          <QuestionBody question={question} path={path} params={params} />
+          <QuestionBody question={question} path={path} params={params} timeZone={timeZone} />
         )}
       </CardContent>
     </Card>
   );
 }
 
-function QuestionBody({ question, path, params }: { question: QuestionResult; path: string; params: Params }) {
+function QuestionBody({ question, path, params, timeZone }: { question: QuestionResult; path: string; params: Params; timeZone: string }) {
   switch (question.type) {
     case "SINGLE_CHOICE":
     case "MULTI_CHOICE":
@@ -289,7 +293,7 @@ function QuestionBody({ question, path, params }: { question: QuestionResult; pa
               <li key={i} className="flex flex-col gap-0.5 px-3 py-2 text-sm">
                 <span className="whitespace-pre-line">{answer.text}</span>
                 <span className="text-xs text-muted-foreground">
-                  {answer.memberName} · {formatDate(dateOf(answer.updatedAt, DEFAULT_TIMEZONE))}
+                  {answer.memberName} · {formatDate(dateOf(answer.updatedAt, timeZone))}
                 </span>
               </li>
             ))}

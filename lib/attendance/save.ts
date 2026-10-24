@@ -12,7 +12,6 @@ import { resolveActivity, resolveGroup } from "@/lib/resolve";
 import { expected } from "@/lib/stats";
 import type { AttendanceSaveInput } from "@/lib/validation/attendance";
 import type { MemberStatus } from "@/lib/validation/enums";
-import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 /**
  * Everything both attendance writers (bulk save, single check-in) must
@@ -45,7 +44,7 @@ export async function loadRecordingContext(
     (o) => o.key === input.date,
   );
   if (!occurrence) throw new NotFoundError();
-  if (occurrence.effectiveDate > today(DEFAULT_TIMEZONE) && !allowFuture) {
+  if (occurrence.effectiveDate > today(session.timeZone) && !allowFuture) {
     throw new ValidationError("Tidak bisa mengisi absensi untuk tanggal yang akan datang");
   }
   if (occurrence.status === "CANCELLED") {

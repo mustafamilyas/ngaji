@@ -20,6 +20,7 @@ export function CheckInForm({
   activityName,
   date,
   ruleDate,
+  today,
   startTime,
   closedReason,
   leafGroups,
@@ -32,6 +33,8 @@ export function CheckInForm({
   date: string;
   /** The rule's key date — what the server resolves the occurrence by. */
   ruleDate: string;
+  /** The organization's "today" (`YYYY-MM-DD`), computed on the server. */
+  today: string;
   startTime: string;
   closedReason?: string;
   /** Every group the user may check people into; `isDefault` ones (under the owning group) are suggested first. */
@@ -254,6 +257,7 @@ export function CheckInForm({
               groupId={groupId}
               groupName={leafGroups.find((g) => g.id === groupId)?.name ?? ""}
               occurrenceDate={date}
+              today={today}
               onRegistered={onRegistered}
             />
           </div>

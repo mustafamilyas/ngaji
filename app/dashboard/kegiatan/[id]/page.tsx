@@ -45,7 +45,6 @@ import { ActivityAttendanceChart } from "./attendance-chart";
 import { DeleteActivityForm } from "./delete-activity-form";
 import { EndActivityForm } from "./end-activity-form";
 import { OccurrenceOverrideDialog } from "./occurrence-override-dialog";
-import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 const TABS = ["absensi", "jadwal", "pengaturan"] as const;
 type Tab = (typeof TABS)[number];
@@ -79,7 +78,7 @@ export default async function ActivityDetailPage({
   const canRecord = isInScope(session.user.groupPath, activity.group.path);
   const path = `/dashboard/kegiatan/${activity.id}`;
 
-  const now = today(DEFAULT_TIMEZONE);
+  const now = today(session.user.timeZone);
   const scheduleTo = addDays(now, CONFLICT_HORIZON_DAYS);
   const rows = await loadOccurrenceRows(activity.id, now, scheduleTo);
   const occurrences = occurrencesFor(toActivityTemplate(activity), now, scheduleTo, rows);
@@ -93,7 +92,7 @@ export default async function ActivityDetailPage({
   ];
   const requested = parseTab(query.tab, TABS, "absensi");
   const tab = tabs.some((t) => t.key === requested) ? requested : "absensi";
-  const attendance = tab === "absensi" ? await loadAttendance(activity, query, now) : null;
+  const attendance = tab === "absensi" ? await loadAttendance(activity, query, now, session.user.timeZone) : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -238,6 +237,7 @@ async function loadAttendance(
   activity: Awaited<ReturnType<typeof resolveActivity>>,
   query: Record<string, string | string[] | undefined>,
   now: string,
+  timeZone: string,
 ) {
   const statsRange = resolveDateRange(query, STATS_DATE_RANGE, now);
   // STATS_DATE_RANGE has no open-ended mode, so both bounds are always set.
@@ -246,6 +246,7 @@ async function loadAttendance(
   const summary = await activityAttendanceSummary(activity.id, toActivityTemplate(activity), activity.group.path, {
     from: statsFrom,
     to: statsTo,
+    timeZone,
   });
   return { statsRange, statsFrom, statsTo, summary };
 }

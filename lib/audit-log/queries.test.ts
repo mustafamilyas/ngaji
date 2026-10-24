@@ -100,6 +100,31 @@ describe("lib/audit-log/queries listAuditLog", () => {
     expect(entries.some((e) => e.groupId === daerahB.id)).toBe(false);
   });
 
+  it("reads the from/to filter as dates in the session's own timezone", async () => {
+    // 2026-10-18T16:30Z is Oct 18 23:30 in WIB but already Oct 19 01:30 in WIT.
+    const entry = await db.auditLog.create({
+      data: {
+        actorId: owner.id,
+        action: "group.update",
+        entity: "Group",
+        entityId: daerahA.id,
+        groupId: daerahA.id,
+        after: { name: "Daerah A" },
+        createdAt: new Date("2026-10-18T16:30:00Z"),
+      },
+    });
+    const filter = { from: "2026-10-19", to: "2026-10-19" };
+
+    const wib = await listAuditLog(sessionAs(owner.id, "OWNER", daerahA.id, daerahA.path), filter);
+    const wit = await listAuditLog(
+      { ...sessionAs(owner.id, "OWNER", daerahA.id, daerahA.path), timeZone: "Asia/Jayapura" },
+      filter,
+    );
+
+    expect(wib.entries.some((e) => e.id === entry.id)).toBe(false);
+    expect(wit.entries.some((e) => e.id === entry.id)).toBe(true);
+  });
+
   it("never returns a passwordHash key in an after snapshot", async () => {
     const session = sessionAs(owner.id, "OWNER", root.id, root.path);
     const { entries } = await listAuditLog(session);

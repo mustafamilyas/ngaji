@@ -2,8 +2,7 @@ import type { Prisma } from "@/lib/generated/prisma/client";
 import type { SessionUser } from "@/lib/auth/session-user";
 import { VIEW_EXPANDED_SECTIONS, VIEW_SECTION_PAGE_SIZE } from "@/lib/constants";
 import { db } from "@/lib/db";
-import { today as todayInJakarta } from "@/lib/dates";
-import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
+import { today as todayIn } from "@/lib/dates";
 import { formatEnumLabel, MEMBER_STATUS_LABELS, SEX_LABELS } from "@/lib/member/labels";
 import type { Definition, GroupBy } from "@/lib/validation/member-view";
 import { MEMBER_VIEW_FIELDS } from "./fields";
@@ -161,7 +160,7 @@ export async function listViewSections(
   definition: Definition,
   options: { today?: string } = {},
 ): Promise<ViewSectionsResult> {
-  const prepared = await prepareView(session, definition, options.today ?? todayInJakarta(DEFAULT_TIMEZONE));
+  const prepared = await prepareView(session, definition, options.today ?? todayIn(session.timeZone));
   const { dropped } = prepared;
   if (!prepared.definition.groupBy) return { grouped: false, dropped };
 
@@ -198,7 +197,7 @@ export async function loadSectionMembers(
   offset: number,
   options: { today?: string } = {},
 ) {
-  const prepared = await prepareView(session, definition, options.today ?? todayInJakarta(DEFAULT_TIMEZONE));
+  const prepared = await prepareView(session, definition, options.today ?? todayIn(session.timeZone));
   const computed = await computeSections(session, prepared);
   const section = computed?.find((s) => s.key === key);
   if (!section) return null;

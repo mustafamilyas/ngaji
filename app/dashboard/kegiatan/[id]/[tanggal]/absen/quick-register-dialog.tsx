@@ -7,11 +7,9 @@ import { UserPlus } from "lucide-react";
 import { createMemberAction } from "@/app/dashboard/anggota/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { today } from "@/lib/dates";
 import { SEX_LABELS } from "@/lib/member/labels";
 import { SEXES } from "@/lib/validation/enums";
 import { memberFormSchema, type MemberFormValues } from "@/lib/validation/member";
-import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 const inputClass =
   "h-11 w-full rounded-lg border border-input bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
@@ -41,11 +39,14 @@ export function QuickRegisterDialog({
   groupId,
   groupName,
   occurrenceDate,
+  today,
   onRegistered,
 }: {
   groupId: number | undefined;
   groupName: string;
   occurrenceDate: string;
+  /** The organization's "today" (`YYYY-MM-DD`), computed on the server. */
+  today: string;
   onRegistered: (member: { id: number; name: string }) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -69,7 +70,7 @@ export function QuickRegisterDialog({
       workStatus: "BEKERJA",
       email: undefined,
       status: "AKTIF",
-      joinedAt: occurrenceDate < today(DEFAULT_TIMEZONE) ? occurrenceDate : today(DEFAULT_TIMEZONE),
+      joinedAt: occurrenceDate < today ? occurrenceDate : today,
       exitedAt: undefined,
     },
   });

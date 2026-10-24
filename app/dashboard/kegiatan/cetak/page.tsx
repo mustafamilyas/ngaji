@@ -13,7 +13,6 @@ import { formatDate, formatDateRange, parseGroupIds, parseSearch, resolveDateRan
 import { getOrganization } from "@/lib/organization";
 import { cn } from "@/lib/utils";
 import { PrintButton } from "./print-button";
-import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 export default async function PrintSchedulePage({
   searchParams,
@@ -25,7 +24,7 @@ export default async function PrintSchedulePage({
 
   const params = await searchParams;
 
-  const now = today(DEFAULT_TIMEZONE);
+  const now = today(session.user.timeZone);
   const dateRange = resolveDateRange(params, ACTIVITY_LIST_DATE_RANGE, now);
   const { mode: range, anchor } = dateRange;
   const from = dateRange.from!;

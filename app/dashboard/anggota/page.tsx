@@ -23,7 +23,6 @@ import { parseSort, sortHref, sortPreserve } from "@/lib/sort";
 import { MEMBER_STATUSES, type MemberStatus } from "@/lib/validation/enums";
 import { setMemberColumnsAction } from "./actions";
 import { MembersTable } from "./members-table";
-import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 function isMemberStatus(value: string): value is MemberStatus {
   return (MEMBER_STATUSES as readonly string[]).includes(value);
@@ -65,7 +64,7 @@ export default async function MembersPage({
       }),
       db.member.count({ where: scope }),
       db.member.count({ where: { ...scope, status: "AKTIF" } }),
-      db.member.count({ where: { ...scope, joinedAt: { gte: monthStartOf(today(DEFAULT_TIMEZONE)) } } }),
+      db.member.count({ where: { ...scope, joinedAt: { gte: monthStartOf(today(session.user.timeZone)) } } }),
     ]);
   const isFiltered = Boolean(q || groupIds || status);
 
@@ -138,6 +137,7 @@ export default async function MembersPage({
             columns={columns}
             sort={sort}
             sortHrefFor={(key) => sortHref("/dashboard/anggota", params, key, sort, DEFAULT_MEMBER_SORT)}
+            today={today(session.user.timeZone)}
           />
         ) : (
           <p className="px-4 py-10 text-center text-sm text-muted-foreground">Tidak ada anggota yang cocok.</p>

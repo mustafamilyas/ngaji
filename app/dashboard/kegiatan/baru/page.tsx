@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
+import { today } from "@/lib/dates";
 import { ActivityForm } from "../activity-form";
 
 export default async function NewActivityPage() {
@@ -17,7 +18,7 @@ export default async function NewActivityPage() {
       />
       <Card>
         <CardContent>
-          <ActivityForm mode="create" />
+          <ActivityForm mode="create" today={today(session.user.timeZone)} />
         </CardContent>
       </Card>
     </div>

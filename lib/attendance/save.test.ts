@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createActivity } from "@/lib/activity/mutations";
 import type { SessionUser } from "@/lib/auth/session-user";
 import { db } from "@/lib/db";
@@ -195,6 +195,46 @@ describe("lib/attendance/save saveAttendance", () => {
         entries: [],
       }),
     ).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  describe("organization timezone decides what 'today' is", () => {
+    // 2026-10-18T16:30Z is Sunday 23:30 in WIB but already Monday 01:30 in WIT.
+    const MONDAY = "2026-10-19";
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    async function recordOnMonday(timeZone: string) {
+      vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-18T16:30:00Z") });
+      const admin = { ...sessionAt("ADMIN", kelompok.id, kelompok.path), timeZone };
+      const { activity } = await createActivity(admin, {
+        groupId: kelompok.id,
+        name: `Kajian ${timeZone}`,
+        location: "A",
+        startTime: "19:00",
+        durationMinutes: 60,
+        freq: "WEEKLY",
+        interval: 1,
+        weekdays: [1],
+        startsOn: "2020-01-06",
+      });
+      const member = await makeMember(kelompok.id, `Anggota ${timeZone}`);
+      return saveAttendance(admin, {
+        activityId: activity.id,
+        groupId: kelompok.id,
+        date: MONDAY,
+        entries: [{ memberId: member.id, status: "HADIR" }],
+      });
+    }
+
+    it("rejects Monday as future for a WIB organization at Sunday 23:30", async () => {
+      await expect(recordOnMonday("Asia/Jakarta")).rejects.toThrow(ValidationError);
+    });
+
+    it("accepts Monday for a WIT organization at Monday 01:30", async () => {
+      await expect(recordOnMonday("Asia/Jayapura")).resolves.toMatchObject({ set: [expect.anything()] });
+    });
   });
 
   it("responds 404 for a date the rule does not generate and that has no attendance", async () => {

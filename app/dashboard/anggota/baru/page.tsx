@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
+import { today } from "@/lib/dates";
 import { listLeafGroupsInScope } from "@/lib/group/levels";
 import { MemberForm } from "../member-form";
 
@@ -26,7 +27,7 @@ export default async function NewMemberPage({
       />
       <Card>
         <CardContent>
-          <MemberForm mode="create" leafGroups={leafGroups.map((g) => ({ id: g.id, name: g.name, parentName: g.parent?.name }))} initialGroupId={initialGroupId} />
+          <MemberForm mode="create" leafGroups={leafGroups.map((g) => ({ id: g.id, name: g.name, parentName: g.parent?.name }))} initialGroupId={initialGroupId} today={today(session.user.timeZone)} />
         </CardContent>
       </Card>
     </div>

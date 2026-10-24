@@ -117,6 +117,7 @@ export default async function SurveyDetailPage({
             search={search}
             groupActive={statsGroupId !== undefined}
             demographics={demographics}
+            timeZone={session.user.timeZone}
           />
         )}
         {respondents && (
@@ -126,6 +127,7 @@ export default async function SurveyDetailPage({
             groups={visibleGroups}
             params={query}
             search={search}
+            timeZone={session.user.timeZone}
             groupIds={groupIds}
           />
         )}

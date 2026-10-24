@@ -5,7 +5,7 @@ import { MemberStatusBadge } from "@/components/member-status-badge";
 import { RowActions } from "@/components/row-actions";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { WhatsAppButton } from "@/components/whatsapp-button";
-import { ageInYears, today } from "@/lib/dates";
+import { ageInYears } from "@/lib/dates";
 import { formatDate } from "@/lib/filters";
 import { MEMBER_COLUMNS, type MemberColumnKey } from "@/lib/member/columns";
 import { formatEnumLabel, SEX_LABELS } from "@/lib/member/labels";
@@ -13,7 +13,6 @@ import { MEMBER_SORT_KEYS, type listMembers, type MemberSortKey } from "@/lib/me
 import type { SortState } from "@/lib/sort";
 import { cn, initials } from "@/lib/utils";
 import type { Sex } from "@/lib/validation/enums";
-import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 type MemberRow = Awaited<ReturnType<typeof listMembers>>["members"][number];
 
@@ -77,13 +76,15 @@ export function MembersTable({
   columns,
   sort,
   sortHrefFor,
+  today: asOf,
 }: {
   members: MemberRow[];
   columns: MemberColumnKey[];
   sort: SortState<MemberSortKey>;
   sortHrefFor: (key: MemberSortKey) => string;
+  /** The viewer's organization "today" (`YYYY-MM-DD`), used for ages. */
+  today: string;
 }) {
-  const asOf = today(DEFAULT_TIMEZONE);
   const visible = MEMBER_COLUMNS.filter((c) => columns.includes(c.key));
 
   return (

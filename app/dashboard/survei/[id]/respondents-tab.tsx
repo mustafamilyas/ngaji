@@ -12,9 +12,10 @@ import { pageHref } from "@/lib/pagination";
 import type { listRespondents } from "@/lib/survey/respondents";
 import { cn } from "@/lib/utils";
 import { DeleteResponseButton } from "./delete-response-button";
-import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
-const timeFormat = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" });
+function formatTime(instant: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone }).format(instant);
+}
 
 /** "Responden" tab: who answered, who saved it last, with edit/delete for users allowed to record. */
 export function RespondentsTab({
@@ -24,6 +25,7 @@ export function RespondentsTab({
   params,
   search,
   groupIds,
+  timeZone,
 }: {
   surveyId: number;
   list: Awaited<ReturnType<typeof listRespondents>>;
@@ -31,6 +33,8 @@ export function RespondentsTab({
   params: Record<string, string | string[] | undefined>;
   search?: string;
   groupIds?: number[];
+  /** Organization timezone the "updated at" stamps are shown in. */
+  timeZone: string;
 }) {
   const path = `/dashboard/survei/${surveyId}`;
   const isFiltered = Boolean(search || groupIds);
@@ -95,7 +99,7 @@ export function RespondentsTab({
                   <td className={tdClass}>{r.groupName}</td>
                   <td className={tdClass}>{r.recordedByName}</td>
                   <td className={cn(tdClass, "tabular-nums text-muted-foreground")}>
-                    {formatDate(dateOf(r.updatedAt, DEFAULT_TIMEZONE))} {timeFormat.format(r.updatedAt)}
+                    {formatDate(dateOf(r.updatedAt, timeZone))} {formatTime(r.updatedAt, timeZone)}
                   </td>
                   {canRecord && (
                     <td className="px-2 py-1 text-right whitespace-nowrap">

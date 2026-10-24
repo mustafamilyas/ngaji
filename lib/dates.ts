@@ -42,6 +42,34 @@ export function dateOf(instant: Date, timeZone: string): string {
   }).format(instant);
 }
 
+/** UTC offset of `timeZone` at `instant`, in ms (positive east of UTC). */
+function offsetMs(instant: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(instant);
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  const asUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
+  return asUtc - Math.floor(instant.getTime() / 1000) * 1000;
+}
+
+/** The instant a `YYYY-MM-DD` calendar day begins in `timeZone` (for filtering timestamp columns by a date range). */
+export function startOfDayIn(date: string, timeZone: string): Date {
+  const utcMidnight = parseUtc(date);
+  return new Date(utcMidnight.getTime() - offsetMs(utcMidnight, timeZone));
+}
+
+/** The last millisecond of a `YYYY-MM-DD` calendar day in `timeZone`. */
+export function endOfDayIn(date: string, timeZone: string): Date {
+  return new Date(startOfDayIn(addDays(date, 1), timeZone).getTime() - 1);
+}
+
 /** Today's date in `timeZone`, independent of the host's local timezone. */
 export function today(timeZone: string): string {
   return dateOf(new Date(), timeZone);

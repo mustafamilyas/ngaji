@@ -24,7 +24,6 @@ import type { Sex } from "@/lib/validation/enums";
 import type { MemberFormValues } from "@/lib/validation/member";
 import { DeleteMemberForm } from "./delete-member-form";
 import { MemberForm } from "../member-form";
-import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 const TABS = ["profil", "kehadiran", "ubah"] as const;
 
@@ -142,7 +141,7 @@ export default async function MemberDetailPage({
                 <Detail label="Jenis kelamin">{SEX_LABELS[member.sex as Sex] ?? member.sex}</Detail>
                 <Detail label="Tempat, tanggal lahir">
                   {member.birthPlace}, {formatDate(member.birthDate)}
-                  <span className="text-muted-foreground"> · {ageInYears(member.birthDate, today(DEFAULT_TIMEZONE))} th</span>
+                  <span className="text-muted-foreground"> · {ageInYears(member.birthDate, today(session.user.timeZone))} th</span>
                 </Detail>
                 <Detail label="Status nikah">{formatEnumLabel(member.maritalStatus)}</Detail>
                 <Detail label="Pekerjaan">{formatEnumLabel(member.workStatus)}</Detail>

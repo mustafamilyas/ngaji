@@ -13,7 +13,6 @@ import { formatDate, parsePage, parseSearch } from "@/lib/filters";
 import { listMemberViews } from "@/lib/member-view/list";
 import { pageHref } from "@/lib/pagination";
 import { cn } from "@/lib/utils";
-import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 export default async function MemberViewsPage({
   searchParams,
@@ -90,7 +89,7 @@ export default async function MemberViewsPage({
                         {view.orphaned && <Badge variant="secondary">Tanpa pemilik</Badge>}
                       </span>
                     </td>
-                    <td className={cn(tdClass, "text-muted-foreground")}>{formatDate(dateOf(view.updatedAt, DEFAULT_TIMEZONE))}</td>
+                    <td className={cn(tdClass, "text-muted-foreground")}>{formatDate(dateOf(view.updatedAt, session.user.timeZone))}</td>
                   </tr>
                 ))}
               </tbody>

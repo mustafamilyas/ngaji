@@ -6,7 +6,6 @@ import { CONFLICT_HORIZON_DAYS } from "@/lib/constants";
 import { addDays, today } from "@/lib/dates";
 import { db } from "@/lib/db";
 import { ancestorPathsOf } from "@/lib/scope";
-import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 /**
  * Warning-only conflict check on save (DESIGN.md §5.4): every occurrence of
@@ -14,8 +13,8 @@ import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
  * every occurrence of every activity owned by an ancestor, self, or
  * descendant of its group in the same window. Never blocks saving.
  */
-export async function activityHasConflict(activityId: number, groupPath: string): Promise<boolean> {
-  const from = today(DEFAULT_TIMEZONE);
+export async function activityHasConflict(activityId: number, groupPath: string, timeZone: string): Promise<boolean> {
+  const from = today(timeZone);
   const to = addDays(from, CONFLICT_HORIZON_DAYS);
 
   const relatedGroups = await db.group.findMany({

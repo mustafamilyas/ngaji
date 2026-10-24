@@ -17,7 +17,6 @@ import { activityStatistics, memberStatistics, participationStatistics } from "@
 import { ActivityCharts } from "./activity-charts";
 import { MemberCharts } from "./member-charts";
 import { ParticipationTable } from "./participation-table";
-import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 const TABS = [
   { key: "anggota", label: "Anggota", icon: Users },
@@ -37,7 +36,7 @@ export default async function StatisticsPage({
 
   const params = await searchParams;
   const tab = parseTab(params.tab, TABS.map((t) => t.key), "anggota" as TabKey);
-  const now = today(DEFAULT_TIMEZONE);
+  const now = today(session.user.timeZone);
   const range = resolveDateRange(params, STATS_DATE_RANGE, now);
   // STATS_DATE_RANGE has no open-ended mode, so both bounds are always set.
   const from = range.from!;

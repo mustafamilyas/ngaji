@@ -54,7 +54,7 @@ export async function createActivity(session: SessionUser, input: ActivityInput)
     return created;
   });
 
-  const hasConflict = await activityHasConflict(activity.id, session.groupPath);
+  const hasConflict = await activityHasConflict(activity.id, session.groupPath, session.timeZone);
   return { activity, hasConflict };
 }
 
@@ -76,7 +76,7 @@ export async function updateActivity(session: SessionUser, activityId: number, i
     return updated;
   });
 
-  const hasConflict = await activityHasConflict(activity.id, group.path);
+  const hasConflict = await activityHasConflict(activity.id, group.path, session.timeZone);
   return { activity, hasConflict };
 }
 
@@ -174,7 +174,7 @@ export async function splitActivity(session: SessionUser, input: ActivitySplitIn
       });
       return result;
     });
-    const hasConflict = await activityHasConflict(updated.id, group.path);
+    const hasConflict = await activityHasConflict(updated.id, group.path, session.timeZone);
     return { activity: updated, splitCreated: false as const, hasConflict };
   }
 
@@ -210,6 +210,6 @@ export async function splitActivity(session: SessionUser, input: ActivitySplitIn
     return newActivity;
   });
 
-  const hasConflict = await activityHasConflict(created.id, group.path);
+  const hasConflict = await activityHasConflict(created.id, group.path, session.timeZone);
   return { activity: created, splitCreated: true as const, hasConflict };
 }

@@ -15,7 +15,6 @@ import {
   type WorkStatus,
 } from "@/lib/validation/enums";
 import { type ChoiceSummaryRow, type ScaleSummary, ageBracketRange, summarizeChoice, summarizeScale } from "./summary";
-import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 export type SurveyDemographics = {
   sex?: Sex;
@@ -160,7 +159,7 @@ export async function surveyStatistics(
       : await resolveGroup(session, session.groupId);
 
   const demographics = filter.demographics ?? {};
-  const asOf = today(DEFAULT_TIMEZONE);
+  const asOf = today(session.timeZone);
   const popPath = intersectPaths(group.path, ownerPath);
   const populationWhere = memberWhere(popPath, demographics, asOf);
 

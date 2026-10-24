@@ -20,7 +20,6 @@ import { parseSort, sortHref, sortPreserve } from "@/lib/sort";
 import { listSurveys } from "@/lib/survey/list";
 import { DEFAULT_SURVEY_SORT, SURVEY_SORT_KEYS, type SurveySortKey } from "@/lib/survey/list-sort";
 import { cn } from "@/lib/utils";
-import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 export default async function SurveyListPage({
   searchParams,
@@ -159,7 +158,7 @@ export default async function SurveyListPage({
                       <td className={tdClass}>{survey.group.name}</td>
                       <td className={cn(tdClass, "tabular-nums")}>{survey.responseCount}</td>
                       <td className={cn(tdClass, "tabular-nums text-muted-foreground")}>
-                        {formatDate(dateOf(survey.createdAt, DEFAULT_TIMEZONE))}
+                        {formatDate(dateOf(survey.createdAt, user.timeZone))}
                       </td>
                       <td className="px-2 py-1 text-right">
                         <RowActions label={survey.title} actions={actions} />

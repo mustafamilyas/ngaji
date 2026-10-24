@@ -36,7 +36,6 @@ import { formatDate, formatDateRange, parseGroupIds, parsePage, parseSearch, res
 import { pageHref, paginate } from "@/lib/pagination";
 import { parseSort, sortHref, sortPreserve } from "@/lib/sort";
 import { cn } from "@/lib/utils";
-import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 export default async function ActivityListPage({
   searchParams,
@@ -48,7 +47,7 @@ export default async function ActivityListPage({
 
   const params = await searchParams;
 
-  const now = today(DEFAULT_TIMEZONE);
+  const now = today(session.user.timeZone);
   const dateRange = resolveDateRange(params, ACTIVITY_LIST_DATE_RANGE, now);
   const { mode: range, anchor } = dateRange;
   // ACTIVITY_LIST_DATE_RANGE has no open-ended mode, so both bounds are always set.

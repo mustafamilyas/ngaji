@@ -18,11 +18,10 @@ import { parseSort, sortHref, sortPreserve } from "@/lib/sort";
 import { listUsersInScope } from "@/lib/user/queries";
 import { cn } from "@/lib/utils";
 import { AuditDetailDialog } from "./audit-detail-dialog";
-import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
-function formatDateTime(date: Date): string {
+function formatDateTime(date: Date, timeZone: string): string {
   return new Intl.DateTimeFormat("id-ID", {
-    timeZone: "Asia/Jakarta",
+    timeZone,
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
@@ -43,7 +42,7 @@ export default async function AuditPage({
       : undefined;
   const actorParam = typeof params.aktor === "string" ? Number(params.aktor) : NaN;
   const actorId = Number.isInteger(actorParam) && actorParam > 0 ? actorParam : undefined;
-  const now = today(DEFAULT_TIMEZONE);
+  const now = today(session.user.timeZone);
   const dateRange = resolveDateRange(params, AUDIT_DATE_RANGE, now);
   const { from, to } = dateRange;
   const groupIds = parseGroupIds(params.grup);
@@ -144,7 +143,7 @@ export default async function AuditPage({
               </thead>
               <tbody>
                 {entries.map((entry) => {
-                  const when = formatDateTime(entry.createdAt);
+                  const when = formatDateTime(entry.createdAt, session.user.timeZone);
                   const hasDetail = entry.before !== null || entry.after !== null || entry.meta !== null;
                   return (
                     <tr key={entry.id} className={trClass}>

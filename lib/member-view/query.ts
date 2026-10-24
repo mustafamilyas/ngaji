@@ -9,7 +9,7 @@ import { ageBirthDateRanges, type AgeOperator } from "./age";
  * with the viewer's scope and `deletedAt: null` — this module never grants access.
  */
 export type QueryContext = {
-  /** Today in Asia/Jakarta, `YYYY-MM-DD`. */
+  /** Today in the viewer's organization timezone, `YYYY-MM-DD`. */
   today: string;
   /** Resolved group id → `Group.path`. An id missing here matches nothing. */
   groupPaths: ReadonlyMap<number, string>;

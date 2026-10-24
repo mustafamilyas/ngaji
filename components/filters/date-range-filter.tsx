@@ -31,7 +31,7 @@ export function DateRangeFilter({
   range: DateRange;
   modes: readonly DateRangeMode[];
   defaultMode: DateRangeMode;
-  /** Server's "today" (Asia/Jakarta), so the label matches what the server computed. */
+  /** Server's "today" in the organization timezone, so the label matches what the server computed. */
   today: string;
 }) {
   const formRef = useRef<HTMLSpanElement>(null);

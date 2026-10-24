@@ -4,6 +4,8 @@ import {
   addMonthsOnDay,
   ageInYears,
   dateOf,
+  endOfDayIn,
+  startOfDayIn,
   daysBetween,
   fromDbDate,
   isDateString,
@@ -280,5 +282,25 @@ describe("isWithinMonths", () => {
     ["2026-05-10", "2026-05-10", true],
   ])("%s..%s within 3 months = %s", (from, to, expected) => {
     expect(isWithinMonths(from, to, 3)).toBe(expected);
+  });
+});
+
+describe("startOfDayIn / endOfDayIn", () => {
+  it("returns midnight WIB (UTC+7) as an instant", () => {
+    expect(startOfDayIn("2026-10-19", "Asia/Jakarta").toISOString()).toBe("2026-10-18T17:00:00.000Z");
+  });
+
+  it("returns midnight WIT (UTC+9) two hours earlier than WIB", () => {
+    expect(startOfDayIn("2026-10-19", "Asia/Jayapura").toISOString()).toBe("2026-10-18T15:00:00.000Z");
+  });
+
+  it("returns the last millisecond of the day in WITA (UTC+8)", () => {
+    expect(endOfDayIn("2026-10-19", "Asia/Makassar").toISOString()).toBe("2026-10-19T15:59:59.999Z");
+  });
+
+  it("round-trips through dateOf for the same zone", () => {
+    const zone = "Asia/Jayapura";
+    expect(dateOf(startOfDayIn("2026-12-31", zone), zone)).toBe("2026-12-31");
+    expect(dateOf(endOfDayIn("2026-12-31", zone), zone)).toBe("2026-12-31");
   });
 });

@@ -7,11 +7,9 @@ import { useForm, useWatch } from "react-hook-form";
 import { Save } from "lucide-react";
 import { createActivityAction, splitActivityAction, updateActivityAction } from "@/app/dashboard/kegiatan/actions";
 import { Button } from "@/components/ui/button";
-import { today } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { activityUpdateSchema, type ActivityUpdateInput } from "@/lib/validation/activity";
 import { FREQS } from "@/lib/validation/enums";
-import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 const inputClass =
   "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
@@ -57,11 +55,11 @@ function Field({
 }
 
 type ActivityFormProps =
-  | { mode: "create" }
+  | { mode: "create"; /** The organization's "today" (`YYYY-MM-DD`), computed on the server. */ today: string }
   | { mode: "edit"; activityId: number; defaultValues: ActivityUpdateInput }
   | { mode: "split"; activityId: number; defaultValues: ActivityUpdateInput };
 
-const emptyDefaults: ActivityUpdateInput = {
+const emptyDefaults = (today: string): ActivityUpdateInput => ({
   name: "",
   location: "",
   notes: undefined,
@@ -71,9 +69,9 @@ const emptyDefaults: ActivityUpdateInput = {
   interval: 1,
   weekdays: [0],
   monthDay: undefined,
-  startsOn: today(DEFAULT_TIMEZONE),
+  startsOn: today,
   endsOn: undefined,
-};
+});
 
 export function ActivityForm(props: ActivityFormProps) {
   const router = useRouter();
@@ -87,7 +85,7 @@ export function ActivityForm(props: ActivityFormProps) {
     formState: { errors },
   } = useForm<ActivityUpdateInput>({
     resolver: zodResolver(activityUpdateSchema),
-    defaultValues: props.mode === "create" ? emptyDefaults : props.defaultValues,
+    defaultValues: props.mode === "create" ? emptyDefaults(props.today) : props.defaultValues,
   });
   const freq = useWatch({ control, name: "freq" });
   const weekdays = useWatch({ control, name: "weekdays" });

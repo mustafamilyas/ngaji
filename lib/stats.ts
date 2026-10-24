@@ -16,7 +16,6 @@ import {
   type Sex,
   type WorkStatus,
 } from "@/lib/validation/enums";
-import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 /** The subset of Member needed to decide whether they were expected on a date. */
 export type ExpectedMember = {
@@ -96,7 +95,7 @@ export async function memberStatistics(session: SessionUser, groupId?: number): 
   const byWorkStatus = Object.fromEntries(WORK_STATUSES.map((s) => [s, 0])) as Record<WorkStatus, number>;
   const byAgeBracket = Object.fromEntries(AGE_BRACKETS.map((b) => [b.label, 0])) as Record<string, number>;
 
-  const asOf = today(DEFAULT_TIMEZONE);
+  const asOf = today(session.timeZone);
   for (const member of members) {
     bySex[member.sex as Sex]++;
     byMaritalStatus[member.maritalStatus as MaritalStatus]++;
@@ -156,7 +155,7 @@ export async function activityStatistics(
   const members = await db.member.findMany({ where: { group: { path: { startsWith: scope.path } } } });
   const membersTyped = members.map((m) => ({ ...m, status: m.status as MemberStatus }));
 
-  const todayStr = today(DEFAULT_TIMEZONE);
+  const todayStr = today(session.timeZone);
   const occurrenceStats: OccurrenceStat[] = [];
 
   for (const activity of activities) {
@@ -275,7 +274,7 @@ export async function activityAttendanceSummary(
   activityId: number,
   template: ActivityTemplate,
   groupPath: string,
-  { from, to }: { from: string; to: string },
+  { from, to, timeZone }: { from: string; to: string; timeZone: string },
 ): Promise<ActivityAttendanceSummary> {
   const occurrenceRows = await db.activityOccurrence.findMany({
     where: {
@@ -299,7 +298,7 @@ export async function activityAttendanceSummary(
   const members = await db.member.findMany({ where: { group: { path: { startsWith: groupPath } } } });
   const membersTyped = members.map((m) => ({ ...m, status: m.status as MemberStatus }));
 
-  const todayStr = today(DEFAULT_TIMEZONE);
+  const todayStr = today(timeZone);
   const occurrences: ActivityOccurrenceAttendance[] = [];
   const memberTally = new Map(membersTyped.map((m) => [m.id, { occurrenceCount: 0, hadir: 0, izin: 0 }]));
 
@@ -458,7 +457,7 @@ export async function participationStatistics(
     include: { group: { select: { path: true } } },
   });
 
-  const todayStr = today(DEFAULT_TIMEZONE);
+  const todayStr = today(session.timeZone);
   return members.map((member) => {
     const windowStart = maxDate(from, member.joinedAt);
     const windowEnd = minDate(to, member.exitedAt ?? todayStr);
