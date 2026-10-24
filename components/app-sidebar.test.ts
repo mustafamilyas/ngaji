@@ -61,4 +61,20 @@ describe("AppSidebar", () => {
     expect(html).toContain("Akun");
     expect(html.match(/Pengaturan/g)).toHaveLength(1);
   });
+
+  it("gives Pengaturan and Akun different icons so the icon-only rail tells them apart", () => {
+    const html = render(true);
+    const iconOf = (href: string) => html.match(new RegExp(`href="${href}"[^>]*>\\s*<svg[^>]*class="([^"]*)"`))?.[1]?.split(" ")[1];
+    expect(iconOf("/dashboard/pengaturan")).toBe("lucide-settings");
+    expect(iconOf("/dashboard/akun/password")).toBe("lucide-user-round");
+  });
+
+  it("makes nav links 44px tall below xl and compact from xl", () => {
+    const html = render(true);
+    expect(html).toMatch(/class="[^"]*\bmin-h-11\b[^"]*\bxl:min-h-0\b[^"]*" href="\/dashboard\/kegiatan"/);
+  });
+
+  it("hides the sidebar scrollbar so the collapsed rail keeps its tap width", () => {
+    expect(render(true)).toContain("[scrollbar-width:none]");
+  });
 });

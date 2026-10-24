@@ -15,6 +15,7 @@ import {
   ScrollText,
   Settings,
   UserCog,
+  UserRound,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -69,7 +70,7 @@ export function SidebarNav({
 }) {
   const pathname = usePathname();
   const itemClass = cn(
-    "flex items-center gap-2.5 rounded-lg py-2 text-sm font-medium transition-colors",
+    "flex min-h-11 items-center gap-2.5 rounded-lg py-2 text-sm font-medium transition-colors xl:min-h-0",
     collapsed ? "justify-center px-0" : "px-2.5",
   );
 
@@ -116,7 +117,7 @@ export function SidebarNav({
               aria-label={collapsed ? "Akun" : undefined}
               className={cn(itemClass, "text-muted-foreground hover:bg-muted hover:text-foreground")}
             >
-              <Settings className="size-4 shrink-0" />
+              <UserRound className="size-4 shrink-0" />
               {!collapsed && "Akun"}
             </Link>
           </li>
@@ -182,7 +183,8 @@ export function AppSidebar({
   return (
     <aside
       className={cn(
-        "hidden shrink-0 flex-col gap-6 overflow-y-auto border-r bg-card py-5 transition-[width] duration-200 lg:flex",
+        // Scrollbar hidden so the 64px rail keeps its full 48px tap width; the sidebar still scrolls on short screens.
+        "hidden shrink-0 flex-col gap-6 overflow-y-auto border-r bg-card py-5 transition-[width] duration-200 [scrollbar-width:none] lg:flex [&::-webkit-scrollbar]:hidden",
         collapsed ? "w-16 px-2" : "w-60 px-3",
       )}
     >
@@ -194,7 +196,7 @@ export function AppSidebar({
           title={`${toggleLabel} (Ctrl/⌘+B)`}
           aria-label={toggleLabel}
           aria-expanded={!collapsed}
-          className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="inline-flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground xl:size-8"
         >
           {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
         </button>

@@ -76,7 +76,7 @@ export function NavShell({
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col print:block">
-        <header className="flex h-14 shrink-0 items-center justify-between border-b bg-background px-4 lg:hidden print:hidden">
+        <header className="flex h-16 shrink-0 items-center justify-between border-b bg-background px-4 lg:hidden print:hidden">
           <BrandMark organizationName={organizationName} />
           <button
             type="button"
@@ -84,7 +84,7 @@ export function NavShell({
             aria-expanded={drawerOpen}
             aria-controls="mobile-nav"
             onClick={() => setDrawerOpen(true)}
-            className="inline-flex size-9 items-center justify-center rounded-md hover:bg-muted"
+            className="inline-flex size-11 items-center justify-center rounded-md hover:bg-muted"
           >
             <Menu className="size-5" />
           </button>
@@ -126,7 +126,7 @@ export function NavShell({
               type="button"
               aria-label="Tutup menu"
               onClick={() => setDrawerOpen(false)}
-              className="inline-flex size-9 items-center justify-center rounded-md hover:bg-muted"
+              className="inline-flex size-11 items-center justify-center rounded-md hover:bg-muted"
             >
               <X className="size-5" />
             </button>
