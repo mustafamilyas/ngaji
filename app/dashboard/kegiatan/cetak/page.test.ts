@@ -142,6 +142,32 @@ describe("PrintSchedulePage", () => {
     expect(html).not.toContain("<table");
   });
 
+  it("gives the toolbar 44px buttons with Cetak first and full-width on phones", async () => {
+    const fixture = await buildPageFixture("cetak-toolbar");
+    const { admin } = await weeklyActivity(fixture, "Kajian Toolbar");
+    mockAuthSession(auth, { user: admin });
+
+    const html = renderToStaticMarkup(await PrintSchedulePage({ searchParams: Promise.resolve(RANGE) }));
+    const tag = (text: string) => html.match(new RegExp(`<(?:a|button)\\b[^>]*class="[^"]*"[^>]*>(?:(?!</(?:a|button)>).)*${text}`))?.[0] ?? "";
+    for (const text of ["Kembali", "Tampilkan yang batal", "Cetak"]) expect(tag(text)).toMatch(/\bh-11\b/);
+    expect(tag("Cetak")).toMatch(/\bw-full\b/);
+    expect(html.indexOf("Cetak</button>")).toBeLessThan(html.indexOf("Kembali"));
+  });
+
+  it("hints at sideways scrolling on phones only, and only when a table is shown", async () => {
+    const fixture = await buildPageFixture("cetak-hint");
+    const { admin } = await weeklyActivity(fixture, "Kajian Petunjuk");
+    mockAuthSession(auth, { user: admin });
+
+    const shown = renderToStaticMarkup(await PrintSchedulePage({ searchParams: Promise.resolve(RANGE) }));
+    expect(shown).toMatch(/class="[^"]*\bsm:hidden\b[^"]*\bprint:hidden\b[^"]*"[^>]*>Geser tabel ke samping/);
+
+    const empty = renderToStaticMarkup(
+      await PrintSchedulePage({ searchParams: Promise.resolve({ range: "custom", from: "2026-04-01", to: "2026-04-02" }) }),
+    );
+    expect(empty).not.toContain("Geser tabel");
+  });
+
   it("rejects a range over 3 months without querying", async () => {
     const fixture = await buildPageFixture("cetak-long");
     mockAuthSession(auth, { user: sessionFor(fixture.actorId, "OWNER", fixture.root) });

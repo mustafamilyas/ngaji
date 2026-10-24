@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { auth } from "@/auth";
 import { buttonVariants } from "@/components/ui/button";
+import { touchButton } from "@/components/ui/touch";
 import { WEEKDAY_LABELS } from "@/lib/activity/labels";
 import { listActivityOccurrences } from "@/lib/activity/list";
 import { endTimeOf, groupScheduleByDate } from "@/lib/activity/print";
@@ -70,19 +71,26 @@ export default async function PrintSchedulePage({
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6 print:max-w-none print:gap-4">
-      <div className="flex flex-wrap items-center gap-3 print:hidden">
-        <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
-          <ArrowLeft />
-          Kembali
-        </Link>
-        <Link href={toggleHref} className={buttonVariants({ variant: "outline" })} aria-pressed={showCancelled}>
-          {showCancelled ? "✓ " : ""}Tampilkan yang batal
-        </Link>
+      {/* Phones: Cetak on top, full width; the two links share a row below it. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center print:hidden">
         {!tooLong && (
-          <span className="ml-auto">
-            <PrintButton />
+          <span className="order-first sm:order-last sm:ml-auto">
+            <PrintButton className={cn(touchButton, "w-full sm:w-auto")} />
           </span>
         )}
+        <div className="flex flex-wrap gap-2 sm:gap-3">
+          <Link href={backHref} className={cn(buttonVariants({ variant: "outline" }), touchButton)}>
+            <ArrowLeft />
+            Kembali
+          </Link>
+          <Link
+            href={toggleHref}
+            className={cn(buttonVariants({ variant: "outline" }), touchButton)}
+            aria-pressed={showCancelled}
+          >
+            {showCancelled ? "✓ " : ""}Tampilkan yang batal
+          </Link>
+        </div>
       </div>
 
       <header className="border-b pb-3">
@@ -102,53 +110,58 @@ export default async function PrintSchedulePage({
       ) : days.length === 0 ? (
         <p className="px-4 py-10 text-center text-sm text-muted-foreground">Tidak ada jadwal</p>
       ) : (
-        <div className="overflow-x-auto print:overflow-visible">
-          <table className="w-full min-w-[40rem] table-fixed border-collapse text-sm print:min-w-0 print:text-[11px]">
-            <thead className="print:table-header-group">
-              <tr className="border-y text-left text-xs">
-                <th scope="col" className="w-24 py-1 pr-2 font-medium print:w-20">Tanggal</th>
-                <th scope="col" className="w-24 py-1 pr-2 font-medium print:w-20">Jam</th>
-                <th scope="col" className="w-[22%] py-1 pr-2 font-medium">Kegiatan</th>
-                <th scope="col" className="w-[14%] py-1 pr-2 font-medium">Grup</th>
-                <th scope="col" className="w-[18%] py-1 pr-2 font-medium">Lokasi</th>
-                <th scope="col" className="py-1 font-medium">Keterangan</th>
-              </tr>
-            </thead>
-            {days.map((day) => (
-              <tbody key={day.date} className="border-t-2 border-foreground/60">
-                {day.entries.map((entry, index) => {
-                  const cancelled = entry.status === "CANCELLED";
-                  return (
-                    <tr
-                      key={`${entry.activityId}:${entry.key}`}
-                      className={cn("align-top break-inside-avoid", index > 0 && "border-t")}
-                    >
-                      {index === 0 && (
-                        <th scope="rowgroup" rowSpan={day.entries.length} className="py-1 pr-2 text-left font-semibold">
-                          {WEEKDAY_LABELS[weekdayOf(day.date)]}
-                          <br />
-                          <span className="font-normal">{formatDate(day.date)}</span>
-                        </th>
-                      )}
-                      <td className="py-1 pr-2 tabular-nums print:py-0.5">
-                        {entry.effectiveStartTime}–{endTimeOf(entry.effectiveStartTime, entry.effectiveDurationMinutes)}
-                      </td>
-                      <td className={cn("py-1 pr-2 font-medium print:py-0.5", cancelled && "line-through")}>
-                        {entry.activityName}
-                      </td>
-                      <td className="py-1 pr-2 print:py-0.5">{entry.groupName}</td>
-                      <td className="py-1 pr-2 print:py-0.5">{entry.effectiveLocation}</td>
-                      <td className="py-1 print:py-0.5">
-                        {[entry.moved && "Dipindah", cancelled && "Batal"].filter(Boolean).join(", ")}
-                        {(entry.moved || cancelled) && entry.effectiveNotes ? " · " : ""}
-                        {entry.effectiveNotes}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            ))}
-          </table>
+        <div className="flex flex-col gap-2">
+          <p className="text-xs text-muted-foreground sm:hidden print:hidden">
+            Geser tabel ke samping untuk melihat semua kolom. Hasil cetak tetap lengkap.
+          </p>
+          <div className="overflow-x-auto print:overflow-visible">
+            <table className="w-full min-w-[40rem] table-fixed border-collapse text-sm print:min-w-0 print:text-[11px]">
+              <thead className="print:table-header-group">
+                <tr className="border-y text-left text-xs">
+                  <th scope="col" className="w-24 py-1 pr-2 font-medium print:w-20">Tanggal</th>
+                  <th scope="col" className="w-24 py-1 pr-2 font-medium print:w-20">Jam</th>
+                  <th scope="col" className="w-[22%] py-1 pr-2 font-medium">Kegiatan</th>
+                  <th scope="col" className="w-[14%] py-1 pr-2 font-medium">Grup</th>
+                  <th scope="col" className="w-[18%] py-1 pr-2 font-medium">Lokasi</th>
+                  <th scope="col" className="py-1 font-medium">Keterangan</th>
+                </tr>
+              </thead>
+              {days.map((day) => (
+                <tbody key={day.date} className="border-t-2 border-foreground/60">
+                  {day.entries.map((entry, index) => {
+                    const cancelled = entry.status === "CANCELLED";
+                    return (
+                      <tr
+                        key={`${entry.activityId}:${entry.key}`}
+                        className={cn("align-top break-inside-avoid", index > 0 && "border-t")}
+                      >
+                        {index === 0 && (
+                          <th scope="rowgroup" rowSpan={day.entries.length} className="py-1 pr-2 text-left font-semibold">
+                            {WEEKDAY_LABELS[weekdayOf(day.date)]}
+                            <br />
+                            <span className="font-normal">{formatDate(day.date)}</span>
+                          </th>
+                        )}
+                        <td className="py-1 pr-2 tabular-nums print:py-0.5">
+                          {entry.effectiveStartTime}–{endTimeOf(entry.effectiveStartTime, entry.effectiveDurationMinutes)}
+                        </td>
+                        <td className={cn("py-1 pr-2 font-medium print:py-0.5", cancelled && "line-through")}>
+                          {entry.activityName}
+                        </td>
+                        <td className="py-1 pr-2 print:py-0.5">{entry.groupName}</td>
+                        <td className="py-1 pr-2 print:py-0.5">{entry.effectiveLocation}</td>
+                        <td className="py-1 print:py-0.5">
+                          {[entry.moved && "Dipindah", cancelled && "Batal"].filter(Boolean).join(", ")}
+                          {(entry.moved || cancelled) && entry.effectiveNotes ? " · " : ""}
+                          {entry.effectiveNotes}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              ))}
+            </table>
+          </div>
         </div>
       )}
     </div>
