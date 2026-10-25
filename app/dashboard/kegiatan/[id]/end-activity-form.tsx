@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { CalendarX } from "lucide-react";
 import { endActivityAction } from "@/app/dashboard/kegiatan/actions";
 import { Button } from "@/components/ui/button";
+import { touchButton, touchField } from "@/components/ui/touch";
 import type { Activity } from "@/lib/generated/prisma/client";
 import type { ActionResult } from "@/lib/errors";
 
@@ -21,19 +22,19 @@ export function EndActivityForm({ activityId }: { activityId: number }) {
           event.preventDefault();
         }
       }}
-      className="flex items-end gap-2"
+      className="flex flex-col gap-2 sm:flex-row sm:items-end"
     >
       <input type="hidden" name="activityId" value={activityId} />
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1 text-sm sm:w-auto">
         Akhiri mulai tanggal
         <input
           type="date"
           name="fromDate"
           required
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className={touchField}
         />
       </label>
-      <Button type="submit" variant="outline" disabled={pending}>
+      <Button type="submit" variant="outline" disabled={pending} className={touchButton}>
         <CalendarX />
         {pending ? "Menyimpan…" : "Akhiri"}
       </Button>

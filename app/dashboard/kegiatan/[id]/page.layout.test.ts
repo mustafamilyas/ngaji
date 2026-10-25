@@ -47,6 +47,16 @@ describe("ActivityDetailPage phone and tablet layout", () => {
     expect(tag).toContain("xl:min-h-0");
   });
 
+  it("pengaturan tab: split link, end-activity form and delete are 44px with 16px text below xl", async () => {
+    const html = await render("kegiatan-layout-pengaturan", { tab: "pengaturan" });
+    expect(openingTag(html, "a", "Ubah ini")).toContain("h-11");
+    const date = html.match(/<input[^>]*name="fromDate"[^>]*>/)?.[0] ?? "";
+    expect(date).toContain("h-11");
+    expect(date).toContain("text-base");
+    expect(openingTag(html, "button", "Akhiri")).toContain("h-11");
+    expect(openingTag(html, "button", "Hapus kegiatan")).toContain("h-11");
+  });
+
   it("jadwal tab: Lihat and the edit pencil are 44px below xl", async () => {
     const html = await render("kegiatan-layout-jadwal", { tab: "jadwal" });
     expect(openingTag(html, "a", "Lihat")).toContain("h-11");

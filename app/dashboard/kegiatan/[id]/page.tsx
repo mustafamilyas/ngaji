@@ -184,7 +184,7 @@ export default async function ActivityDetailPage({
                 </CardDescription>
                 {activity.freq !== "ONCE" && (
                   <CardAction>
-                    <Link href={`${path}/geser`} className={buttonVariants({ variant: "outline" })}>
+                    <Link href={`${path}/geser`} className={buttonVariants({ variant: "outline", className: touchButton })}>
                       <CalendarClock />
                       Ubah ini &amp; seterusnya
                     </Link>
