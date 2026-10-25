@@ -16,6 +16,7 @@ pnpm prisma migrate dev       # migrasi, membuat file SQLite jika belum ada
 pnpm prisma db seed           # 2 org (org kedua kecil, owner admin_annur, untuk uji isolasi) + owner admin/admin (wajib ganti password)
 pnpm org:create               # org baru + level + grup akar + OWNER pertama (env BOOTSTRAP_*); `pnpm bootstrap` = alias
 pnpm leads [--csv]            # daftar minat dari /daftar (hanya-baca)
+pnpm audit:viewport          # audit HP/tablet di Chrome headless (db + server sementara); exit 1 jika ada temuan
 pnpm dev
 pnpm test                     # vitest: fungsi murni + server action lintas-scope
 pnpm lint && pnpm tsc --noEmit

@@ -91,6 +91,23 @@ pnpm build             # production build
 pnpm start             # jalankan hasil build
 ```
 
+## Audit tampilan HP dan tablet
+
+```bash
+pnpm audit:viewport                          # owner, 360x740 / 768x1024 / 1024x768
+pnpm audit:viewport --roles owner,admin,user # ulangi untuk tiap peran
+pnpm audit:viewport --landscape              # tambah 667x375 dan 812x375 (HP landscape)
+pnpm audit:viewport --only kegiatan          # hanya halaman yang path-nya memuat teks itu
+pnpm audit:viewport --keep-server            # biarkan server dan database sementara tetap hidup
+```
+
+Membuka tiap halaman di Chrome headless (lewat DevTools Protocol) dan melaporkan: halaman yang bisa digeser ke samping, target sentuh yang tingginya di bawah 44px, kolom isian dengan teks di bawah 16px (iOS memperbesar layar saat fokus), dan grafik yang tidak ikut menyesuaikan lebar setelah ukuran layar berubah (ukuran diganti tanpa memuat ulang, seperti memutar HP). Exit code 1 jika ada temuan; laporan JSON ditulis ke folder temp.
+
+- Mandiri: skrip membuat database sementara (migrate + seed) dan server `next dev` di port bebas, lalu menghapusnya. `prisma/dev.db` tidak disentuh.
+- Perlu Google Chrome (atau set `CHROME_PATH`) dan Node 22+.
+- Dialog, popover, dan dropdown yang terbuka tidak tercakup karena perlu klik dulu; periksa manual.
+- Pane Browser di aplikasi desktop yang tersembunyi tidak menjalankan `ResizeObserver` atau animasi, jadi hasil ukuran grafik di sana bisa menyesatkan; skrip ini tidak punya masalah itu.
+
 ## Melihat/mengubah data lewat Prisma Studio
 
 ```bash
