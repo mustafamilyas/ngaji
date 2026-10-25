@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { Pencil } from "lucide-react";
 import { overrideOccurrenceAction } from "@/app/dashboard/kegiatan/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { touchIconButton } from "@/components/ui/touch";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { ActivityOccurrence } from "@/lib/generated/prisma/client";
 import type { ActionResult } from "@/lib/errors";
@@ -48,7 +49,7 @@ export function OccurrenceOverrideDialog({
       <DialogTrigger
         aria-label={`Ubah jadwal ${formatDate(effectiveDate)}`}
         title="Ubah tanggal ini"
-        className={buttonVariants({ variant: "ghost", size: "icon" })}
+        className={buttonVariants({ variant: "ghost", size: "icon", className: touchIconButton })}
       >
         <Pencil />
       </DialogTrigger>

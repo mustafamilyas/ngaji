@@ -4,7 +4,7 @@ import { pageWindow, totalPagesFor } from "@/lib/pagination";
 import { cn } from "@/lib/utils";
 
 const itemClass =
-  "inline-flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-sm transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
+  "inline-flex h-11 min-w-11 items-center justify-center rounded-md px-2 text-base transition-colors xl:h-8 xl:min-w-8 xl:text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
 
 /**
  * Pager for every list: "1–50 dari 120" plus page buttons; renders nothing
