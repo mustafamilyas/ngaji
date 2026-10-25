@@ -16,7 +16,7 @@ function MiniBarChart({ data }: { data: { label: string; count: number }[] }) {
         <Tooltip
           contentStyle={{ fontSize: 12, background: "var(--popover, white)", border: "1px solid var(--border)" }}
         />
-        <Bar dataKey="count" fill={barFill} radius={[4, 4, 0, 0]} maxBarSize={48} isAnimationActive={false} />
+        <Bar dataKey="count" name="Jumlah" fill={barFill} radius={[4, 4, 0, 0]} maxBarSize={48} isAnimationActive={false} />
       </BarChart>
     </ResponsiveContainer>
   );
