@@ -92,7 +92,30 @@ describe("AppSidebar", () => {
     expect(html).toMatch(/class="[^"]*\bmin-h-11\b[^"]*\bxl:min-h-0\b[^"]*" href="\/dashboard\/kegiatan"/);
   });
 
-  it("hides the sidebar scrollbar so the collapsed rail keeps its tap width", () => {
+  it("hides the scrollbar of the menu list so the collapsed rail keeps its tap width", () => {
     expect(render(true)).toContain("[scrollbar-width:none]");
+  });
+
+  it("scrolls only the menu list and pins Akun, Keluar and the user card below it", () => {
+    const html = render(true);
+    const menuStart = html.indexOf('data-nav-scroll="menu"');
+    const footerStart = html.indexOf('data-nav-footer');
+    expect(menuStart).toBeGreaterThan(-1);
+    expect(footerStart).toBeGreaterThan(menuStart);
+    const menuTag = html.slice(html.lastIndexOf("<", menuStart), html.indexOf(">", menuStart));
+    expect(menuTag).toMatch(/\bmin-h-0\b/);
+    expect(menuTag).toMatch(/\boverflow-y-auto\b/);
+    const footerTag = html.slice(html.lastIndexOf("<", footerStart), html.indexOf(">", footerStart));
+    expect(footerTag).toMatch(/\bshrink-0\b/);
+    const footer = html.slice(footerStart);
+    expect(footer).toContain("Keluar");
+    expect(footer).toContain("Akun");
+    expect(html.slice(menuStart, footerStart)).not.toContain("Keluar");
+  });
+
+  it("does not scroll the docked sidebar as a whole, so Keluar cannot scroll away", () => {
+    const html = render(true);
+    const asideTag = html.slice(html.indexOf("<aside"), html.indexOf(">", html.indexOf("<aside")));
+    expect(asideTag).not.toMatch(/\boverflow-y-auto\b/);
   });
 });

@@ -116,7 +116,7 @@ export function NavShell({
           aria-label="Menu utama"
           inert={!drawerOpen}
           className={cn(
-            "absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-6 overflow-y-auto bg-card px-3 py-4 shadow-xl transition-transform duration-200",
+            "absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-6 bg-card px-3 py-4 shadow-xl [@media(max-height:500px)]:gap-2 [@media(max-height:500px)]:py-2 transition-transform duration-200",
             drawerOpen ? "translate-x-0" : "-translate-x-full",
           )}
         >

@@ -75,8 +75,12 @@ export function SidebarNav({
   );
 
   return (
-    <>
-      <nav className="flex flex-col gap-1">
+    <div className="flex min-h-0 flex-1 flex-col gap-6 [@media(max-height:500px)]:gap-2">
+      {/* Only the menu list scrolls; Akun, Keluar and the user card stay pinned below it (short and landscape screens). */}
+      <nav
+        data-nav-scroll="menu"
+        className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         <SectionLabel collapsed={collapsed}>MENU</SectionLabel>
         <ul className="flex flex-col gap-0.5">
           {NAV_ITEMS.filter((item) => isRootOwner || !item.rootOwnerOnly).map((item) => {
@@ -106,8 +110,11 @@ export function SidebarNav({
         </ul>
       </nav>
 
+      <div data-nav-footer className="flex shrink-0 flex-col gap-3 [@media(max-height:500px)]:gap-1">
       <nav className="flex flex-col gap-1">
-        <SectionLabel collapsed={collapsed}>UMUM</SectionLabel>
+        <SectionLabel collapsed={collapsed} className="[@media(max-height:500px)]:hidden">
+          UMUM
+        </SectionLabel>
         <ul className="flex flex-col gap-0.5">
           <li>
             <Link
@@ -140,7 +147,7 @@ export function SidebarNav({
       <div
         title={collapsed ? `${userName} · ${userRole}` : undefined}
         className={cn(
-          "mt-auto flex items-center gap-2 rounded-lg",
+          "flex items-center gap-2 rounded-lg [@media(max-height:500px)]:hidden",
           collapsed ? "justify-center" : "border px-2.5 py-2",
         )}
       >
@@ -154,13 +161,14 @@ export function SidebarNav({
           </div>
         )}
       </div>
-    </>
+      </div>
+    </div>
   );
 }
 
-function SectionLabel({ collapsed, children }: { collapsed: boolean; children: React.ReactNode }) {
-  if (collapsed) return <div aria-hidden className="mx-auto my-1.5 h-px w-6 bg-border" />;
-  return <p className="px-2.5 text-xs font-medium text-muted-foreground">{children}</p>;
+function SectionLabel({ collapsed, className, children }: { collapsed: boolean; className?: string; children: React.ReactNode }) {
+  if (collapsed) return <div aria-hidden className={cn("mx-auto my-1.5 h-px w-6 bg-border", className)} />;
+  return <p className={cn("px-2.5 text-xs font-medium text-muted-foreground", className)}>{children}</p>;
 }
 
 /** Docked left sidebar, visible on every page at `lg` and up; collapsible to an icon rail. */
@@ -183,8 +191,8 @@ export function AppSidebar({
   return (
     <aside
       className={cn(
-        // Scrollbar hidden so the 64px rail keeps its full 48px tap width; the sidebar still scrolls on short screens.
-        "hidden shrink-0 flex-col gap-6 overflow-y-auto border-r bg-card py-5 transition-[width] duration-200 [scrollbar-width:none] lg:flex [&::-webkit-scrollbar]:hidden",
+        // The menu list inside SidebarNav scrolls (scrollbar hidden so the 64px rail keeps its 48px tap width); the rest is pinned.
+        "hidden shrink-0 flex-col gap-6 border-r bg-card py-5 transition-[width] duration-200 lg:flex",
         collapsed ? "w-16 px-2" : "w-60 px-3",
       )}
     >
