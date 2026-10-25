@@ -322,6 +322,8 @@ Do a drill **at least once per quarter**: restore the latest bucket backup onto 
 
 ## 9. Upgrade procedure
 
+Every release gets its own document in [docs/releases/](docs/releases/README.md), created from the template **before** deploying. It holds the release-specific risks, extra steps, and the sanity-check results; this section stays the generic procedure.
+
 1. Run a fresh backup: `sudo systemctl start ngaji-backup.service` and confirm it succeeded.
 2. Take a **VPS snapshot** in the IDCloudHost console.
 3. Run the audit gate (§5).

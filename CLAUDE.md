@@ -51,4 +51,5 @@ pnpm lint && pnpm tsc --noEmit
 - **Jangan berasumsi — tanyakan.** Kalau ada dua tafsir yang menghasilkan pekerjaan berbeda, tanya dulu.
 - Fokus MVP (target 2 hari). Fitur non-MVP ada di DESIGN.md §10 — jangan dikerjakan tanpa diminta.
 - Kerjakan bertahap sesuai `openspec/changes/ngaji-mvp/tasks.md` (urutan = DESIGN.md §8); spesifikasi & skenario uji per kapabilitas ada di `openspec/changes/ngaji-mvp/specs/`. Gunakan `/opsx:apply` untuk mengerjakan tugas. Setiap tahap harus bisa dijalankan.
+- **Setiap rilis ke production wajib punya dokumen rilis** di `docs/releases/`, dibuat dari `docs/releases/TEMPLATE.md` sebelum deploy (nama `YYYY-MM-DD-vX.Y.Z.md`), plus baris baru di indeks `docs/releases/README.md`. Prosedur server tetap di `DEPLOYMENT.md`; dokumen rilis hanya memuat hal khusus rilis itu dan hasil sanity check.
 - Jika mengubah keputusan desain, perbarui DESIGN.md **dan** spec OpenSpec terkait di commit yang sama.
