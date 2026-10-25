@@ -11,7 +11,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { touchField, touchLgButton } from "@/components/ui/touch";
 import { cn } from "@/lib/utils";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { ActionResult } from "@/lib/errors";
 import type { Definition } from "@/lib/validation/member-view";
 
@@ -82,12 +82,12 @@ function NameDialog({
               {error}
             </p>
           )}
-          <div className="flex justify-end gap-2">
+          <DialogFooter>
             <DialogClose className={cn(buttonVariants({ variant: "ghost", size: "lg" }), touchLgButton)}>Batal</DialogClose>
             <Button type="submit" size="lg" className={touchLgButton} disabled={pending}>
               {pending ? "Menyimpan…" : submitLabel}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

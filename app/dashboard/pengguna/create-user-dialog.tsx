@@ -6,7 +6,7 @@ import { GroupAutocomplete, withParentNames } from "@/components/group-autocompl
 import { Button, buttonVariants } from "@/components/ui/button";
 import { touchButton, touchField } from "@/components/ui/touch";
 import { cn } from "@/lib/utils";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { CreatedUserDto } from "@/lib/user/dto";
 import type { ActionResult } from "@/lib/errors";
 import type { Role } from "@/lib/validation/enums";
@@ -114,12 +114,12 @@ export function CreateUserDialog({
             </div>
           )}
 
-          <div className="flex justify-end gap-2">
+          <DialogFooter>
             <DialogClose className={cn(buttonVariants({ variant: "ghost", size: "lg" }), touchButton)}>Tutup</DialogClose>
             <Button type="submit" size="lg" className={touchButton} disabled={pending || groupId === undefined}>
               {pending ? "Menyimpan…" : "Buat pengguna"}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

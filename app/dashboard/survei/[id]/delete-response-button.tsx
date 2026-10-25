@@ -7,7 +7,7 @@ import { deleteSurveyResponseAction } from "@/app/dashboard/survei/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { touchIconButton, touchLgButton } from "@/components/ui/touch";
 import { cn } from "@/lib/utils";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 /** Trash button that asks for confirmation before removing one member's response. */
 export function DeleteResponseButton({
@@ -55,12 +55,12 @@ export function DeleteResponseButton({
             {error}
           </p>
         )}
-        <div className="mt-5 flex justify-end gap-2">
+        <DialogFooter className="mt-5">
           <DialogClose className={cn(buttonVariants({ variant: "outline", size: "lg" }), touchLgButton)}>Batal</DialogClose>
           <Button variant="destructive" size="lg" className={touchLgButton} onClick={confirm} disabled={pending}>
             {pending ? "Menghapus…" : "Hapus"}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

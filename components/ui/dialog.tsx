@@ -38,6 +38,23 @@ function DialogDescription({ className, ...props }: DialogPrimitive.Description.
   return <DialogPrimitive.Description className={cn("mt-1 text-sm text-muted-foreground", className)} {...props} />
 }
 
+/**
+ * Action row pinned to the bottom of the (scrolling) dialog (`-bottom-5`: sticky ignores the popup padding), so Simpan and Tutup stay reachable on a
+ * landscape phone. Cancels the popup padding (`p-5`) so the bar spans the full width.
+ */
+function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="dialog-footer"
+      className={cn(
+        "sticky -bottom-5 -mx-5 -mb-5 flex justify-end gap-2 rounded-b-2xl border-t bg-popover px-5 py-3",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
 const DialogClose = DialogPrimitive.Close
 
-export { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription, DialogClose }
+export { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription, DialogFooter, DialogClose }

@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { Plus } from "lucide-react";
 import { createGroupAction } from "@/app/dashboard/grup/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { touchField, touchLgButton } from "@/components/ui/touch";
 import { cn } from "@/lib/utils";
 import type { ActionResult } from "@/lib/errors";
@@ -59,12 +59,12 @@ export function AddSubgroupDialog({
               {state.error}
             </p>
           )}
-          <div className="flex justify-end gap-2">
+          <DialogFooter>
             <DialogClose className={cn(buttonVariants({ variant: "ghost", size: "lg" }), touchLgButton)}>Batal</DialogClose>
             <Button type="submit" size="lg" disabled={pending} className={touchLgButton}>
               {pending ? "Menyimpan…" : "Simpan"}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

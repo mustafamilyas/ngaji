@@ -5,7 +5,7 @@ import { Pencil } from "lucide-react";
 import { overrideOccurrenceAction } from "@/app/dashboard/kegiatan/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { touchField, touchIconButton, touchLgButton } from "@/components/ui/touch";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { ActivityOccurrence } from "@/lib/generated/prisma/client";
 import type { ActionResult } from "@/lib/errors";
 import { formatDate } from "@/lib/filters";
@@ -102,12 +102,12 @@ export function OccurrenceOverrideDialog({
               {state.error}
             </p>
           )}
-          <div className="flex justify-end gap-2">
+          <DialogFooter>
             <DialogClose className={buttonVariants({ variant: "ghost", size: "lg", className: cn(touchLgButton, "flex-1 sm:flex-none") })}>Tutup</DialogClose>
             <Button type="submit" size="lg" disabled={pending} className={cn(touchLgButton, "flex-1 sm:flex-none")}>
               {pending ? "Menyimpan…" : "Simpan"}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

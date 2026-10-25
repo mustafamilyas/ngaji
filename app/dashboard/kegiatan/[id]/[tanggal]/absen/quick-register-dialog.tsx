@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { UserPlus } from "lucide-react";
 import { createMemberAction } from "@/app/dashboard/anggota/actions";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { SEX_LABELS } from "@/lib/member/labels";
 import { SEXES } from "@/lib/validation/enums";
 import { memberFormSchema, type MemberFormValues } from "@/lib/validation/member";
@@ -132,14 +132,14 @@ export function QuickRegisterDialog({
               {errors.root.message}
             </p>
           )}
-          <div className="mt-1 flex justify-end gap-2">
+          <DialogFooter>
             <Button type="button" variant="outline" size="lg" className="h-10" onClick={() => setOpen(false)}>
               Batal
             </Button>
             <Button type="submit" size="lg" className="h-10" disabled={pending}>
               {pending ? "Menyimpan…" : "Daftar"}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
