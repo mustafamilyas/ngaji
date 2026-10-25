@@ -40,6 +40,13 @@ describe("ActivityDetailPage phone and tablet layout", () => {
     expect(openingTag(html, "a", "Ubah")).toContain("h-11");
   });
 
+  it("the group link in the header meta row is 44px below xl", async () => {
+    const html = await render("kegiatan-layout-group-link", {});
+    const tag = html.match(/<a [^>]*href="\/dashboard\/grup\/\d+"[^>]*>/)?.[0] ?? "";
+    expect(tag).toContain("min-h-11");
+    expect(tag).toContain("xl:min-h-0");
+  });
+
   it("jadwal tab: Lihat and the edit pencil are 44px below xl", async () => {
     const html = await render("kegiatan-layout-jadwal", { tab: "jadwal" });
     expect(openingTag(html, "a", "Lihat")).toContain("h-11");

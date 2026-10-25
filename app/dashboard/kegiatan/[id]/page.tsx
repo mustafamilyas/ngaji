@@ -115,7 +115,7 @@ export default async function ActivityDetailPage({
             <MetaItem icon={MapPin}>{activity.location}</MetaItem>
             <MetaItem icon={Network}>
               {canRecord ? (
-                <Link href={`/dashboard/grup/${activity.group.id}`} className="hover:text-foreground hover:underline">
+                <Link href={`/dashboard/grup/${activity.group.id}`} className="inline-flex min-h-11 items-center hover:text-foreground hover:underline xl:min-h-0">
                   {activity.group.name}
                 </Link>
               ) : (
