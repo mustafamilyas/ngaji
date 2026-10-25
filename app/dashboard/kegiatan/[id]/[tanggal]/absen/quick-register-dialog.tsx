@@ -7,6 +7,7 @@ import { UserPlus } from "lucide-react";
 import { createMemberAction } from "@/app/dashboard/anggota/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { touchLgButton } from "@/components/ui/touch";
 import { SEX_LABELS } from "@/lib/member/labels";
 import { SEXES } from "@/lib/validation/enums";
 import { memberFormSchema, type MemberFormValues } from "@/lib/validation/member";
@@ -92,7 +93,7 @@ export function QuickRegisterDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         disabled={groupId === undefined}
-        className="inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium text-primary outline-none hover:bg-primary/5 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
+        className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-base font-medium text-primary xl:min-h-10 xl:text-sm outline-none hover:bg-primary/5 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
       >
         <UserPlus className="size-4" />
         Daftar sebagai anggota baru
@@ -133,10 +134,10 @@ export function QuickRegisterDialog({
             </p>
           )}
           <DialogFooter>
-            <Button type="button" variant="outline" size="lg" className="h-10" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" size="lg" className={touchLgButton} onClick={() => setOpen(false)}>
               Batal
             </Button>
-            <Button type="submit" size="lg" className="h-10" disabled={pending}>
+            <Button type="submit" size="lg" className={touchLgButton} disabled={pending}>
               {pending ? "Menyimpan…" : "Daftar"}
             </Button>
           </DialogFooter>
