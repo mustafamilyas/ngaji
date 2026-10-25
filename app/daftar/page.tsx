@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function DaftarPage() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-4 py-10 sm:py-16">
-      <Link href="/" className="flex items-center gap-3 self-start rounded-md outline-offset-4">
+      <Link href="/" className="flex min-h-11 items-center gap-3 self-start rounded-md outline-offset-4">
         <Logo />
         <span className="font-heading text-lg font-semibold">Dahan</span>
       </Link>

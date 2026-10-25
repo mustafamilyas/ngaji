@@ -36,6 +36,12 @@ describe("DaftarPage", () => {
     }
   });
 
+  it("makes the brand link a 44px tap target", () => {
+    const html = renderToStaticMarkup(DaftarPage());
+    const brand = html.match(/<a [^>]*href="\/"[^>]*>/)?.[0] ?? "";
+    expect(brand).toContain("min-h-11");
+  });
+
   it("includes a honeypot field that people and assistive tech skip", () => {
     const html = renderToStaticMarkup(DaftarPage());
     expect(html).toMatch(/name="website"/);
