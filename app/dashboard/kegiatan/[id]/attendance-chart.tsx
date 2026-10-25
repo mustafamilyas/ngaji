@@ -8,6 +8,7 @@ import { Pagination } from "@/components/pagination";
 import { EMBEDDED_PAGE_SIZE } from "@/lib/constants";
 import { paginate } from "@/lib/pagination";
 import type { ActivityAttendanceSummary } from "@/lib/stats";
+import { cn } from "@/lib/utils";
 
 const tooltipStyle = { fontSize: 12, background: "var(--popover, white)", border: "1px solid var(--border)" };
 
@@ -16,6 +17,13 @@ const TONE_CLASS = {
   warning: "text-amber-700 dark:text-amber-400",
   critical: "text-destructive",
 } as const;
+
+// Below md the table markup is laid out as one card per occurrence: date and action on the first line, then the numbers two per row.
+const statCell = "flex items-center justify-between gap-3 text-sm md:table-cell md:py-2 md:pr-2 md:text-right";
+
+function PhoneLabel({ children }: { children: React.ReactNode }) {
+  return <span className="shrink-0 text-xs text-muted-foreground md:hidden">{children}</span>;
+}
 
 function StatTile({
   label,
@@ -109,9 +117,9 @@ export function ActivityAttendanceChart({
 
       <div>
         <h3 className="mb-2 text-sm font-medium">Per occurrence</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
+        <div className="relative overflow-x-auto">
+          <table className="block w-full text-sm md:table">
+            <thead className="hidden md:table-header-group">
               <tr className="border-b text-left text-xs whitespace-nowrap text-muted-foreground">
                 <th className="py-2 pr-2">Tanggal</th>
                 <th className="py-2 pr-2 text-right">Hadir</th>
@@ -122,25 +130,48 @@ export function ActivityAttendanceChart({
                 <th className="py-2 pl-2 text-right">Aksi</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="block md:table-row-group">
               {visibleOccurrences.items.map((o) => (
-                <tr key={o.key} className="border-b last:border-0">
-                  <td className="py-2 pr-2 whitespace-nowrap">{o.effectiveDate}</td>
-                  <td className="py-2 pr-2 text-right">{o.hadir}</td>
-                  <td className="py-2 pr-2 text-right">{o.izin}</td>
-                  <td className="py-2 pr-2 text-right">{o.absent}</td>
-                  <td className="py-2 pr-2 text-right">{o.expected}</td>
-                  <td className="py-2 pr-2 text-right">{o.percentHadir}%</td>
-                  <td className="py-2 pl-2 text-right">
-                    <Link href={`/dashboard/kegiatan/${activityId}/${o.key}`} className="text-xs text-primary hover:underline">
+                <tr
+                  key={o.key}
+                  className="grid grid-cols-2 items-center gap-x-4 gap-y-1 border-b py-3 last:border-0 md:table-row md:p-0"
+                >
+                  <td className="block font-medium md:table-cell md:py-2 md:pr-2 md:font-normal md:whitespace-nowrap">
+                    {o.effectiveDate}
+                  </td>
+                  <td className={cn(statCell, "col-span-1")}>
+                    <PhoneLabel>Hadir</PhoneLabel>
+                    {o.hadir}
+                  </td>
+                  <td className={statCell}>
+                    <PhoneLabel>Izin</PhoneLabel>
+                    {o.izin}
+                  </td>
+                  <td className={statCell}>
+                    <PhoneLabel>Tidak hadir</PhoneLabel>
+                    {o.absent}
+                  </td>
+                  <td className={statCell}>
+                    <PhoneLabel>Expected</PhoneLabel>
+                    {o.expected}
+                  </td>
+                  <td className={statCell}>
+                    <PhoneLabel>% Hadir</PhoneLabel>
+                    {o.percentHadir}%
+                  </td>
+                  <td className="col-start-2 row-start-1 text-right md:table-cell md:py-2 md:pl-2">
+                    <Link
+                      href={`/dashboard/kegiatan/${activityId}/${o.key}`}
+                      className="inline-flex min-h-11 items-center text-base text-primary hover:underline xl:min-h-0 xl:text-xs"
+                    >
                       {canRecord ? (o.hadir + o.izin > 0 ? "Ubah absensi" : "Isi absensi") : "Lihat"}
                     </Link>
                   </td>
                 </tr>
               ))}
               {summary.occurrences.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-4 text-center text-muted-foreground">
+                <tr className="block md:table-row">
+                  <td colSpan={7} className="block py-4 text-center text-muted-foreground md:table-cell">
                     Belum ada riwayat absensi pada rentang ini.
                   </td>
                 </tr>

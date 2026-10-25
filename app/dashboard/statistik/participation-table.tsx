@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { ChevronDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { SortIcon } from "@/components/data-table";
+import { filterTriggerClass } from "@/components/filters/filter-bar";
 import { Pagination } from "@/components/pagination";
 import { PAGE_SIZE } from "@/lib/constants";
 import { paginate } from "@/lib/pagination";
@@ -54,11 +56,37 @@ export function ParticipationTable({ rows, pageSize = PAGE_SIZE }: { rows: Parti
     }
   }
 
+  const cell = "flex items-center justify-between gap-3 text-sm md:table-cell md:py-2 md:text-right";
+
   return (
     <div className="flex flex-col gap-3">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
+      {/* Below md the table headers are hidden, so sorting moves into a select (same state as the headers). */}
+      <div className="relative md:hidden">
+        <select
+          aria-label="Urutkan"
+          value={`${sortKey}:${descending ? "desc" : "asc"}`}
+          onChange={(event) => {
+            const [key, dir] = event.target.value.split(":");
+            setSortKey(key as SortKey);
+            setDescending(dir === "desc");
+            setPage(1);
+          }}
+          className={cn(filterTriggerClass(), "w-full appearance-none pr-8")}
+        >
+          {COLUMNS.flatMap((col) => [
+            <option key={`${col.key}:asc`} value={`${col.key}:asc`}>
+              Urutkan: {col.label} (naik)
+            </option>,
+            <option key={`${col.key}:desc`} value={`${col.key}:desc`}>
+              Urutkan: {col.label} (turun)
+            </option>,
+          ])}
+        </select>
+        <ChevronDown className="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+      </div>
+      <div className="relative overflow-x-auto">
+        <table className="block w-full text-sm md:table">
+          <thead className="hidden md:table-header-group">
             <tr className="border-b text-xs text-muted-foreground">
               {COLUMNS.map((col) => {
                 const active = sortKey === col.key;
@@ -72,7 +100,10 @@ export function ParticipationTable({ rows, pageSize = PAGE_SIZE }: { rows: Parti
                     <button
                       type="button"
                       onClick={() => toggleSort(col.key)}
-                      className={cn("inline-flex items-center gap-1 hover:text-foreground", active && "text-foreground")}
+                      className={cn(
+                        "inline-flex min-h-11 items-center gap-1 hover:text-foreground xl:min-h-0",
+                        active && "text-foreground",
+                      )}
                     >
                       {col.label}
                       <SortIcon dir={active ? (descending ? "desc" : "asc") : undefined} />
@@ -82,23 +113,41 @@ export function ParticipationTable({ rows, pageSize = PAGE_SIZE }: { rows: Parti
               })}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="block md:table-row-group">
             {visible.items.map((row) => (
-              <tr key={row.memberId} className="border-b last:border-0">
-                <td className="py-2">
-                  <Link href={`/dashboard/anggota/${row.memberId}`} className="text-primary hover:underline">
+              <tr
+                key={row.memberId}
+                className="grid grid-cols-2 gap-x-4 gap-y-1 border-b py-3 last:border-0 md:table-row md:p-0"
+              >
+                <td className="col-span-2 block md:table-cell md:py-2">
+                  <Link
+                    href={`/dashboard/anggota/${row.memberId}`}
+                    className="inline-flex min-h-11 items-center text-primary hover:underline xl:min-h-0"
+                  >
                     {row.memberName}
                   </Link>
                 </td>
-                <td className="py-2 text-right">{row.occurrenceCount}</td>
-                <td className="py-2 text-right">{row.hadir}</td>
-                <td className="py-2 text-right">{row.izin}</td>
-                <td className="py-2 text-right">{row.percentHadir}%</td>
+                <td className={cell}>
+                  <PhoneLabel>Occurrence</PhoneLabel>
+                  {row.occurrenceCount}
+                </td>
+                <td className={cell}>
+                  <PhoneLabel>Hadir</PhoneLabel>
+                  {row.hadir}
+                </td>
+                <td className={cell}>
+                  <PhoneLabel>Izin</PhoneLabel>
+                  {row.izin}
+                </td>
+                <td className={cell}>
+                  <PhoneLabel>% Hadir</PhoneLabel>
+                  {row.percentHadir}%
+                </td>
               </tr>
             ))}
             {sorted.length === 0 && (
-              <tr>
-                <td colSpan={COLUMNS.length} className="py-4 text-center text-muted-foreground">
+              <tr className="block md:table-row">
+                <td colSpan={COLUMNS.length} className="block py-4 text-center text-muted-foreground md:table-cell">
                   Tidak ada anggota dalam scope ini.
                 </td>
               </tr>
@@ -109,4 +158,8 @@ export function ParticipationTable({ rows, pageSize = PAGE_SIZE }: { rows: Parti
       <Pagination {...visible} onPageChange={setPage} />
     </div>
   );
+}
+
+function PhoneLabel({ children }: { children: React.ReactNode }) {
+  return <span className="shrink-0 text-xs text-muted-foreground md:hidden">{children}</span>;
 }
