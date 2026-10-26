@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { KeyRound, Settings2, UserX } from "lucide-react";
 import { GroupAutocomplete, withParentNames } from "@/components/group-autocomplete";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -124,6 +124,11 @@ function ResetPasswordForm({ userId }: { userId: number }) {
     ActionResult<{ temporaryPassword: string }> | null,
     FormData
   >(resetUserPasswordAction, null);
+  const resultRef = useRef<HTMLParagraphElement>(null);
+  // On a short screen the dialog scrolls, and the password must be noted down now: bring it into view.
+  useEffect(() => {
+    if (state?.ok) resultRef.current?.scrollIntoView({ block: "nearest" });
+  }, [state]);
   return (
     <form action={formAction} className="flex flex-col gap-1">
       <input type="hidden" name="userId" value={userId} />
@@ -137,7 +142,11 @@ function ResetPasswordForm({ userId }: { userId: number }) {
         </p>
       )}
       {state?.ok && (
-        <p role="status" className="rounded-md border border-primary/30 bg-primary/5 p-2 text-sm">
+        <p
+          ref={resultRef}
+          role="status"
+          className="scroll-mb-20 rounded-md border border-primary/30 bg-primary/5 p-2 text-sm"
+        >
           Password baru: <code className="font-mono">{state.data.temporaryPassword}</code>
           <span className="block text-xs text-muted-foreground">Catat sekarang — tidak akan ditampilkan lagi.</span>
         </p>

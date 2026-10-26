@@ -19,4 +19,13 @@ describe("ManageUserDialog on short screens", () => {
     const content = source.slice(source.indexOf("<DialogContent>"));
     expect(content.indexOf("<DialogFooter")).toBeGreaterThan(content.indexOf("divide-y"));
   });
+
+  it("scrolls the temporary password into view, clear of the pinned footer", () => {
+    const form = source.slice(source.indexOf("function ResetPasswordForm"), source.indexOf("/** \"Kelola\" button"));
+    expect(form).toContain("scrollIntoView");
+    expect(form).toMatch(/useEffect\(/);
+    expect(form).toMatch(/ref=\{resultRef\}/);
+    // The sticky footer covers the bottom of the scroll area: leave room for it (footer is about 66px).
+    expect(form).toMatch(/role="status"[^>]*className="[^"]*\bscroll-mb-20\b/);
+  });
 });
