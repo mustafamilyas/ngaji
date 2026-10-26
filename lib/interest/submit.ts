@@ -25,6 +25,8 @@ const RATE_LIMITED = "Terlalu banyak pendaftaran dari jaringan ini, coba lagi na
  * `actorId` null), so no organization's audit viewer can list them; the PII
  * stays in `InterestLead`, the audit row only carries `leadId`.
  *
+ * A request with no client IP is not exempt: all of them share one limit.
+ *
  * `destination` is `DAHAN_WHATSAPP`; a missing or invalid number still stores
  * the lead and just returns no link.
  */
@@ -46,14 +48,14 @@ export async function submitInterest(
   // The schema already proved the number is usable.
   const phone = whatsappNumber(input.phone) as string;
 
-  await withKeyedLock(context.ip ? [`interest-ip:${context.ip}`] : [], async () => {
-    if (context.ip) {
-      const since = new Date(Date.now() - INTEREST_RATE_LIMIT_WINDOW_MINUTES * 60_000);
-      const recent = await db.auditLog.count({
-        where: { action: "lead.create", ip: context.ip, createdAt: { gte: since } },
-      });
-      if (recent >= INTEREST_RATE_LIMIT_MAX_PER_IP) throw new ValidationError(RATE_LIMITED);
-    }
+  // Requests without a client IP (reached without the proxy) share one
+  // bucket: `ip: null` rows are counted together under a single lock key.
+  await withKeyedLock([`interest-ip:${context.ip ?? "unknown"}`], async () => {
+    const since = new Date(Date.now() - INTEREST_RATE_LIMIT_WINDOW_MINUTES * 60_000);
+    const recent = await db.auditLog.count({
+      where: { action: "lead.create", ip: context.ip, createdAt: { gte: since } },
+    });
+    if (recent >= INTEREST_RATE_LIMIT_MAX_PER_IP) throw new ValidationError(RATE_LIMITED);
 
     await db.$transaction(async (tx) => {
       const lead = await tx.interestLead.create({

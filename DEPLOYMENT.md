@@ -165,7 +165,7 @@ sudo -u ngaji pnpm leads            # table, newest first (times in UTC)
 sudo -u ngaji pnpm leads --csv > leads.csv
 ```
 
-`pnpm leads` is read-only. The form is limited per client IP (see `INTEREST_RATE_LIMIT_*` in `lib/constants.ts`) using the `X-Forwarded-For` / `X-Real-IP` headers, which `deploy/nginx/ngaji.conf` sets from `$remote_addr`; a request without either header is stored without a limit, so do not remove those lines. Leads contain personal data: keep exports off shared drives and delete them when done.
+`pnpm leads` is read-only. The form is limited per client IP (see `INTEREST_RATE_LIMIT_*` in `lib/constants.ts`) using the `X-Forwarded-For` / `X-Real-IP` headers, which `deploy/nginx/ngaji.conf` sets from `$remote_addr`; requests without either header share one global limit of the same size (so a bypass of nginx cannot flood the table, but real visitors would then block each other); do not remove those lines. Leads contain personal data: keep exports off shared drives and delete them when done.
 
 ### Build and start
 

@@ -180,10 +180,22 @@ describe("submitInterest", () => {
     await expect(submitInterest({ ...valid, name: `Window ${context.ip}` }, context, undefined)).resolves.toBeDefined();
   });
 
-  it("skips the limit when the client IP is unknown but still stores the lead", async () => {
-    await submitInterest({ ...valid, name: "No Ip" }, { ip: null, userAgent: null }, undefined);
+  it("stores a lead from an unknown IP and shares one limit across all unknown-IP requests", async () => {
+    const unknown = { ip: null, userAgent: null };
+    await db.auditLog.deleteMany({ where: { action: "lead.create", ip: null } });
 
-    expect(await leadsNamed("No Ip")).toMatchObject([{ ip: null, userAgent: null }]);
+    await submitInterest({ ...valid, name: "No Ip 0" }, unknown, undefined);
+    expect(await leadsNamed("No Ip 0")).toMatchObject([{ ip: null, userAgent: null }]);
+
+    for (let i = 1; i < INTEREST_RATE_LIMIT_MAX_PER_IP; i++) {
+      await submitInterest({ ...valid, name: `No Ip ${i}` }, unknown, undefined);
+    }
+    await expect(submitInterest({ ...valid, name: "No Ip over" }, unknown, undefined)).rejects.toThrow(ValidationError);
+    expect(await leadsNamed("No Ip over")).toHaveLength(0);
+
+    // A request with a known IP is not affected by the shared bucket.
+    await expect(submitInterest({ ...valid, name: "Known Ip" }, freshContext(), undefined)).resolves.toBeDefined();
+    await db.auditLog.deleteMany({ where: { action: "lead.create", ip: null } });
   });
 
   it("never shows lead.create in any organization's audit viewer", async () => {

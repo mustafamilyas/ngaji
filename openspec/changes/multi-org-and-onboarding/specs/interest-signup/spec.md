@@ -37,11 +37,15 @@ Each accepted submission SHALL be stored with its fields, consent time, IP and u
 - **THEN** no lead data is rendered
 
 ### Requirement: Abuse protection
-Submissions SHALL be limited per IP: once an IP has `INTEREST_RATE_LIMIT_MAX_PER_IP` accepted submissions within `INTEREST_RATE_LIMIT_WINDOW_MINUTES`, further submissions from that IP SHALL be refused with a generic "coba lagi nanti" message and not stored. The form SHALL include a hidden honeypot field; a submission with the honeypot filled SHALL be silently dropped: not stored, not audited, and answered as if it succeeded.
+Submissions SHALL be limited per IP: once an IP has `INTEREST_RATE_LIMIT_MAX_PER_IP` accepted submissions within `INTEREST_RATE_LIMIT_WINDOW_MINUTES`, further submissions from that IP SHALL be refused with a generic "coba lagi nanti" message and not stored. Requests whose client IP is unknown SHALL share one such limit among themselves rather than being exempt. The form SHALL include a hidden honeypot field; a submission with the honeypot filled SHALL be silently dropped: not stored, not audited, and answered as if it succeeded.
 
 #### Scenario: Rate limit reached
 - **WHEN** an IP that has reached the limit submits another valid form
 - **THEN** the visitor sees the generic message, and no lead is stored
+
+#### Scenario: Unknown IP shares one limit
+- **WHEN** requests without a client IP have reached the limit and another one arrives
+- **THEN** it is refused like any other limited request, and requests with a known IP are unaffected
 
 #### Scenario: Honeypot filled
 - **WHEN** a submission has the honeypot field filled
