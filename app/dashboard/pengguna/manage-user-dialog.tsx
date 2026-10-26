@@ -4,9 +4,9 @@ import { useActionState, useMemo, useState } from "react";
 import { KeyRound, Settings2, UserX } from "lucide-react";
 import { GroupAutocomplete, withParentNames } from "@/components/group-autocomplete";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { touchButton, touchField } from "@/components/ui/touch";
+import { touchButton, touchField, touchLgButton } from "@/components/ui/touch";
 import { cn } from "@/lib/utils";
-import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { UserGroupRole } from "@/lib/generated/prisma/client";
 import type { UserDto } from "@/lib/user/dto";
 import type { ActionResult } from "@/lib/errors";
@@ -200,6 +200,9 @@ export function ManageUserDialog({
             </Section>
           )}
         </div>
+        <DialogFooter className="mt-4">
+          <DialogClose className={cn(buttonVariants({ variant: "outline", size: "lg" }), touchLgButton)}>Tutup</DialogClose>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
