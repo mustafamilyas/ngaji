@@ -8,7 +8,7 @@ import { Save } from "lucide-react";
 import { createMemberAction, updateMemberAction } from "@/app/dashboard/anggota/actions";
 import { GroupAutocomplete, type GroupAutocompleteOption } from "@/components/group-autocomplete";
 import { Button } from "@/components/ui/button";
-import { touchField, touchLgButton } from "@/components/ui/touch";
+import { touchField } from "@/components/ui/touch";
 import { cn } from "@/lib/utils";
 import { formatEnumLabel, SEX_LABELS } from "@/lib/member/labels";
 import { MARITAL_STATUSES, MEMBER_STATUSES, SEXES, WORK_STATUSES } from "@/lib/validation/enums";
@@ -199,8 +199,9 @@ export function MemberForm(props: MemberFormProps) {
         </p>
       )}
 
-      <div className="flex justify-end border-t pt-4 sm:col-span-2">
-        <Button type="submit" size="lg" disabled={pending} className={cn("w-full sm:w-auto", touchLgButton)}>
+      {/* Sticky below xl so Simpan stays under the thumb on this long form (like the survey answer form); `-mx-4` bleeds to the card edge (the card must not clip: it needs `overflow-visible`, see the pages). */}
+      <div className="sticky bottom-0 -mx-4 flex justify-end border-t bg-background/95 px-4 py-3 backdrop-blur sm:col-span-2 xl:static xl:mx-0 xl:bg-transparent xl:px-0 xl:pt-4 xl:pb-0 xl:backdrop-blur-none">
+        <Button type="submit" size="lg" disabled={pending} className="h-12 w-full text-base xl:h-9 xl:w-auto xl:text-sm">
           <Save />
           {pending ? "Menyimpan…" : "Simpan"}
         </Button>

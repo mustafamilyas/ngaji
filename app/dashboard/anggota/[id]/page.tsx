@@ -207,7 +207,8 @@ export default async function MemberDetailPage({
 
         {tab === "ubah" && (
           <>
-            <Card>
+            {/* overflow-visible: see baru/page.tsx (sticky action bar) */}
+            <Card className="overflow-visible">
               <CardHeader>
                 <CardTitle>Data anggota</CardTitle>
                 <CardDescription>Perubahan tercatat di log audit.</CardDescription>

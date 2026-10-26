@@ -78,13 +78,30 @@ describe("MemberForm phone and tablet layout", () => {
     expect(tag(html, "address")).toMatch(/autoComplete="off"/);
   });
 
-  it("makes the submit button full width and 44px on phones", () => {
+  it("makes the submit button full width and 48px below xl", () => {
     const button = create().match(/<button[^>]*type="submit"[^>]*>/)?.[0] ?? "";
     const cls = classOf(button);
     expect(cls).toMatch(/\bw-full\b/);
-    expect(cls).toMatch(/\bh-11\b/);
+    expect(cls).toMatch(/\bh-12\b/);
     expect(cls).toMatch(/\bxl:h-9\b/);
+    expect(cls).toMatch(/\bxl:w-auto\b/);
   });
+
+  it.each([["create", create], ["edit", edit]] as const)(
+    "%s: the action bar sticks to the bottom below xl and is plain from xl",
+    (_mode, render) => {
+      const html = render();
+      const bar = classOf(html.match(/<div[^>]*>(?=<button[^>]*type="submit")/)?.[0] ?? "");
+      expect(bar).toMatch(/\bsticky\b/);
+      expect(bar).toMatch(/\bbottom-0\b/);
+      expect(bar).toMatch(/\bborder-t\b/);
+      expect(bar).toMatch(/\bbg-background\/95\b/);
+      // flush with the card edges (card spacing is 16px)
+      expect(bar).toMatch(/(^| )-mx-4( |$)/);
+      expect(bar).toMatch(/\bxl:static\b/);
+      expect(bar).toMatch(/\bsm:col-span-2\b/);
+    },
+  );
 
   it("makes the delete button 44px below xl", () => {
     const html = renderToStaticMarkup(createElement(DeleteMemberForm, { memberId: 1 }));
