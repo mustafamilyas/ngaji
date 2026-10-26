@@ -22,7 +22,7 @@ describe("getOrganization", () => {
   });
 
   it('falls back to "Dahan" and the session timezone when the organization row is missing', async () => {
-    const session = { user: { ...sessionFor(1, "OWNER", { id: 1, path: "x/" }), organizationId: 999_999, timeZone: "Asia/Makassar" } };
+    const session = { user: { ...sessionFor(1, "OWNER", { id: 1, path: "x/", organizationId: 999_999 }), timeZone: "Asia/Makassar" } };
 
     expect(await getOrganization(session)).toEqual({ name: "Dahan", timeZone: "Asia/Makassar" });
   });

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import { ForbiddenError } from "@/lib/errors";
-import { sessionFor } from "@/lib/test/fixtures";
+import { type FixtureGroup, sessionFor } from "@/lib/test/fixtures";
 import { moveUser, setUserActive, updateUserRole } from "./mutations";
 
 /**
@@ -10,8 +10,8 @@ import { moveUser, setUserActive, updateUserRole } from "./mutations";
  * so concurrent requests cannot both pass a stale pre-check.
  */
 describe("last active root OWNER (race-safe)", () => {
-  let root: { id: number; path: string };
-  let branch: { id: number; path: string };
+  let root: FixtureGroup;
+  let branch: FixtureGroup;
   let ownerA: { id: number };
   let ownerB: { id: number };
 

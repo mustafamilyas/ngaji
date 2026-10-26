@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { EMBEDDED_PAGE_SIZE } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
-import { type PageFixture, buildPageFixture, sessionFor } from "@/lib/test/fixtures";
+import { type FixtureGroup, type PageFixture, buildPageFixture, sessionFor } from "@/lib/test/fixtures";
 import { parseSurveyDemographics, surveyStatistics } from "./stats";
 
 describe("lib/survey/stats", () => {
@@ -15,8 +15,8 @@ describe("lib/survey/stats", () => {
   let optDArchived: number;
 
   // A second subtree of the same org, outside the survey owner's (branch) subtree.
-  let outsideBranch: { id: number; path: string };
-  let outsideLeaf: { id: number; path: string };
+  let outsideBranch: FixtureGroup;
+  let outsideLeaf: FixtureGroup;
   let textSurveyId: number;
   let textQuestionId: number;
 

@@ -5,11 +5,14 @@ import { db } from "@/lib/db";
 import { addDays, today, weekdayOf } from "@/lib/dates";
 import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
+/** A group as tests pass it around: enough to build a session for an actor who sits in it. */
+export type FixtureGroup = { id: number; path: string; organizationId: number };
+
 /** Hand-built `SessionUser` — no real login/JWT involved, just the shape every `lib/**` and page function expects. */
 export function sessionFor(
   actorId: number,
   role: SessionUser["role"],
-  group: { id: number; path: string; organizationId?: number },
+  group: FixtureGroup,
   timeZone: string = DEFAULT_TIMEZONE,
 ): SessionUser {
   return {
@@ -19,8 +22,7 @@ export function sessionFor(
     role,
     groupId: group.id,
     groupPath: group.path,
-    // 0 = "not given": tests that care which org the actor belongs to pass a group carrying its organizationId.
-    organizationId: group.organizationId ?? 0,
+    organizationId: group.organizationId,
     timeZone,
     mustChangePassword: false,
   };
@@ -39,10 +41,10 @@ export function mockAuthSession(authFn: unknown, session: { user: SessionUser } 
 
 export type PageFixture = {
   organizationId: number;
-  root: { id: number; path: string };
-  branch: { id: number; path: string };
-  leaf: { id: number; path: string };
-  otherLeaf: { id: number; path: string };
+  root: FixtureGroup;
+  branch: FixtureGroup;
+  leaf: FixtureGroup;
+  otherLeaf: FixtureGroup;
   actorId: number;
   memberId: number;
   activityId: number;
@@ -174,7 +176,7 @@ export async function buildOrgFixture(
     ...base,
     organizationName: organization.name,
     timezone,
-    owner: sessionFor(base.actorId, "OWNER", { ...base.root, organizationId: organization.id }, timezone),
+    owner: sessionFor(base.actorId, "OWNER", base.root, timezone),
     levelNames: levels.map((level) => level.name),
   };
 }

@@ -14,7 +14,7 @@ vi.mock("next/navigation", () => ({
 import { auth } from "@/auth";
 import { requireSession } from "./require-session";
 
-const group = { id: 1, path: "0/" };
+const group = { id: 1, path: "0/", organizationId: 1 };
 
 describe("requireSession", () => {
   beforeEach(() => {
