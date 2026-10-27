@@ -215,9 +215,9 @@ export default async function ActivityDetailPage({
             <DangerZone>
               <DangerZoneItem
                 title="Akhiri kegiatan"
-                description="Tidak ada jadwal lagi mulai tanggal yang dipilih; jadwal dan absensi sebelumnya tetap."
+                description="Tidak ada jadwal lagi mulai tanggal yang dipilih; jadwal dan absensi sebelumnya tetap. Jika tanggalnya sama dengan atau sebelum tanggal mulai, kegiatan dihapus."
               >
-                <EndActivityForm activityId={activity.id} />
+                <EndActivityForm activityId={activity.id} startsOn={activity.startsOn} />
               </DangerZoneItem>
               <DangerZoneItem
                 title="Hapus kegiatan"

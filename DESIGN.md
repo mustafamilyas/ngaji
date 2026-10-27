@@ -628,7 +628,7 @@ Dihitung saat simpan kegiatan / override (horizon 90 hari ke depan) dan saat ren
 | **Ganti jam / durasi / lokasi / catatan satu tanggal** | Upsert row override. | `occurrence.override` |
 | **Geser satu kali** (ke tanggal lain) | Upsert row untuk tanggal kunci X dengan `overrideDate = Y` (+ jam/durasi baru opsional). Absensi tetap menempel pada row (kunci X). URL tetap `/dashboard/kegiatan/[id]/X`; UI menampilkan "dipindah dari X ke Y". Ditolak jika Y sudah menjadi occurrence lain dari kegiatan yang sama. | `occurrence.override` |
 | **Geser ini & seterusnya** (= ubah properti mulai tanggal X ke depan) | Satu transaksi: (1) jika `X ≤ startsOn` → cukup edit template; selain itu (2) `original.endsOn = X − 1`, (3) buat `Activity` baru: salinan template + perubahan dari form, `startsOn = tanggal baru`, `continuesFromId = original.id`, (4) pindahkan `ActivityOccurrence` dengan `date ≥ X` (dan absensinya) ke activity baru. Hanya untuk `freq ≠ ONCE`. Audit `activity.split`. | `activity.split` |
-| **Akhiri mulai tanggal X** | `endsOn = X − 1`; jika `X ≤ startsOn` → soft delete. | `activity.update` |
+| **Akhiri mulai tanggal X** | `endsOn = X − 1`; jika `X ≤ startsOn` → soft delete (`activity.delete`). Formulir memberi peringatan sebaris, tombol berubah menjadi "Hapus kegiatan", dan konfirmasi menyebut bahwa kegiatan akan dihapus (`endingDeletesActivity`, `lib/activity/end.ts`). | `activity.update` / `activity.delete` |
 | **Hapus** | Soft delete; occurrence & absensi tetap tersimpan, tidak tampil. | `activity.delete` |
 
 Baris `ActivityOccurrence` hanya bisa dibuat untuk tanggal kunci yang sah menurut 5.2.

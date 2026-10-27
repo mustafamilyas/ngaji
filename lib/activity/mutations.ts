@@ -6,6 +6,7 @@ import { addDays } from "@/lib/dates";
 import { db } from "@/lib/db";
 import { ValidationError } from "@/lib/errors";
 import { resolveActivity } from "@/lib/resolve";
+import { endingDeletesActivity } from "./end";
 import type {
   ActivityInput,
   ActivitySplitInput,
@@ -85,7 +86,7 @@ export async function endActivity(session: SessionUser, input: EndActivityInput)
   const before = withoutGroup(await resolveActivity(session, input.activityId));
   authorize(session, "activity.update", { groupId: before.groupId });
 
-  if (input.fromDate <= before.startsOn) {
+  if (endingDeletesActivity(before.startsOn, input.fromDate)) {
     return db.$transaction(async (tx) => {
       const deleted = await tx.activity.update({
         where: { id: before.id },
