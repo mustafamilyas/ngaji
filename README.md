@@ -108,6 +108,16 @@ Membuka tiap halaman di Chrome headless (lewat DevTools Protocol) dan melaporkan
 - Dialog, popover, dan dropdown yang terbuka tidak tercakup karena perlu klik dulu; periksa manual.
 - Pane Browser di aplikasi desktop yang tersembunyi tidak menjalankan `ResizeObserver` atau animasi, jadi hasil ukuran grafik di sana bisa menyesatkan; skrip ini tidak punya masalah itu.
 
+## Audit cetak jadwal
+
+```bash
+pnpm audit:print                      # semua skenario; PDF di folder temp (path dicetak)
+pnpm audit:print --only week
+pnpm audit:print --out ./cetak --png  # PNG per halaman (hanya macOS, memakai sips)
+```
+
+Mencetak `/dashboard/kegiatan/cetak` ke PDF lewat Chrome sendiri (A4 potret, media cetak) di database sementara: satu minggu (maks. 1 halaman), dua bulan (maks. 3 halaman), dan teks sepanjang batas maksimum (hanya dilaporkan: jadwal cetak memuat teks lengkap, jadi baris yang tinggi menambah halaman). Exit code 1 jika anggaran halaman terlampaui. Buka PDF-nya untuk memeriksa tampilannya; header tabel yang diulang dan baris yang tidak terbelah tidak diperiksa otomatis.
+
 ## Dev server dengan database sementara
 
 ```bash

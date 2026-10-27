@@ -46,3 +46,7 @@ When printed, the page SHALL show only the header and the schedule table: the da
 #### Scenario: Typical week on one page
 - **WHEN** a week with 15 occurrences, each with a Keterangan that wraps to at most two printed lines, is printed on A4 portrait
 - **THEN** it fits on one page
+
+#### Scenario: Very long text
+- **WHEN** an occurrence has a Keterangan or Lokasi of the maximum allowed length
+- **THEN** the full text is printed, its row is never split across pages, and the table may take more pages (a row too tall for the rest of a page moves to the next one)

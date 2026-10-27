@@ -20,9 +20,10 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseArgs, type Role } from "./viewport-audit/args";
+import { parseArgs } from "./viewport-audit/args";
 import { Cdp, sleep } from "./viewport-audit/cdp";
-import { CREDENTIALS, startScratchEnv } from "./viewport-audit/env";
+import { startScratchEnv } from "./viewport-audit/env";
+import { login } from "./viewport-audit/login";
 import { evaluate, formatReport, type Finding, type Measurement, type SkippedPage } from "./viewport-audit/findings";
 import { buildPageList, viewportsFor, type Viewport } from "./viewport-audit/pages";
 
@@ -31,27 +32,6 @@ const SETTLE_AFTER_RESIZE_MS = 600;
 const collector = readFileSync(join(__dirname, "viewport-audit", "collector.js"), "utf8");
 
 const label = (viewport: Viewport) => `${viewport.width}x${viewport.height}`;
-
-async function login(cdp: Cdp, baseUrl: string, role: Role) {
-  const { username, password } = CREDENTIALS[role];
-  await cdp.send("Network.clearBrowserCookies");
-  await cdp.navigate(`${baseUrl}/login`);
-  await cdp.evaluate(`(() => {
-    const set = (name, value) => {
-      const el = document.querySelector('input[name=' + name + ']');
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, value);
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-    };
-    set('username', ${JSON.stringify(username)});
-    set('password', ${JSON.stringify(password)});
-    document.querySelector('form').requestSubmit();
-  })()`);
-  for (let attempt = 0; attempt < 40; attempt++) {
-    await sleep(250);
-    if ((await cdp.evaluate<string>("location.pathname")).startsWith("/dashboard")) return;
-  }
-  throw new Error(`Could not sign in as ${role} (${username}).`);
-}
 
 async function main(): Promise<number> {
   const options = parseArgs(process.argv.slice(2));

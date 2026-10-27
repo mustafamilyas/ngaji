@@ -17,6 +17,7 @@ pnpm prisma db seed           # 2 org (org kedua kecil, owner admin_annur, untuk
 pnpm org:create               # org baru + level + grup akar + OWNER pertama (env BOOTSTRAP_*); `pnpm bootstrap` = alias
 pnpm leads [--csv]            # daftar minat dari /daftar (hanya-baca)
 pnpm audit:viewport          # audit HP/tablet di Chrome headless (db + server sementara); exit 1 jika ada temuan
+pnpm audit:print             # cetak jadwal ke PDF lewat Chrome (A4) untuk beberapa skenario; exit 1 jika halaman melebihi anggaran
 pnpm dev
 pnpm dev:scratch               # dev server di port 3100 dengan database sementara yang sudah di-seed (prisma/dev.db tidak disentuh; login admin/admin; `--keep`, `--port`)
 pnpm test                     # vitest: fungsi murni + server action lintas-scope + form klien (jsdom, *.test.tsx, helper lib/test/dom.ts)
