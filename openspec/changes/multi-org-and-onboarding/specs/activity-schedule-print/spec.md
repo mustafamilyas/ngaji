@@ -44,5 +44,5 @@ When printed, the page SHALL show only the header and the schedule table: the da
 - **THEN** the printout uses dark text on a white background
 
 #### Scenario: Typical week on one page
-- **WHEN** a week with 15 occurrences, each with a one-line Keterangan, is printed on A4 portrait
+- **WHEN** a week with 15 occurrences, each with a Keterangan that wraps to at most two printed lines, is printed on A4 portrait
 - **THEN** it fits on one page
