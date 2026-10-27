@@ -18,7 +18,7 @@ pnpm org:create               # org baru + level + grup akar + OWNER pertama (en
 pnpm leads [--csv]            # daftar minat dari /daftar (hanya-baca)
 pnpm audit:viewport          # audit HP/tablet di Chrome headless (db + server sementara); exit 1 jika ada temuan
 pnpm dev
-pnpm test                     # vitest: fungsi murni + server action lintas-scope
+pnpm test                     # vitest: fungsi murni + server action lintas-scope + form klien (jsdom, *.test.tsx, helper lib/test/dom.ts)
 pnpm lint && pnpm tsc --noEmit
 ```
 

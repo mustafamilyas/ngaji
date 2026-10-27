@@ -12,7 +12,8 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["**/*.test.ts"],
+    // Component tests are `*.test.tsx` and opt in to jsdom per file (`// @vitest-environment jsdom`, see lib/test/dom.ts).
+    include: ["**/*.test.{ts,tsx}"],
     // Agent worktrees under .claude/ are full repo copies; never run their tests.
     exclude: ["**/node_modules/**", ".claude/**"],
     globalSetup: ["./vitest.global-setup.ts"],

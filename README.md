@@ -84,7 +84,7 @@ Untuk deployment production (bukan setup lokal), lihat [DEPLOYMENT.md](DEPLOYMEN
 ## Perintah lain
 
 ```bash
-pnpm test              # vitest: fungsi murni + server action lintas-scope
+pnpm test              # vitest: fungsi murni + server action lintas-scope + form klien (jsdom, *.test.tsx)
 pnpm lint              # eslint
 pnpm tsc --noEmit      # type check
 pnpm build             # production build
