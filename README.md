@@ -108,6 +108,16 @@ Membuka tiap halaman di Chrome headless (lewat DevTools Protocol) dan melaporkan
 - Dialog, popover, dan dropdown yang terbuka tidak tercakup karena perlu klik dulu; periksa manual.
 - Pane Browser di aplikasi desktop yang tersembunyi tidak menjalankan `ResizeObserver` atau animasi, jadi hasil ukuran grafik di sana bisa menyesatkan; skrip ini tidak punya masalah itu.
 
+## Dev server dengan database sementara
+
+```bash
+pnpm dev:scratch                 # port 3100, database dihapus saat berhenti (Ctrl+C)
+pnpm dev:scratch --port 4200
+pnpm dev:scratch --keep          # database dipertahankan; path-nya dicetak
+```
+
+Membuat database baru (migrate + seed), menghapus kewajiban ganti password pada akun seed, lalu menjalankan `next dev`. Akun yang tersedia dicetak di terminal (mis. `admin` / `admin`). Cocok untuk pemeriksaan di browser dan uji coba yang mengubah data, karena `prisma/dev.db` tidak disentuh. Hentikan dulu `pnpm dev` yang sedang berjalan di folder ini: dua server `next dev` tidak bisa berbagi `.next`. Di aplikasi desktop, konfigurasi `ngaji-scratch` di `.claude/launch.json` menjalankan skrip yang sama.
+
 ## Melihat/mengubah data lewat Prisma Studio
 
 ```bash

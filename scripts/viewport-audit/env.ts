@@ -54,13 +54,21 @@ function readSeedIds(dbPath: string): SeedIds {
   }
 }
 
+export type ScratchDatabase = {
+  dir: string;
+  dbPath: string;
+  databaseUrl: string;
+  /** Environment for child processes that must use this database. */
+  env: NodeJS.ProcessEnv;
+};
+
 /**
- * Creates a throwaway database (migrate + seed), clears the forced password change on the
- * seeded accounts, and starts `next dev` on a free port against it. Never touches prisma/dev.db.
+ * Creates a throwaway database (migrate + seed) in a temp folder and clears the forced password change
+ * on the seeded accounts. Shared by the viewport audit and `pnpm dev:scratch`; never touches prisma/dev.db.
  */
-export async function startScratchEnv(): Promise<ScratchEnv> {
-  const dir = mkdtempSync(join(tmpdir(), "dahan-audit-"));
-  const dbPath = join(dir, "audit.db");
+export function prepareScratchDatabase(prefix = "dahan-scratch-"): ScratchDatabase {
+  const dir = mkdtempSync(join(tmpdir(), prefix));
+  const dbPath = join(dir, "scratch.db");
   const databaseUrl = `file:${dbPath}`;
   const env = { ...process.env, DATABASE_URL: databaseUrl, AUTH_SECRET: "viewport-audit-secret", AUTH_TRUST_HOST: "true" };
 
@@ -71,6 +79,14 @@ export async function startScratchEnv(): Promise<ScratchEnv> {
   const writable = new Database(dbPath);
   writable.prepare("UPDATE User SET mustChangePassword = 0").run();
   writable.close();
+  return { dir, dbPath, databaseUrl, env };
+}
+
+/**
+ * Prepares a scratch database and starts `next dev` on a free port against it. Never touches prisma/dev.db.
+ */
+export async function startScratchEnv(): Promise<ScratchEnv> {
+  const { dir, dbPath, databaseUrl, env } = prepareScratchDatabase("dahan-audit-");
   const ids = readSeedIds(dbPath);
 
   const port = await freePort();
