@@ -196,8 +196,9 @@ cd /opt/ngaji && pnpm audit --prod
 
 | Date | Advisory | Path | Reason accepted | Revisit |
 |---|---|---|---|---|
-| 2026-10-10 | `mysql2` (GHSA-rgwj-5xj2-c3m3 high, + one moderate) | `@prisma/client › prisma › mysql2` | Prisma CLI tooling only. The app uses SQLite and never loads the MySQL driver at runtime. | On the next Prisma upgrade |
-| 2026-10-10 | `fast-uri` (GHSA-hrr3-gc8f-f4qj, moderate) | `@hookform/resolvers › ajv › fast-uri` | Moderate; transitive dependency of the form-validation resolver. Not reachable from untrusted URLs in this app. Re-check when a patched version is available. | On the next `@hookform/resolvers` upgrade |
+| 2026-10-27 | 15 advisories (1 critical `proxy-addr`, 6 high: `@modelcontextprotocol/sdk`, `body-parser`, `undici`, `zod`; the rest moderate) | `shadcn` (devDependency, the component CLI) and its transitive packages | **Dev-only**, not part of `pnpm audit --prod`: the CLI is run by hand on a developer machine to add UI components and is not installed on the server. Fixing them would mean overriding about 20 transitive packages of a tool we do not ship. | On the next `shadcn` upgrade |
+
+Fixed on 2026-10-27 (rows removed): `zod` (high, bumped to 4.6.7), `fast-uri` (override `>=3.1.9`), `mysql2` (gone with Prisma 7.10.1), and the dev-tool findings in `vite`, `@vitest/mocker` and `brace-expansion` (`vite` is now a direct devDependency; `brace-expansion` is pinned by overrides in `package.json`). Check `pnpm audit` (without `--prod`) for the full list; only the deploy gate above is blocking.
 
 Re-run the audit at each upgrade and update this table; delete rows that are fixed.
 
