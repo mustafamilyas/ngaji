@@ -20,12 +20,15 @@ describe("BrandMark", () => {
     expect(html).toMatch(/<a[^>]*class="[^"]*\bmin-h-11\b/);
   });
 
-  it("keeps only the logo when collapsed, named after the organization", () => {
-    const html = renderToStaticMarkup(
-      createElement(BrandMark, { organizationName: "Pengajian Al-Ikhlas", withLabel: false }),
-    );
+  it("hides the label only from xl when collapsed, so below xl it still reads as a full brand", () => {
+    const html = renderToStaticMarkup(createElement(BrandMark, { organizationName: "Pengajian Al-Ikhlas", collapsed: true }));
     expect(html).toContain('aria-label="Pengajian Al-Ikhlas"');
-    expect(html).not.toContain("oleh Dahan");
+    expect(html).toMatch(/<span class="[^"]*\bxl:hidden\b[^"]*"><span[^>]*><span[^>]*>Pengajian Al-Ikhlas/);
+  });
+
+  it("keeps the label at every width when not collapsed", () => {
+    const html = renderToStaticMarkup(createElement(BrandMark, { organizationName: "Pengajian Al-Ikhlas" }));
+    expect(html).not.toContain("xl:hidden");
   });
 });
 
@@ -117,5 +120,75 @@ describe("AppSidebar", () => {
     const html = render(true);
     const asideTag = html.slice(html.indexOf("<aside"), html.indexOf(">", html.indexOf("<aside")));
     expect(asideTag).not.toMatch(/\boverflow-y-auto\b/);
+  });
+
+  describe("icon rail (task 10.24: only from xl, where tooltips exist)", () => {
+    const renderCollapsed = (collapsed: boolean) =>
+      renderToStaticMarkup(
+        createElement(AppSidebar, {
+          organizationName: "Pengajian Al-Ikhlas",
+          userName: "Budi",
+          userRole: "OWNER",
+          collapsed,
+          onToggleCollapsed: () => {},
+        }),
+      );
+    const asideTag = (html: string) => html.slice(html.indexOf("<aside"), html.indexOf(">", html.indexOf("<aside")));
+
+    it("is full width below xl even when collapsed, and a 64px rail from xl", () => {
+      const collapsed = asideTag(renderCollapsed(true));
+      expect(collapsed).toMatch(/\bw-60\b/);
+      expect(collapsed).toMatch(/\bxl:w-16\b/);
+      const expanded = asideTag(renderCollapsed(false));
+      expect(expanded).toMatch(/\bw-60\b/);
+      expect(expanded).not.toContain("xl:w-16");
+    });
+
+    it("hides the collapse button below xl", () => {
+      const html = renderCollapsed(true);
+      const tag = html.match(/<button[^>]*aria-label="Perluas menu"[^>]*>/)?.[0] ?? "";
+      expect(tag).toMatch(/class="[^"]*\bhidden\b/);
+      expect(tag).toMatch(/\bxl:inline-flex\b/);
+    });
+
+    it("keeps every label in the markup and hides it only from xl when collapsed", () => {
+      const html = renderCollapsed(true);
+      const label = html.match(/<span class="([^"]*)">Anggota<\/span>/)?.[1] ?? "";
+      expect(label).toMatch(/\bxl:hidden\b/);
+      expect(html).toMatch(/<span class="[^"]*\bxl:hidden\b[^"]*">Keluar<\/span>/);
+      expect(renderCollapsed(false)).not.toContain("xl:hidden");
+    });
+
+    it("centers the icons only from xl", () => {
+      const link = renderCollapsed(true).match(/<a[^>]*href="\/dashboard\/anggota"[^>]*>/)?.[0] ?? "";
+      expect(link).toMatch(/\bxl:justify-center\b/);
+      expect(link).not.toMatch(/(^|[\s"])justify-center\b/);
+    });
+  });
+
+  describe("signed-in name on a landscape phone (task 11.43)", () => {
+    it("shows a one-line 'Nama · Peran' only under 500px of height, while the card is hidden there", () => {
+      const html = render(true);
+      const line = html.match(/<p class="([^"]*)">Budi · OWNER<\/p>/)?.[1] ?? "";
+      expect(line).toMatch(/(^|\s)hidden(\s|$)/);
+      expect(line).toContain("[@media(max-height:500px)]:block");
+      expect(line).toMatch(/\btruncate\b/);
+      // the card it stands in for is hidden at exactly that height
+      expect(html).toMatch(/<div[^>]*class="[^"]*\bborder\b[^"]*\[@media\(max-height:500px\)\]:hidden/);
+    });
+
+    it("is not repeated in the collapsed rail at xl", () => {
+      const html = renderToStaticMarkup(
+        createElement(AppSidebar, {
+          organizationName: "Pengajian Al-Ikhlas",
+          userName: "Budi",
+          userRole: "OWNER",
+          collapsed: true,
+          onToggleCollapsed: () => {},
+        }),
+      );
+      const line = html.match(/<p class="([^"]*)">Budi · OWNER<\/p>/)?.[1] ?? "";
+      expect(line).toMatch(/\bxl:hidden\b/);
+    });
   });
 });
