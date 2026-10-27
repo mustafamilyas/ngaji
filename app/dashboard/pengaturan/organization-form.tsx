@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { touchButton, touchField } from "@/components/ui/touch";
+import { useKeepValues } from "@/lib/forms/use-keep-values";
 import { cn } from "@/lib/utils";
 import type { ActionResult } from "@/lib/errors";
 import type { Organization } from "@/lib/generated/prisma/client";
@@ -14,9 +15,10 @@ export function OrganizationForm({ name, timezone }: { name: string; timezone: s
     updateOrganizationAction,
     null,
   );
+  const onSubmit = useKeepValues(formAction);
 
   return (
-    <form action={formAction} className="flex max-w-xl flex-col gap-4">
+    <form onSubmit={onSubmit} className="flex max-w-xl flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <label htmlFor="organization-name" className="text-sm font-medium">
           Nama organisasi

@@ -9,6 +9,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import type { ActivityOccurrence } from "@/lib/generated/prisma/client";
 import type { ActionResult } from "@/lib/errors";
 import { formatDate } from "@/lib/filters";
+import { useKeepValues } from "@/lib/forms/use-keep-values";
 import { cn } from "@/lib/utils";
 
 /** Cancel, move or retime a single occurrence ("hanya tanggal ini"), from a row of the schedule. */
@@ -40,6 +41,7 @@ export function OccurrenceOverrideDialog({
     },
     null,
   );
+  const onSubmit = useKeepValues(formAction);
   const moved = effectiveDate !== occurrenceKey;
 
   return (
@@ -56,7 +58,7 @@ export function OccurrenceOverrideDialog({
         <DialogDescription>
           Hanya berlaku untuk jadwal {formatDate(occurrenceKey)}; jadwal lain tidak berubah.
         </DialogDescription>
-        <form action={formAction} className="mt-4 flex flex-col gap-4">
+        <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-4">
           <input type="hidden" name="activityId" value={activityId} />
           <input type="hidden" name="date" value={occurrenceKey} />
 

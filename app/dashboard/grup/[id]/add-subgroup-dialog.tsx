@@ -6,6 +6,7 @@ import { createGroupAction } from "@/app/dashboard/grup/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { touchField, touchLgButton } from "@/components/ui/touch";
+import { useKeepValues } from "@/lib/forms/use-keep-values";
 import { cn } from "@/lib/utils";
 import type { ActionResult } from "@/lib/errors";
 import type { Group } from "@/lib/generated/prisma/client";
@@ -29,6 +30,7 @@ export function AddSubgroupDialog({
     },
     null,
   );
+  const onSubmit = useKeepValues(formAction);
   const noun = childLevelName || "sub-grup";
 
   return (
@@ -40,7 +42,7 @@ export function AddSubgroupDialog({
       <DialogContent>
         <DialogTitle>Tambah {noun.toLowerCase()}</DialogTitle>
         <DialogDescription>Akan dibuat di bawah {parentName}.</DialogDescription>
-        <form action={formAction} className="mt-4 flex flex-col gap-4">
+        <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-4">
           <input type="hidden" name="parentId" value={parentId} />
           <div className="flex flex-col gap-1">
             <label htmlFor="subgroup-name" className="text-sm font-medium">

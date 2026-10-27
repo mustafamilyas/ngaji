@@ -53,6 +53,21 @@ describe("OrganizationForm", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
+  it("keeps the edited name and timezone when the server refuses", async () => {
+    action.mockResolvedValue({ ok: false, error: "Nama organisasi sudah dipakai" });
+    const user = userEvent.setup();
+    render(<OrganizationForm name="Majelis An-Nur" timezone="Asia/Jayapura" />);
+    await user.clear(screen.getByLabelText("Nama organisasi"));
+    await user.type(screen.getByLabelText("Nama organisasi"), "Majelis Baru");
+    await user.selectOptions(screen.getByLabelText("Zona waktu"), "Asia/Jakarta");
+
+    await user.click(screen.getByRole("button", { name: "Simpan" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Nama organisasi sudah dipakai");
+    expect(screen.getByLabelText("Nama organisasi")).toHaveValue("Majelis Baru");
+    expect(screen.getByLabelText("Zona waktu")).toHaveValue("Asia/Jakarta");
+  });
+
   it("disables the button while saving", async () => {
     let finish!: (value: typeof saved) => void;
     action.mockReturnValue(new Promise((resolve) => (finish = resolve)));

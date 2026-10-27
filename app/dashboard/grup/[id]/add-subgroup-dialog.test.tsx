@@ -63,8 +63,7 @@ describe("AddSubgroupDialog", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
-  // Task 10.37: the uncontrolled name field is reset by React 19 after the action, errors included.
-  it.fails("keeps the typed name after a server error", async () => {
+  it("keeps the typed name after a server error", async () => {
     create.mockResolvedValue({ ok: false, error: "Nama grup sudah dipakai" });
     const user = userEvent.setup();
     renderDialog();

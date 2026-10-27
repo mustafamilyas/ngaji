@@ -5,6 +5,7 @@ import { UserPlus } from "lucide-react";
 import { GroupAutocomplete, withParentNames } from "@/components/group-autocomplete";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { touchButton, touchField } from "@/components/ui/touch";
+import { useKeepValues } from "@/lib/forms/use-keep-values";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { CreatedUserDto } from "@/lib/user/dto";
@@ -39,6 +40,7 @@ export function CreateUserDialog({
     ActionResult<{ user: CreatedUserDto; temporaryPassword: string }> | null,
     FormData
   >(createUserAction, null);
+  const onSubmit = useKeepValues(formAction);
   const formRef = useRef<HTMLFormElement>(null);
   const [groupId, setGroupId] = useState<number | undefined>();
   // Remounting the picker clears its text after a successful create.
@@ -68,7 +70,7 @@ export function CreateUserDialog({
         <DialogTitle>Tambah pengguna</DialogTitle>
         <DialogDescription>Password sementara dibuat otomatis dan wajib diganti saat pertama masuk.</DialogDescription>
 
-        <form ref={formRef} action={formAction} className="mt-4 flex flex-col gap-3">
+        <form ref={formRef} onSubmit={onSubmit} className="mt-4 flex flex-col gap-3">
           <GroupAutocomplete
             key={pickerKey}
             id="new-user-group"

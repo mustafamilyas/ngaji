@@ -112,9 +112,7 @@ describe("CreateUserDialog", () => {
     expect(within(dialog).getByRole("combobox", { name: "Grup" })).toHaveValue("Kelompok B");
   });
 
-  // Task 10.37: React 19 resets uncontrolled <form action> fields after the action, errors included, so the typed
-  // name and username are lost. This starts failing the day that is fixed; then drop `.fails`.
-  it.fails("keeps the typed name and username after a server error", async () => {
+  it("keeps the typed name and username after a server error", async () => {
     const dialog = await submitWithServerError();
 
     await within(dialog).findByRole("alert");

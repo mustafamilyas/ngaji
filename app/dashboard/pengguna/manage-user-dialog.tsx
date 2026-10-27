@@ -5,6 +5,7 @@ import { KeyRound, Settings2, UserX } from "lucide-react";
 import { GroupAutocomplete, withParentNames } from "@/components/group-autocomplete";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { touchButton, touchField, touchLgButton } from "@/components/ui/touch";
+import { useKeepValues } from "@/lib/forms/use-keep-values";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { UserGroupRole } from "@/lib/generated/prisma/client";
@@ -34,8 +35,9 @@ function RoleForm({ userId, currentRole }: { userId: number; currentRole: string
     updateUserRoleAction,
     null,
   );
+  const onSubmit = useKeepValues(formAction);
   return (
-    <form action={formAction} className="flex flex-col gap-1">
+    <form onSubmit={onSubmit} className="flex flex-col gap-1">
       <input type="hidden" name="userId" value={userId} />
       <div className="flex items-center gap-2">
         <select name="role" defaultValue={currentRole} className={selectClass}>

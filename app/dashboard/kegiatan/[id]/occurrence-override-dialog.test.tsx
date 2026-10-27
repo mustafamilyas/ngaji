@@ -107,9 +107,7 @@ describe("OccurrenceOverrideDialog", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
-  // Task 10.37: the uncontrolled fields are reset to their defaults by React 19 after the action, errors included,
-  // so an edit that the server refuses has to be typed again.
-  it.fails("keeps the edited location after a server error", async () => {
+  it("keeps the edited location after a server error", async () => {
     override.mockResolvedValue({ ok: false, error: "Tanggal bentrok dengan jadwal lain" });
     const user = userEvent.setup();
     renderDialog();

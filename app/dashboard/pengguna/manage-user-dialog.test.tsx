@@ -93,6 +93,19 @@ describe("ManageUserDialog", () => {
     expect(formData(updateRole)).toMatchObject({ userId: "9", role: "ADMIN" });
   });
 
+  it("keeps the chosen role in the select when the server refuses the change", async () => {
+    updateRole.mockResolvedValue({ ok: false, error: "Tidak diizinkan" });
+    const user = userEvent.setup();
+    renderDialog();
+    const dialog = await open(user);
+    await user.selectOptions(within(dialog).getByDisplayValue("USER"), "ADMIN");
+
+    await user.click(within(dialog).getByRole("button", { name: "Simpan" }));
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Tidak diizinkan");
+    expect(within(dialog).getByDisplayValue("ADMIN")).toBeInTheDocument();
+  });
+
   it("moves the user only after a different group is picked", async () => {
     move.mockResolvedValue({ ok: true, data: {} } as never);
     const user = userEvent.setup();

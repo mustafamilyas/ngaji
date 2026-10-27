@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { touchButton, touchField } from "@/components/ui/touch";
+import { useKeepValues } from "@/lib/forms/use-keep-values";
 import { cn } from "@/lib/utils";
 import type { ActionResult } from "@/lib/errors";
 import type { Level } from "@/lib/generated/prisma/client";
@@ -13,9 +14,10 @@ export function RenameLevelForm({ depth, name }: { depth: number; name: string }
     renameLevelAction,
     null,
   );
+  const onSubmit = useKeepValues(formAction);
 
   return (
-    <form action={formAction} className="flex max-w-xl flex-col gap-2">
+    <form onSubmit={onSubmit} className="flex max-w-xl flex-col gap-2">
       <input type="hidden" name="depth" value={depth} />
       <div className="flex items-center gap-3">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium tabular-nums">

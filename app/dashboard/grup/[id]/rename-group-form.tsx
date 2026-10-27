@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { renameGroupAction } from "@/app/dashboard/grup/actions";
 import { touchButton, touchField } from "@/components/ui/touch";
+import { useKeepValues } from "@/lib/forms/use-keep-values";
 import { cn } from "@/lib/utils";
 import type { ActionResult } from "@/lib/errors";
 import type { Group } from "@/lib/generated/prisma/client";
@@ -13,9 +14,10 @@ export function RenameGroupForm({ groupId, name }: { groupId: number; name: stri
     renameGroupAction,
     null,
   );
+  const onSubmit = useKeepValues(formAction);
 
   return (
-    <form action={formAction} className="flex flex-col gap-2">
+    <form onSubmit={onSubmit} className="flex flex-col gap-2">
       <input type="hidden" name="groupId" value={groupId} />
       <div className="flex flex-col gap-2 sm:flex-row">
         <input

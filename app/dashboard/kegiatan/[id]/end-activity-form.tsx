@@ -5,6 +5,7 @@ import { CalendarX } from "lucide-react";
 import { endActivityAction } from "@/app/dashboard/kegiatan/actions";
 import { Button } from "@/components/ui/button";
 import { touchButton, touchField } from "@/components/ui/touch";
+import { useKeepValues } from "@/lib/forms/use-keep-values";
 import type { Activity } from "@/lib/generated/prisma/client";
 import type { ActionResult } from "@/lib/errors";
 
@@ -13,14 +14,16 @@ export function EndActivityForm({ activityId }: { activityId: number }) {
     endActivityAction,
     null,
   );
+  const submit = useKeepValues(formAction);
 
   return (
     <form
-      action={formAction}
       onSubmit={(event) => {
         if (!confirm("Akhiri kegiatan ini mulai tanggal yang dipilih?")) {
           event.preventDefault();
+          return;
         }
+        submit(event);
       }}
       className="flex flex-col gap-2 sm:flex-row sm:items-end"
     >

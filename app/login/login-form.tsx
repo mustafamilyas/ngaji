@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { touchButton, touchField } from "@/components/ui/touch";
 import { loginAction, type LoginState } from "./actions";
@@ -9,6 +9,9 @@ const initialState: LoginState = { error: null };
 
 export function LoginForm() {
   const [state, formAction, pending] = useActionState(loginAction, initialState);
+  // Controlled, so a wrong password does not also throw the username away: React resets uncontrolled fields after
+  // every form action. The password is cleared by that reset on purpose.
+  const [username, setUsername] = useState("");
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -22,6 +25,8 @@ export function LoginForm() {
           type="text"
           autoComplete="username"
           autoCapitalize="none"
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
           required
           className={touchField}
         />
