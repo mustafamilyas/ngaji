@@ -3,7 +3,7 @@
 import { useState, useSyncExternalStore, useTransition } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { touchButton } from "@/components/ui/touch";
+
 import type { MemberColumnKey } from "@/lib/member/columns";
 import type { SectionView } from "@/lib/member-view/sections";
 import { loadSectionAction } from "./actions";
@@ -149,7 +149,6 @@ export function ViewSections({
                   <Button
                     type="button"
                     variant="outline"
-                    className={touchButton}
                     disabled={loadingKey === section.key}
                     onClick={() => load(section.key, section.members.length)}
                   >

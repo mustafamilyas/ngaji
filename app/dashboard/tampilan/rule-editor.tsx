@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { touchButton, touchIconButton, touchInput } from "@/components/ui/touch";
+
 import { VIEW_MAX_RULES_PER_GROUP } from "@/lib/constants";
 import { choiceLabel, initialRuleValue, OPERATOR_LABELS } from "@/lib/member-view/edit";
 import type { GroupOption } from "@/lib/member-view/editor-options";
@@ -26,7 +26,7 @@ function CommitInput({
     <Input
       {...props}
       defaultValue={defaultValue}
-      className={cn(touchInput, className)}
+      className={className}
       onBlur={(event) => onCommit(event.currentTarget.value)}
       onKeyDown={(event) => {
         if (event.key === "Enter") {
@@ -54,7 +54,7 @@ function GroupPicker({ options, selected, onChange }: { options: GroupOption[]; 
   const shown = options.filter((o) => o.label.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 100);
   return (
     <div className="flex flex-col gap-1.5">
-      <Input type="search" className={touchInput} placeholder="Cari grup…" aria-label="Cari grup" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <Input type="search" placeholder="Cari grup…" aria-label="Cari grup" value={query} onChange={(e) => setQuery(e.target.value)} />
       <ul className="max-h-40 overflow-y-auto rounded-lg border p-1">
         {shown.map((option) => (
           <li key={option.id}>
@@ -138,13 +138,13 @@ function ValueInput({ draft, groups, onChange }: { draft: DraftRule; groups: Gro
         const [from, to] = (draft.value as string[]) ?? ["", ""];
         return (
           <div className="flex items-center gap-2">
-            <Input type="date" className={touchInput} aria-label="Dari tanggal" value={from} onChange={(e) => onChange([e.target.value, to])} />
+            <Input type="date" aria-label="Dari tanggal" value={from} onChange={(e) => onChange([e.target.value, to])} />
             <span className="text-sm text-muted-foreground">s/d</span>
-            <Input type="date" className={touchInput} aria-label="Sampai tanggal" value={to} onChange={(e) => onChange([from, e.target.value])} />
+            <Input type="date" aria-label="Sampai tanggal" value={to} onChange={(e) => onChange([from, e.target.value])} />
           </div>
         );
       }
-      return <Input type="date" className={touchInput} aria-label={def.label} value={String(draft.value ?? "")} onChange={(e) => onChange(e.target.value)} />;
+      return <Input type="date" aria-label={def.label} value={String(draft.value ?? "")} onChange={(e) => onChange(e.target.value)} />;
   }
 }
 
@@ -214,7 +214,7 @@ function RuleRow({
             </option>
           ))}
         </select>
-        <Button type="button" variant="ghost" size="icon-sm" className={cn(touchIconButton, "ml-auto")} aria-label="Hapus aturan" onClick={onRemove}>
+        <Button type="button" variant="ghost" size="icon-sm" className="ml-auto" aria-label="Hapus aturan" onClick={onRemove}>
           <Trash2 />
         </Button>
       </div>
@@ -276,7 +276,6 @@ export function RuleGroupEditor({
           type="button"
           variant="outline"
           size="sm"
-          className={cn(touchButton, "xl:h-7")}
           disabled={group.rules.length >= VIEW_MAX_RULES_PER_GROUP}
           onClick={() =>
             setRules([...group.rules, { field: "status", operator: "isAnyOf", value: ["AKTIF"] }])
@@ -285,7 +284,7 @@ export function RuleGroupEditor({
           <Plus />
           Tambah aturan
         </Button>
-        <Button type="button" variant="ghost" size="sm" className={cn(touchButton, "xl:h-7")} onClick={onRemove}>
+        <Button type="button" variant="ghost" size="sm" onClick={onRemove}>
           Hapus filter
         </Button>
       </div>

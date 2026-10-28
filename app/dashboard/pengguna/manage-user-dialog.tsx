@@ -4,7 +4,7 @@ import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { KeyRound, Settings2, UserX } from "lucide-react";
 import { GroupAutocomplete, withParentNames } from "@/components/group-autocomplete";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { touchButton, touchField, touchLgButton } from "@/components/ui/touch";
+import { touchField } from "@/components/ui/touch";
 import { useKeepValues } from "@/lib/forms/use-keep-values";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -47,7 +47,7 @@ function RoleForm({ userId, currentRole }: { userId: number; currentRole: string
             </option>
           ))}
         </select>
-        <Button type="submit" variant="outline" disabled={pending} className={touchButton}>
+        <Button type="submit" variant="outline" disabled={pending}>
           {pending ? "…" : "Simpan"}
         </Button>
       </div>
@@ -85,7 +85,6 @@ function MoveForm({ userId, currentGroupId, groups }: { userId: number; currentG
           type="submit"
           variant="outline"
           disabled={pending || groupId === undefined || groupId === currentGroupId}
-          className={touchButton}
         >
           {pending ? "…" : "Pindahkan"}
         </Button>
@@ -108,7 +107,7 @@ function ActiveToggleForm({ userId, isActive }: { userId: number; isActive: bool
     <form action={formAction} className="flex flex-col gap-1">
       <input type="hidden" name="userId" value={userId} />
       <input type="hidden" name="isActive" value={String(!isActive)} />
-      <Button type="submit" variant={isActive ? "destructive" : "outline"} disabled={pending} className={cn(touchButton, "self-start")}>
+      <Button type="submit" variant={isActive ? "destructive" : "outline"} disabled={pending} className="self-start">
         {isActive && <UserX />}
         {pending ? "…" : isActive ? "Nonaktifkan" : "Aktifkan"}
       </Button>
@@ -134,7 +133,7 @@ function ResetPasswordForm({ userId }: { userId: number }) {
   return (
     <form action={formAction} className="flex flex-col gap-1">
       <input type="hidden" name="userId" value={userId} />
-      <Button type="submit" variant="outline" disabled={pending} className={cn(touchButton, "self-start")}>
+      <Button type="submit" variant="outline" disabled={pending} className="self-start">
         <KeyRound />
         {pending ? "…" : "Reset password"}
       </Button>
@@ -212,7 +211,7 @@ export function ManageUserDialog({
           )}
         </div>
         <DialogFooter className="mt-4">
-          <DialogClose className={cn(buttonVariants({ variant: "outline", size: "lg" }), touchLgButton)}>Tutup</DialogClose>
+          <DialogClose className={buttonVariants({ variant: "outline", size: "lg" })}>Tutup</DialogClose>
         </DialogFooter>
       </DialogContent>
     </Dialog>

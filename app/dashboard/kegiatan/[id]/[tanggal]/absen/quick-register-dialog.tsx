@@ -7,7 +7,7 @@ import { UserPlus } from "lucide-react";
 import { createMemberAction } from "@/app/dashboard/anggota/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { touchLgButton } from "@/components/ui/touch";
+
 import { SEX_LABELS } from "@/lib/member/labels";
 import { SEXES } from "@/lib/validation/enums";
 import { memberFormSchema, type MemberFormValues } from "@/lib/validation/member";
@@ -134,10 +134,10 @@ export function QuickRegisterDialog({
             </p>
           )}
           <DialogFooter>
-            <Button type="button" variant="outline" size="lg" className={touchLgButton} onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" size="lg" onClick={() => setOpen(false)}>
               Batal
             </Button>
-            <Button type="submit" size="lg" className={touchLgButton} disabled={pending}>
+            <Button type="submit" size="lg" disabled={pending}>
               {pending ? "Menyimpan…" : "Daftar"}
             </Button>
           </DialogFooter>

@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { auth } from "@/auth";
 import { buttonVariants } from "@/components/ui/button";
-import { touchButton } from "@/components/ui/touch";
+
 import { WEEKDAY_LABELS } from "@/lib/activity/labels";
 import { listActivityOccurrences } from "@/lib/activity/list";
 import { endTimeOf, groupScheduleByDate } from "@/lib/activity/print";
@@ -75,17 +75,17 @@ export default async function PrintSchedulePage({
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center print:hidden">
         {!tooLong && (
           <span className="order-first sm:order-last sm:ml-auto">
-            <PrintButton className={cn(touchButton, "w-full sm:w-auto")} />
+            <PrintButton className="w-full sm:w-auto" />
           </span>
         )}
         <div className="flex flex-wrap gap-2 sm:gap-3">
-          <Link href={backHref} className={cn(buttonVariants({ variant: "outline" }), touchButton)}>
+          <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
             <ArrowLeft />
             Kembali
           </Link>
           <Link
             href={toggleHref}
-            className={cn(buttonVariants({ variant: "outline" }), touchButton)}
+            className={buttonVariants({ variant: "outline" })}
             aria-pressed={showCancelled}
           >
             {showCancelled ? "✓ " : ""}Tampilkan yang batal

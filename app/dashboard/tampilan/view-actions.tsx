@@ -9,8 +9,8 @@ import {
   updateMemberViewAction,
 } from "@/app/dashboard/tampilan/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { touchField, touchLgButton } from "@/components/ui/touch";
-import { cn } from "@/lib/utils";
+import { touchField } from "@/components/ui/touch";
+
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { ActionResult } from "@/lib/errors";
 import type { Definition } from "@/lib/validation/member-view";
@@ -59,7 +59,7 @@ function NameDialog({
         }
       }}
     >
-      <DialogTrigger className={cn(buttonVariants({ variant: "outline", size: "lg" }), touchLgButton)}>{trigger}</DialogTrigger>
+      <DialogTrigger className={buttonVariants({ variant: "outline", size: "lg" })}>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>
@@ -83,8 +83,8 @@ function NameDialog({
             </p>
           )}
           <DialogFooter>
-            <DialogClose className={cn(buttonVariants({ variant: "ghost", size: "lg" }), touchLgButton)}>Batal</DialogClose>
-            <Button type="submit" size="lg" className={touchLgButton} disabled={pending}>
+            <DialogClose className={buttonVariants({ variant: "ghost", size: "lg" })}>Batal</DialogClose>
+            <Button type="submit" size="lg" disabled={pending}>
               {pending ? "Menyimpan…" : submitLabel}
             </Button>
           </DialogFooter>
@@ -140,7 +140,6 @@ export function ViewActions({
         <Button
           variant="outline"
           size="lg"
-          className={touchLgButton}
           disabled={pending}
           onClick={() =>
             run(
@@ -191,13 +190,12 @@ export function ViewActions({
       />
       {isOwner && viewId !== null && isDraft && (
         <>
-          <Button variant="ghost" size="lg" className={touchLgButton} disabled={pending} onClick={() => router.replace(basePath, { scroll: false })}>
+          <Button variant="ghost" size="lg" disabled={pending} onClick={() => router.replace(basePath, { scroll: false })}>
             <Undo2 />
             Batalkan
           </Button>
           <Button
             size="lg"
-            className={touchLgButton}
             disabled={pending}
             onClick={() =>
               run(

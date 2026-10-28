@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
-import { touchButton, touchField } from "@/components/ui/touch";
+import { touchField } from "@/components/ui/touch";
 import { changePasswordAction, type ChangePasswordState } from "./actions";
 
 const initialState: ChangePasswordState = { error: null };
@@ -45,7 +45,7 @@ export function ChangePasswordForm() {
           {state.error}
         </p>
       )}
-      <Button type="submit" disabled={pending} className={touchButton}>
+      <Button type="submit" disabled={pending}>
         {pending ? "Menyimpan…" : "Simpan"}
       </Button>
     </form>

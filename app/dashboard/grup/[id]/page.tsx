@@ -21,8 +21,8 @@ import { groupTrail } from "@/lib/group/trail";
 import { clampPage, pageHref, paginate } from "@/lib/pagination";
 import { resolveGroup } from "@/lib/resolve";
 import { parseTab } from "@/lib/tabs";
-import { touchLgButton } from "@/components/ui/touch";
-import { cn, initials } from "@/lib/utils";
+
+import { initials } from "@/lib/utils";
 import { AddSubgroupDialog } from "./add-subgroup-dialog";
 import { DeleteGroupForm } from "./delete-group-form";
 import { RenameGroupForm } from "./rename-group-form";
@@ -115,12 +115,12 @@ export default async function GroupDetailPage({
         badges={levelName && <Badge variant="secondary">{levelName}</Badge>}
         actions={
           <>
-            <Link href={`/dashboard/anggota?grup=${group.id}`} className={cn(buttonVariants({ variant: "outline", size: "lg" }), touchLgButton)}>
+            <Link href={`/dashboard/anggota?grup=${group.id}`} className={buttonVariants({ variant: "outline", size: "lg" })}>
               <Users />
               Lihat semua anggota
             </Link>
             {isLeaf ? (
-              <Link href={`/dashboard/anggota/baru?grup=${group.id}`} className={cn(buttonVariants({ size: "lg" }), touchLgButton)}>
+              <Link href={`/dashboard/anggota/baru?grup=${group.id}`} className={buttonVariants({ size: "lg" })}>
                 <UserPlus />
                 Tambah anggota
               </Link>

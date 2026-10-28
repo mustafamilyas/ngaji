@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Filter, Plus, X } from "lucide-react";
 import { filterTriggerClass } from "@/components/filters/filter-bar";
 import { Button } from "@/components/ui/button";
-import { touchButton, touchIconButton, touchLgButton } from "@/components/ui/touch";
+
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { VIEW_MAX_RULE_GROUPS } from "@/lib/constants";
@@ -119,7 +119,6 @@ export function ViewToolbar({
                 type="button"
                 variant="ghost"
                 size="icon-sm"
-                className={touchIconButton}
                 aria-label="Hapus filter"
                 onClick={() => apply(removeRuleGroup(definition, index))}
               >
@@ -131,7 +130,6 @@ export function ViewToolbar({
             type="button"
             variant="outline"
             size="lg"
-            className={touchLgButton}
             disabled={groups.length >= VIEW_MAX_RULE_GROUPS}
             onClick={addGroup}
           >
@@ -141,7 +139,7 @@ export function ViewToolbar({
         </div>
 
         {/* Mobile: one button, bottom sheet */}
-        <Button type="button" variant="outline" size="lg" className={`${touchLgButton} sm:hidden`} onClick={() => setSheetOpen(true)}>
+        <Button type="button" variant="outline" size="lg" className="sm:hidden" onClick={() => setSheetOpen(true)}>
           <Filter />
           Filter{groups.length > 0 ? ` (${groups.length})` : ""}
         </Button>
@@ -164,7 +162,7 @@ export function ViewToolbar({
                 {editor(group, index)}
               </div>
             ))}
-            <Button type="button" variant="outline" className={touchButton} disabled={groups.length >= VIEW_MAX_RULE_GROUPS} onClick={() => apply(addRuleGroup(definition, { ...NEW_RULE, value: [...NEW_RULE.value] }))}>
+            <Button type="button" variant="outline" disabled={groups.length >= VIEW_MAX_RULE_GROUPS} onClick={() => apply(addRuleGroup(definition, { ...NEW_RULE, value: [...NEW_RULE.value] }))}>
               <Plus />
               Tambah filter
             </Button>

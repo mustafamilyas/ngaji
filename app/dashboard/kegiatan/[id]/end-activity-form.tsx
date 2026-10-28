@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { CalendarX } from "lucide-react";
 import { endActivityAction } from "@/app/dashboard/kegiatan/actions";
 import { Button } from "@/components/ui/button";
-import { touchButton, touchField } from "@/components/ui/touch";
+import { touchField } from "@/components/ui/touch";
 import { endingDeletesActivity } from "@/lib/activity/end";
 import { formatDate } from "@/lib/filters";
 import { useKeepValues } from "@/lib/forms/use-keep-values";
@@ -47,7 +47,7 @@ export function EndActivityForm({ activityId, startsOn }: { activityId: number; 
           className={touchField}
         />
       </label>
-      <Button type="submit" variant={deletes ? "destructive" : "outline"} disabled={pending} className={touchButton}>
+      <Button type="submit" variant={deletes ? "destructive" : "outline"} disabled={pending}>
         <CalendarX />
         {pending ? "Menyimpan…" : deletes ? "Hapus kegiatan" : "Akhiri"}
       </Button>

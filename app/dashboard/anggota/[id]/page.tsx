@@ -8,7 +8,7 @@ import { MetaItem, PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { TabNav } from "@/components/tab-nav";
 import { buttonVariants } from "@/components/ui/button";
-import { touchLgButton } from "@/components/ui/touch";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { WhatsAppButton } from "@/components/whatsapp-button";
 import { attendanceHistoryForMember } from "@/lib/attendance/history";
@@ -113,7 +113,7 @@ export default async function MemberDetailPage({
         actions={
           <>
             {tab !== "ubah" && (
-              <Link href={tabHref(path, "ubah", "profil")} className={cn(buttonVariants({ variant: "outline", size: "lg" }), touchLgButton)}>
+              <Link href={tabHref(path, "ubah", "profil")} className={buttonVariants({ variant: "outline", size: "lg" })}>
                 <Pencil />
                 Ubah data
               </Link>

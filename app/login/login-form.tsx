@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { touchButton, touchField } from "@/components/ui/touch";
+import { touchField } from "@/components/ui/touch";
 import { loginAction, type LoginState } from "./actions";
 
 const initialState: LoginState = { error: null };
@@ -49,7 +49,7 @@ export function LoginForm() {
           {state.error}
         </p>
       )}
-      <Button type="submit" disabled={pending} className={touchButton}>
+      <Button type="submit" disabled={pending}>
         {pending ? "Memproses…" : "Masuk"}
       </Button>
     </form>

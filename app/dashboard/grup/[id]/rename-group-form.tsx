@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { renameGroupAction } from "@/app/dashboard/grup/actions";
-import { touchButton, touchField } from "@/components/ui/touch";
+import { touchField } from "@/components/ui/touch";
 import { useKeepValues } from "@/lib/forms/use-keep-values";
 import { cn } from "@/lib/utils";
 import type { ActionResult } from "@/lib/errors";
@@ -26,7 +26,7 @@ export function RenameGroupForm({ groupId, name }: { groupId: number; name: stri
           required
           className={cn(touchField, "sm:flex-1")}
         />
-        <Button type="submit" variant="outline" disabled={pending} className={touchButton}>
+        <Button type="submit" variant="outline" disabled={pending}>
           {pending ? "Menyimpan…" : "Ganti nama"}
         </Button>
       </div>

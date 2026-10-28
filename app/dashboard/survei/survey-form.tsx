@@ -9,7 +9,7 @@ import { createSurveyAction, updateSurveyAction } from "@/app/dashboard/survei/a
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { touchButton, touchInput } from "@/components/ui/touch";
+
 import { Textarea } from "@/components/ui/textarea";
 import { SURVEY_MAX_QUESTIONS } from "@/lib/constants";
 import type { QuestionType } from "@/lib/validation/enums";
@@ -110,7 +110,7 @@ export function SurveyForm({
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
             <Label htmlFor="title">Judul</Label>
-            <Input id="title" className={touchInput} readOnly={readOnly} {...register("title")} />
+            <Input id="title" readOnly={readOnly} {...register("title")} />
             <FieldError message={errors.title?.message} />
           </div>
           <div className="flex flex-col gap-1">
@@ -144,7 +144,6 @@ export function SurveyForm({
             <Button
               type="button"
               variant="outline"
-              className={touchButton}
               disabled={atLimit}
               onClick={() => append(blankQuestion("SHORT_TEXT"))}
             >
@@ -154,7 +153,6 @@ export function SurveyForm({
             <Button
               type="button"
               variant="outline"
-              className={touchButton}
               disabled={atLimit}
               onClick={() => append(yesNoQuestion(""))}
             >

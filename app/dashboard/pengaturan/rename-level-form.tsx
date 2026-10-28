@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
-import { touchButton, touchField } from "@/components/ui/touch";
+import { touchField } from "@/components/ui/touch";
 import { useKeepValues } from "@/lib/forms/use-keep-values";
 import { cn } from "@/lib/utils";
 import type { ActionResult } from "@/lib/errors";
@@ -30,7 +30,7 @@ export function RenameLevelForm({ depth, name }: { depth: number; name: string }
           required
           className={cn(touchField, "min-w-0 flex-1")}
         />
-        <Button type="submit" variant="outline" disabled={pending} className={touchButton}>
+        <Button type="submit" variant="outline" disabled={pending}>
           {pending ? "Menyimpan…" : "Simpan"}
         </Button>
       </div>

@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { Trash2 } from "lucide-react";
 import { deleteMemberAction } from "@/app/dashboard/anggota/actions";
 import { Button } from "@/components/ui/button";
-import { touchButton } from "@/components/ui/touch";
+
 import type { ActionResult } from "@/lib/errors";
 
 export function DeleteMemberForm({ memberId }: { memberId: number }) {
@@ -24,7 +24,7 @@ export function DeleteMemberForm({ memberId }: { memberId: number }) {
       className="flex flex-col gap-2"
     >
       <input type="hidden" name="memberId" value={memberId} />
-      <Button type="submit" variant="destructive" disabled={pending} className={touchButton}>
+      <Button type="submit" variant="destructive" disabled={pending}>
         <Trash2 />
         {pending ? "Menghapus…" : "Hapus anggota"}
       </Button>

@@ -43,7 +43,7 @@ describe("survey form phone and tablet sizes", () => {
       const cls = classOf(html, tag);
       expect(cls, String(tag)).toMatch(/\bh-11\b|\bmin-h-11\b/);
       expect(cls, String(tag)).toMatch(/\btext-base\b/);
-      expect(cls, String(tag)).toMatch(/\bmd:text-base\b/);
+      expect(cls, String(tag)).toMatch(/\bxl:text-sm\b/);
       expect(cls, String(tag)).not.toMatch(/\bmd:text-sm\b/);
     }
   });
@@ -52,7 +52,8 @@ describe("survey form phone and tablet sizes", () => {
     const html = await render("survei-form-description");
 
     const cls = classOf(html, /<textarea[^>]*id="description"[^>]*>/);
-    expect(cls).toMatch(/\bmd:text-base\b/);
+    expect(cls).toMatch(/\btext-base\b/);
+    expect(cls).toMatch(/\bxl:text-sm\b/);
     expect(cls).not.toMatch(/\bmd:text-sm\b/);
   });
 

@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { touchIconButton, touchInput } from "@/components/ui/touch";
+
 import type { QuestionType } from "@/lib/validation/enums";
 import {
   FieldError,
@@ -88,7 +88,6 @@ function OptionList({
               <Input
                 aria-label={`Pilihan ${oi + 1}`}
                 placeholder={`Pilihan ${oi + 1}`}
-                className={touchInput}
                 readOnly={readOnly}
                 {...register(`questions.${index}.options.${oi}.label`)}
               />
@@ -97,7 +96,6 @@ function OptionList({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className={touchIconButton}
                   aria-label={locked ? `Arsipkan pilihan ${oi + 1}` : `Hapus pilihan ${oi + 1}`}
                   onClick={() => removeOption(oi)}
                 >
@@ -185,7 +183,6 @@ export function QuestionCard({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className={touchIconButton}
                 aria-label={`Naikkan pertanyaan ${index + 1}`}
                 disabled={index === 0}
                 onClick={() => onMove(index, index - 1)}
@@ -196,7 +193,6 @@ export function QuestionCard({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className={touchIconButton}
                 aria-label={`Turunkan pertanyaan ${index + 1}`}
                 disabled={index === total - 1}
                 onClick={() => onMove(index, index + 1)}
@@ -207,7 +203,6 @@ export function QuestionCard({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className={touchIconButton}
                 aria-label={locked ? `Arsipkan pertanyaan ${index + 1}` : `Hapus pertanyaan ${index + 1}`}
                 onClick={() => onRemove(index)}
               >
@@ -255,13 +250,13 @@ export function QuestionCard({
 
         <div className="flex flex-col gap-1">
           <Label htmlFor={`q-${index}-label`}>Pertanyaan</Label>
-          <Input id={`q-${index}-label`} className={touchInput} readOnly={readOnly} {...register(`questions.${index}.label`)} />
+          <Input id={`q-${index}-label`} readOnly={readOnly} {...register(`questions.${index}.label`)} />
           <FieldError message={questionErrors?.label?.message} />
         </div>
 
         <div className="flex flex-col gap-1">
           <Label htmlFor={`q-${index}-help`}>Keterangan (opsional)</Label>
-          <Input id={`q-${index}-help`} className={touchInput} readOnly={readOnly} {...register(`questions.${index}.helpText`)} />
+          <Input id={`q-${index}-help`} readOnly={readOnly} {...register(`questions.${index}.helpText`)} />
           <FieldError message={questionErrors?.helpText?.message} />
         </div>
 
@@ -275,7 +270,6 @@ export function QuestionCard({
               <Input
                 id={`q-${index}-min`}
                 type="number"
-                className={touchInput}
                 inputMode="numeric"
                 readOnly={locked || readOnly}
                 {...register(`questions.${index}.scaleMin`, { valueAsNumber: true })}
@@ -287,7 +281,6 @@ export function QuestionCard({
               <Input
                 id={`q-${index}-max`}
                 type="number"
-                className={touchInput}
                 inputMode="numeric"
                 readOnly={locked || readOnly}
                 {...register(`questions.${index}.scaleMax`, { valueAsNumber: true })}

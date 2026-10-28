@@ -5,9 +5,9 @@ import { Plus } from "lucide-react";
 import { createGroupAction } from "@/app/dashboard/grup/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { touchField, touchLgButton } from "@/components/ui/touch";
+import { touchField } from "@/components/ui/touch";
 import { useKeepValues } from "@/lib/forms/use-keep-values";
-import { cn } from "@/lib/utils";
+
 import type { ActionResult } from "@/lib/errors";
 import type { Group } from "@/lib/generated/prisma/client";
 
@@ -35,7 +35,7 @@ export function AddSubgroupDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className={cn(buttonVariants({ size: "lg" }), touchLgButton)}>
+      <DialogTrigger className={buttonVariants({ size: "lg" })}>
         <Plus />
         Tambah {noun.toLowerCase()}
       </DialogTrigger>
@@ -62,8 +62,8 @@ export function AddSubgroupDialog({
             </p>
           )}
           <DialogFooter>
-            <DialogClose className={cn(buttonVariants({ variant: "ghost", size: "lg" }), touchLgButton)}>Batal</DialogClose>
-            <Button type="submit" size="lg" disabled={pending} className={touchLgButton}>
+            <DialogClose className={buttonVariants({ variant: "ghost", size: "lg" })}>Batal</DialogClose>
+            <Button type="submit" size="lg" disabled={pending}>
               {pending ? "Menyimpan…" : "Simpan"}
             </Button>
           </DialogFooter>

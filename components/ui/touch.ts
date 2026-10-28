@@ -1,17 +1,8 @@
 /**
- * Touch-friendly sizes for forms that phones and tablets use: 44px tall up to
- * the `xl` breakpoint (so a 1024px landscape tablet keeps 44px), compact again on desktop. 16px text on small screens
- * keeps iOS Safari from zooming the page when a field gets focus.
+ * Touch sizes for the shared primitives (`Button`, `Input`, `Textarea`, `Select`) live in those components: 44px tall
+ * with 16px text below `xl` (so a 1024px landscape tablet keeps 44px; 16px keeps iOS Safari from zooming on focus),
+ * compact again from `xl`. This file only has the same rule for NATIVE form elements (`<input>`, `<select>`) that do not
+ * go through a primitive.
  */
 export const touchField =
   "h-11 w-full rounded-md border border-input bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 xl:h-9 xl:text-sm";
-
-export const touchButton = "h-11 px-4 text-base xl:h-8 xl:px-2.5 xl:text-sm";
-
-/** For the shared `Input`, whose own text size drops to 14px from `md` (iPad Safari then zooms on focus). */
-export const touchInput = "h-11 text-base md:text-base xl:h-8 xl:text-sm";
-
-export const touchIconButton = "size-11 xl:size-8";
-
-/** For `size="lg"` buttons (36px on desktop): 44px below `xl`. */
-export const touchLgButton = "h-11 text-base xl:h-9 xl:text-sm";

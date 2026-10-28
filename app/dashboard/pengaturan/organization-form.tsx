@@ -2,9 +2,9 @@
 
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
-import { touchButton, touchField } from "@/components/ui/touch";
+import { touchField } from "@/components/ui/touch";
 import { useKeepValues } from "@/lib/forms/use-keep-values";
-import { cn } from "@/lib/utils";
+
 import type { ActionResult } from "@/lib/errors";
 import type { Organization } from "@/lib/generated/prisma/client";
 import { TIMEZONES, TIMEZONE_LABELS } from "@/lib/validation/enums";
@@ -58,7 +58,7 @@ export function OrganizationForm({ name, timezone }: { name: string; timezone: s
         </p>
       )}
       <div>
-        <Button type="submit" disabled={pending} className={cn(touchButton, "w-full sm:w-auto")}>
+        <Button type="submit" disabled={pending} className="w-full sm:w-auto">
           {pending ? "Menyimpan…" : "Simpan"}
         </Button>
       </div>

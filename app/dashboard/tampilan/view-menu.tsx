@@ -5,8 +5,7 @@ import { Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 import { filterTriggerClass } from "@/components/filters/filter-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { touchButton, touchIconButton, touchInput } from "@/components/ui/touch";
-import { cn } from "@/lib/utils";
+
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { VIEW_MAX_AGE_BUCKETS } from "@/lib/constants";
 import { ageBucketsFromBrackets } from "@/lib/member-view/edit";
@@ -50,7 +49,7 @@ function AgeBucketEditor({ buckets, onCommit }: { buckets: Buckets; onCommit: (b
           <li key={`${rows.length}-${index}`} className="flex flex-wrap items-center gap-1.5 sm:flex-nowrap">
             <Input
               aria-label="Nama kelompok"
-              className={cn(touchInput, "min-w-full flex-1 sm:min-w-0")}
+              className="min-w-full flex-1 sm:min-w-0"
               defaultValue={bucket.label}
               onBlur={(e) => update(rows.map((b, i) => (i === index ? { ...b, label: e.currentTarget.value } : b)))}
             />
@@ -58,7 +57,7 @@ function AgeBucketEditor({ buckets, onCommit }: { buckets: Buckets; onCommit: (b
               aria-label="Usia minimum"
               type="number"
               min={0}
-              className={cn(touchInput, "w-[4.5rem] shrink-0 px-1.5")}
+              className="w-[4.5rem] shrink-0 px-1.5"
               inputMode="numeric"
               defaultValue={bucket.min}
               onBlur={(e) => update(rows.map((b, i) => (i === index ? { ...b, min: Number(e.currentTarget.value) } : b)))}
@@ -68,7 +67,7 @@ function AgeBucketEditor({ buckets, onCommit }: { buckets: Buckets; onCommit: (b
               aria-label="Usia maksimum (kosong = tanpa batas)"
               type="number"
               min={0}
-              className={cn(touchInput, "w-[4.5rem] shrink-0 px-1.5")}
+              className="w-[4.5rem] shrink-0 px-1.5"
               inputMode="numeric"
               placeholder="∞"
               defaultValue={bucket.max ?? ""}
@@ -78,7 +77,6 @@ function AgeBucketEditor({ buckets, onCommit }: { buckets: Buckets; onCommit: (b
               type="button"
               variant="ghost"
               size="icon-sm"
-              className={touchIconButton}
               aria-label="Hapus kelompok"
               disabled={rows.length <= 1}
               onClick={() => update(rows.filter((_, i) => i !== index))}
@@ -98,7 +96,6 @@ function AgeBucketEditor({ buckets, onCommit }: { buckets: Buckets; onCommit: (b
           type="button"
           variant="outline"
           size="sm"
-          className={cn(touchButton, "xl:h-7")}
           disabled={rows.length >= VIEW_MAX_AGE_BUCKETS}
           onClick={() => {
             const last = rows[rows.length - 1];
@@ -109,7 +106,7 @@ function AgeBucketEditor({ buckets, onCommit }: { buckets: Buckets; onCommit: (b
           <Plus />
           Tambah kelompok
         </Button>
-        <Button type="button" variant="ghost" size="sm" className={cn(touchButton, "xl:h-7")} onClick={() => update(ageBucketsFromBrackets())}>
+        <Button type="button" variant="ghost" size="sm" onClick={() => update(ageBucketsFromBrackets())}>
           Atur ulang
         </Button>
       </div>

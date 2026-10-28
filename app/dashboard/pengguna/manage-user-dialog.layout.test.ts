@@ -12,7 +12,8 @@ describe("ManageUserDialog on short screens", () => {
     const footer = content.slice(content.indexOf("<DialogFooter"), content.indexOf("</DialogFooter>"));
     expect(footer).toContain("<DialogClose");
     expect(footer).toContain("Tutup");
-    expect(footer).toContain("touchLgButton");
+    // 44px below xl comes from the large Button size (task 10.23)
+    expect(footer).toContain('size: "lg"');
   });
 
   it("puts the footer after the sections so they scroll above it", () => {

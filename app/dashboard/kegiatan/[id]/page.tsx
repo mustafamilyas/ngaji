@@ -24,7 +24,7 @@ import { Pagination } from "@/components/pagination";
 import { TabNav, type TabItem } from "@/components/tab-nav";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { touchButton, touchLgButton } from "@/components/ui/touch";
+
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { scheduleLabel, WEEKDAY_LABELS } from "@/lib/activity/labels";
 import { toActivityTemplate } from "@/lib/activity/template";
@@ -127,13 +127,13 @@ export default async function ActivityDetailPage({
         actions={
           <>
             {canEdit && tab !== "pengaturan" && (
-              <Link href={tabHref(path, "pengaturan", "absensi")} className={buttonVariants({ variant: "outline", size: "lg", className: touchLgButton })}>
+              <Link href={tabHref(path, "pengaturan", "absensi")} className={buttonVariants({ variant: "outline", size: "lg" })}>
                 <Pencil />
                 Ubah
               </Link>
             )}
             {canRecord && todays && (
-              <Link href={`${path}/${todays.key}`} className={buttonVariants({ size: "lg", className: touchLgButton })}>
+              <Link href={`${path}/${todays.key}`} className={buttonVariants({ size: "lg" })}>
                 <ClipboardCheck />
                 Isi absensi hari ini
               </Link>
@@ -184,7 +184,7 @@ export default async function ActivityDetailPage({
                 </CardDescription>
                 {activity.freq !== "ONCE" && (
                   <CardAction>
-                    <Link href={`${path}/geser`} className={buttonVariants({ variant: "outline", className: touchButton })}>
+                    <Link href={`${path}/geser`} className={buttonVariants({ variant: "outline" })}>
                       <CalendarClock />
                       Ubah ini &amp; seterusnya
                     </Link>
@@ -359,7 +359,7 @@ function ScheduleTab({
                     )}
                     <Link
                       href={`${path}/${occurrence.key}`}
-                      className={buttonVariants({ variant: isToday && canRecord && !cancelled ? "default" : "ghost", className: touchButton })}
+                      className={buttonVariants({ variant: isToday && canRecord && !cancelled ? "default" : "ghost" })}
                     >
                       {isToday && canRecord && !cancelled ? "Isi absensi" : "Lihat"}
                       <ChevronRight data-icon="inline-end" />

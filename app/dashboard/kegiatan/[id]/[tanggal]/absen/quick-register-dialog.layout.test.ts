@@ -26,9 +26,9 @@ describe("QuickRegisterDialog touch sizes", () => {
     expect(html).not.toMatch(/(^|[\s"])h-10([\s"])/);
   });
 
-  it("uses the shared touch sizes for Batal and Daftar, not a fixed 40px height", () => {
+  it("uses the large Button size for Batal and Daftar (44px below xl from the primitive), not a fixed 40px height", () => {
     expect(source).not.toMatch(/(^|[\s"])h-10([\s"])/);
-    expect(source.match(/touchLgButton/g)?.length).toBeGreaterThanOrEqual(3); // import + two buttons
+    expect(source.match(/size="lg"/g)?.length).toBeGreaterThanOrEqual(2);
   });
 
   it("keeps every field 44px tall with 16px text", () => {

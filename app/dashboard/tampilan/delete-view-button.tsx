@@ -4,8 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { deleteMemberViewAction } from "@/app/dashboard/tampilan/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { touchLgButton } from "@/components/ui/touch";
-import { cn } from "@/lib/utils";
+
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 /** Danger-zone button that confirms in a dialog before soft-deleting the view. */
@@ -29,7 +28,7 @@ export function DeleteViewButton({ viewId, viewName }: { viewId: number; viewNam
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className={cn(buttonVariants({ variant: "destructive", size: "lg" }), touchLgButton)}>Hapus tampilan</DialogTrigger>
+      <DialogTrigger className={buttonVariants({ variant: "destructive", size: "lg" })}>Hapus tampilan</DialogTrigger>
       <DialogContent>
         <DialogTitle>Hapus tampilan?</DialogTitle>
         <DialogDescription>
@@ -41,8 +40,8 @@ export function DeleteViewButton({ viewId, viewName }: { viewId: number; viewNam
           </p>
         )}
         <DialogFooter className="mt-5">
-          <DialogClose className={cn(buttonVariants({ variant: "outline", size: "lg" }), touchLgButton)}>Batal</DialogClose>
-          <Button variant="destructive" size="lg" className={touchLgButton} onClick={confirm} disabled={pending}>
+          <DialogClose className={buttonVariants({ variant: "outline", size: "lg" })}>Batal</DialogClose>
+          <Button variant="destructive" size="lg" onClick={confirm} disabled={pending}>
             {pending ? "Menghapus…" : "Hapus"}
           </Button>
         </DialogFooter>

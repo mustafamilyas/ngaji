@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { deleteGroupAction } from "@/app/dashboard/grup/actions";
-import { touchButton } from "@/components/ui/touch";
+
 import type { ActionResult } from "@/lib/errors";
 
 export function DeleteGroupForm({ groupId }: { groupId: number }) {
@@ -24,7 +24,7 @@ export function DeleteGroupForm({ groupId }: { groupId: number }) {
       className="flex flex-col gap-2"
     >
       <input type="hidden" name="groupId" value={groupId} />
-      <Button type="submit" variant="destructive" disabled={pending} className={touchButton}>
+      <Button type="submit" variant="destructive" disabled={pending}>
         <Trash2 />
         {pending ? "Menghapus…" : "Hapus grup"}
       </Button>

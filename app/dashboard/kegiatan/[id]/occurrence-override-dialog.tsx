@@ -4,13 +4,12 @@ import { useActionState, useState } from "react";
 import { Pencil } from "lucide-react";
 import { overrideOccurrenceAction } from "@/app/dashboard/kegiatan/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { touchField, touchIconButton, touchLgButton } from "@/components/ui/touch";
+import { touchField } from "@/components/ui/touch";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { ActivityOccurrence } from "@/lib/generated/prisma/client";
 import type { ActionResult } from "@/lib/errors";
 import { formatDate } from "@/lib/filters";
 import { useKeepValues } from "@/lib/forms/use-keep-values";
-import { cn } from "@/lib/utils";
 
 /** Cancel, move or retime a single occurrence ("hanya tanggal ini"), from a row of the schedule. */
 export function OccurrenceOverrideDialog({
@@ -49,7 +48,7 @@ export function OccurrenceOverrideDialog({
       <DialogTrigger
         aria-label={`Ubah jadwal ${formatDate(effectiveDate)}`}
         title="Ubah tanggal ini"
-        className={buttonVariants({ variant: "ghost", size: "icon", className: touchIconButton })}
+        className={buttonVariants({ variant: "ghost", size: "icon" })}
       >
         <Pencil />
       </DialogTrigger>
@@ -105,8 +104,8 @@ export function OccurrenceOverrideDialog({
             </p>
           )}
           <DialogFooter>
-            <DialogClose className={buttonVariants({ variant: "ghost", size: "lg", className: cn(touchLgButton, "flex-1 sm:flex-none") })}>Tutup</DialogClose>
-            <Button type="submit" size="lg" disabled={pending} className={cn(touchLgButton, "flex-1 sm:flex-none")}>
+            <DialogClose className={buttonVariants({ variant: "ghost", size: "lg", className: "flex-1 sm:flex-none" })}>Tutup</DialogClose>
+            <Button type="submit" size="lg" disabled={pending} className="flex-1 sm:flex-none">
               {pending ? "Menyimpan…" : "Simpan"}
             </Button>
           </DialogFooter>

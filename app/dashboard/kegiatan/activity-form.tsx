@@ -7,7 +7,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { Save } from "lucide-react";
 import { createActivityAction, splitActivityAction, updateActivityAction } from "@/app/dashboard/kegiatan/actions";
 import { Button } from "@/components/ui/button";
-import { touchField, touchLgButton } from "@/components/ui/touch";
+import { touchField } from "@/components/ui/touch";
 import { cn } from "@/lib/utils";
 import { activityUpdateSchema, type ActivityUpdateInput } from "@/lib/validation/activity";
 import { FREQS } from "@/lib/validation/enums";
@@ -218,7 +218,7 @@ export function ActivityForm(props: ActivityFormProps) {
       )}
 
       <div className="flex justify-end border-t pt-4 sm:col-span-2">
-        <Button type="submit" size="lg" disabled={pending} className={cn(touchLgButton, "w-full sm:w-auto")}>
+        <Button type="submit" size="lg" disabled={pending} className="w-full sm:w-auto">
           <Save />
           {pending ? "Menyimpan…" : "Simpan"}
         </Button>

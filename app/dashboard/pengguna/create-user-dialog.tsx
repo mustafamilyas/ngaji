@@ -4,7 +4,7 @@ import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { GroupAutocomplete, withParentNames } from "@/components/group-autocomplete";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { touchButton, touchField } from "@/components/ui/touch";
+import { touchField } from "@/components/ui/touch";
 import { useKeepValues } from "@/lib/forms/use-keep-values";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -117,8 +117,8 @@ export function CreateUserDialog({
           )}
 
           <DialogFooter>
-            <DialogClose className={cn(buttonVariants({ variant: "ghost", size: "lg" }), touchButton)}>Tutup</DialogClose>
-            <Button type="submit" size="lg" className={touchButton} disabled={pending || groupId === undefined}>
+            <DialogClose className={buttonVariants({ variant: "ghost", size: "lg" })}>Tutup</DialogClose>
+            <Button type="submit" size="lg" disabled={pending || groupId === undefined}>
               {pending ? "Menyimpan…" : "Buat pengguna"}
             </Button>
           </DialogFooter>

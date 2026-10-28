@@ -10,7 +10,7 @@ import { dateOf } from "@/lib/dates";
 import { formatDate } from "@/lib/filters";
 import { pageHref } from "@/lib/pagination";
 import type { listRespondents } from "@/lib/survey/respondents";
-import { touchIconButton } from "@/components/ui/touch";
+
 import { cn } from "@/lib/utils";
 import { DeleteResponseButton } from "./delete-response-button";
 
@@ -128,7 +128,7 @@ export function RespondentsTab({
                         <Link
                           href={`${path}/isi?anggota=${r.memberId}`}
                           aria-label={`Ubah respons ${r.name}`}
-                          className={cn(buttonVariants({ variant: "ghost", size: "icon" }), touchIconButton)}
+                          className={buttonVariants({ variant: "ghost", size: "icon" })}
                         >
                           <Pencil />
                         </Link>
