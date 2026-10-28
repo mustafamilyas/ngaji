@@ -18,7 +18,9 @@ export function OccurrenceNotes({ notes }: { notes: string | null }) {
   }
 
   return (
-    <details data-occurrence-notes className="group mt-0.5 max-w-xs text-xs text-muted-foreground">
+    // The browser adds `open` when the summary is tapped before React has hydrated; that is the only mismatch,
+    // it is harmless, and React only reports it in development (task 10.28).
+    <details data-occurrence-notes suppressHydrationWarning className="group mt-0.5 max-w-xs text-xs text-muted-foreground">
       <summary className="cursor-pointer list-none rounded-sm outline-offset-2 focus-visible:outline-2 [&::-webkit-details-marker]:hidden">
         <span className={`${textClass} line-clamp-2 group-open:line-clamp-none`}>{notes}</span>
         <span className="inline-flex min-h-6 items-center text-primary group-open:hidden">Selengkapnya</span>
