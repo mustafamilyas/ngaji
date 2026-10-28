@@ -227,17 +227,24 @@ No tag wanted? Use `HEAD` as the ref below. To see recent commits: `git log --on
 ```bash
 git archive --prefix=dahan-src/ -o /tmp/dahan.tar.gz v0.1.0
 scp /tmp/dahan.tar.gz <initial-user>@<vps-ip>:/tmp/
+shasum -a 256 /tmp/dahan.tar.gz                  # note this value
 ```
 
 `git archive` packs only committed files: no `.env`, no databases, no `node_modules`.
 
-**Step 3: install it** (server):
+**Step 3: install it** (server). First check the upload is intact: the checksum must equal the one from step 2, otherwise run `scp` again (a truncated file fails with `gzip: unexpected end of file`; also look at `df -h /tmp` for a full disk).
 
 ```bash
-tar -xzf /tmp/dahan.tar.gz -C /tmp
+sha256sum /tmp/dahan.tar.gz
+```
+
+Then run the commands one after the other with `&&`, so a failure stops everything and nothing is deleted:
+
+```bash
+tar -xzf /tmp/dahan.tar.gz -C /tmp && \
 sudo rsync -a --delete --chown=dahan:dahan \
   --exclude=/.env --exclude=/node_modules --exclude=/.next --exclude=/lib/generated \
-  /tmp/dahan-src/ /opt/dahan/
+  /tmp/dahan-src/ /opt/dahan/ && \
 rm -rf /tmp/dahan-src /tmp/dahan.tar.gz
 ```
 
@@ -258,6 +265,14 @@ Then install the dependencies (first install only; on upgrades this is part of Â
 cd /opt/dahan
 sudo -u dahan pnpm install --frozen-lockfile
 ```
+
+The pnpm version is pinned by `"packageManager"` in `package.json`; corepack downloads exactly that version (answer `y` to the one-time download prompt). Without the pin, corepack fetches the newest pnpm, which reads settings from other places and fails with `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH` or `ERR_PNPM_IGNORED_BUILDS`. If you see either error, the fix is the pin, **not** `--no-frozen-lockfile` or `pnpm approve-builds`: those ignore the reviewed lockfile and skip the native builds (`bcrypt`, `better-sqlite3`) the app needs. Recover from such a run with:
+
+```bash
+sudo -u dahan rm -rf /opt/dahan/node_modules
+```
+
+then send the code again (steps 2-3 above, which restores the original `pnpm-lock.yaml`) and re-run the install.
 
 `/opt/dahan/.env` (mode 600, owned by `dahan`, never committed):
 
