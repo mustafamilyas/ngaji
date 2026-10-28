@@ -771,6 +771,7 @@ Semua halaman aplikasi (wajib login) ada di bawah `/dashboard` dan memakai app s
 | Syarat peserta kegiatan (perempuan saja, SMP, dll.) | Kolom JSON `criteria` di `Activity`; `expected()` sudah terpusat sehingga tinggal tambah filter. |
 | Riwayat pindah grup anggota | Tabel `MemberGroupHistory`; `PINDAH` saat ini membuat baris baru. |
 | Ekspor data / cetak | Perlu keputusan kebijakan PII dulu; audit `export.*`. |
+| Tema gelap | Belum ada: variabel `.dark` dan kelas `dark:` bawaan shadcn ada tetapi tidak ada saklar dan tidak mengikuti `prefers-color-scheme`, jadi tampilan gelap tidak pernah muncul dan belum pernah diperiksa. Tambah nanti sebagai perubahan tersendiri: saklar terang/gelap/sistem, pemeriksaan kontras tiap halaman dan palet Recharts, `pnpm audit:viewport` di kedua tema. Cetak selalu hitam-putih. |
 | Multi-organisasi — super-admin platform, user lintas-organisasi, subdomain, logo | Multi-organisasi dasar **sudah ada** (§1). Belum ada: UI super-admin, user di banyak organisasi, subdomain; `Organization.logoUrl` sudah ada tetapi belum diedit/ditampilkan. |
 
 ---

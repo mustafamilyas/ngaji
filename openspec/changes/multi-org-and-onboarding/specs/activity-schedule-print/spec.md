@@ -39,8 +39,8 @@ When printed, the page SHALL show only the header and the schedule table: the da
 - **WHEN** the print page is rendered with print media
 - **THEN** the sidebar, top bar and toolbar are not visible, and the header and schedule table are
 
-#### Scenario: Dark theme prints light
-- **WHEN** a user with the dark theme prints the page
+#### Scenario: Print ignores the screen theme
+- **WHEN** the page is printed while the dark color variables are active (the app has no theme switch today, see DESIGN.md §10)
 - **THEN** the printout uses dark text on a white background
 
 #### Scenario: Typical week on one page
