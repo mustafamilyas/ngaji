@@ -34,6 +34,7 @@ export function Autocomplete({
   autoFocus,
   prefix,
   compact = false,
+  inlineList = false,
 }: {
   id: string;
   label: string;
@@ -53,6 +54,8 @@ export function Autocomplete({
   prefix?: React.ReactNode;
   /** Form-field sizing (like the other inputs in a form) instead of the large kiosk sizing. */
   compact?: boolean;
+  /** List flows in the layout instead of floating, for pickers inside a scrolling dialog, where a floating list is clipped. */
+  inlineList?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
   const [highlight, setHighlight] = useState(0);
@@ -122,7 +125,8 @@ export function Autocomplete({
             id={`${id}-list`}
             role="listbox"
             className={cn(
-              "absolute inset-x-0 top-full z-20 mt-1 max-h-72 overflow-auto border bg-background shadow-lg",
+              "mt-1 max-h-72 overflow-auto border bg-background shadow-lg",
+              !inlineList && "absolute inset-x-0 top-full z-20",
               compact ? "rounded-md" : "rounded-xl",
             )}
           >

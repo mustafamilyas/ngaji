@@ -66,7 +66,7 @@ export function CreateUserDialog({
         <UserPlus />
         Tambah pengguna
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="w-[min(36rem,calc(100vw-2rem))]">
         <DialogTitle>Tambah pengguna</DialogTitle>
         <DialogDescription>Password sementara dibuat otomatis dan wajib diganti saat pertama masuk.</DialogDescription>
 
@@ -78,6 +78,7 @@ export function CreateUserDialog({
             value={groupId}
             onChange={setGroupId}
             name="groupId"
+            inlineList
           />
           <Field label="Nama" htmlFor="new-user-name">
             <input id="new-user-name" name="name" required className={inputClass} />

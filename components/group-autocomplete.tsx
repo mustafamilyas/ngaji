@@ -33,6 +33,7 @@ export function GroupAutocomplete({
   name,
   placeholder = "Ketik nama grup",
   autoFocus,
+  inlineList,
 }: {
   id: string;
   label?: string;
@@ -42,6 +43,8 @@ export function GroupAutocomplete({
   name?: string;
   placeholder?: string;
   autoFocus?: boolean;
+  /** See `Autocomplete`: use inside dialogs. */
+  inlineList?: boolean;
 }) {
   const items = useMemo<AutocompleteItem[]>(
     () => groups.map((g) => ({ id: g.id, label: g.name, hint: g.parentName })),
@@ -69,6 +72,7 @@ export function GroupAutocomplete({
         openOnFocus
         autoFocus={autoFocus}
         compact
+        inlineList={inlineList}
       />
       {name && <input type="hidden" name={name} value={value ?? ""} />}
     </>
