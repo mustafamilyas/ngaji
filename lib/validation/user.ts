@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ROLES } from "./enums";
+import { EXTRA_ROLES, ROLES } from "./enums";
 import { usernameSchema } from "./username";
 
 const nameSchema = z.string().trim().min(1, "Nama wajib diisi").max(200, "Nama terlalu panjang");
@@ -39,3 +39,16 @@ export const resetUserPasswordSchema = z.object({
   userId: z.coerce.number().int().positive(),
 });
 export type ResetUserPasswordInput = z.infer<typeof resetUserPasswordSchema>;
+
+export const addExtraRoleSchema = z.object({
+  userId: z.coerce.number().int().positive(),
+  groupId: z.coerce.number().int().positive(),
+  role: z.enum(EXTRA_ROLES),
+});
+export type AddExtraRoleInput = z.infer<typeof addExtraRoleSchema>;
+
+export const removeExtraRoleSchema = z.object({
+  userId: z.coerce.number().int().positive(),
+  groupId: z.coerce.number().int().positive(),
+});
+export type RemoveExtraRoleInput = z.infer<typeof removeExtraRoleSchema>;

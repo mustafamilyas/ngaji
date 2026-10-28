@@ -5,6 +5,9 @@
 export const ROLES = ["OWNER", "ADMIN", "USER"] as const;
 export type Role = (typeof ROLES)[number];
 
+/** Roles that can be held as an additional role at a lower group (DESIGN.md §3.2a). */
+export const EXTRA_ROLES = ["ADMIN"] as const;
+
 export const SEXES = ["L", "P"] as const;
 export type Sex = (typeof SEXES)[number];
 

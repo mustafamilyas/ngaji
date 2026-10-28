@@ -132,7 +132,7 @@ model User {
   createdMemberViews MemberView[]   @relation("memberViewCreatedBy")
 }
 
-/// MVP: @@unique([userId]). Non-MVP multi-peran = hapus unique ini saja.
+/// Peran utama: tepat satu per user (@@unique([userId])) dan satu-satunya sumber scope.
 model UserGroupRole {
   id        Int      @id @default(autoincrement())
   userId    Int      @unique
@@ -142,6 +142,20 @@ model UserGroupRole {
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id])
   group     Group    @relation(fields: [groupId], references: [id])
+  @@index([groupId])
+}
+
+/// Peran tambahan (§3.2a): ADMIN di grup di bawah grup peran utama. Tidak pernah memperluas scope.
+model UserExtraRole {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  groupId   Int
+  role      String                       // Role; saat ini hanya ADMIN (EXTRA_ROLES)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+  group     Group    @relation(fields: [groupId], references: [id])
+  @@unique([userId, groupId])
   @@index([groupId])
 }
 
@@ -400,10 +414,17 @@ model AuditLog {
 ## 3. Aturan akses
 
 ### 3.1 Scope
-Setiap user punya satu `UserGroupRole (groupId, role)`. **Scope** = grup itu + semua turunannya
+Setiap user punya satu `UserGroupRole (groupId, role)` (peran utama; peran tambahan: §3.2a). **Scope** = grup itu + semua turunannya
 (`group.path startsWith scopeGroup.path`). Semua query list wajib difilter scope di server.
 
 **Setiap ID yang datang dari client** (`groupId`, `memberId`, `activityId`, `occurrenceId`, `userId`, `surveyId`, `questionId`, `optionId`, tanggal absensi) **wajib di-resolve ke entitasnya di server lalu dicek terhadap scope dan aturan di bawah**. `authorize` menerima entitas hasil resolve, bukan ID mentah.
+
+### 3.2a Peran tambahan
+Seorang user bisa USER/ADMIN di grup atasnya sekaligus ADMIN di grup yang lebih bawah, tetapi tidak di grup tengah. Selain `UserGroupRole` (peran utama), user boleh punya `UserExtraRole` (saat ini hanya `ADMIN`):
+- Grup peran tambahan harus **di bawah** grup peran utama (bukan grup itu sendiri); satu baris per (user, grup).
+- **Scope tidak berubah**: tetap scope peran utama. Peran tambahan hanya menambah hak **ADMIN atas kegiatan** (buat/ubah/hapus/geser/override, `adminGroupIds` di `lib/authz.ts`) di grup tersebut; semua aksi lain memakai peran utama.
+- Dikelola OWNER di dialog Kelola pengguna (aturan sama dengan `user.updateRole`; audit `user.add_extra_role` / `user.remove_extra_role`). Memindahkan grup utama ditolak bila ada peran tambahan yang jatuh di luar scope tujuan. Grup dengan peran tambahan tidak kosong (tidak bisa dihapus).
+- Sesi membawa `extraRoles` dan divalidasi ulang tiap request seperti `role`.
 
 ### 3.2 Matriks izin
 
@@ -452,7 +473,7 @@ Misal kegiatan A milik grup X, user U di grup G, absensi diisi untuk grup daun Y
   4. Tanggal adalah occurrence sah A (§5.2) dan ≤ hari ini (zona waktu organisasi). Pengecualian: user ≥ ADMIN boleh mengisi tanggal mendatang lewat tabel absensi (`setMemberAttendance`); check-in dan simpan massal tetap ≤ hari ini.
   5. Setiap `memberId` yang dikirim ada di subtree Y, belum dihapus, dan *expected* pada tanggal itu (§6).
   Konsekuensi: user di **atas** X (mis. admin daerah untuk kegiatan milik kelompok) bisa melihat, tetapi tidak bisa mengisi absensi.
-- **Ubah** (`canEditActivity`): `G === X` dan peran ≥ ADMIN. Berlaku untuk ubah template, hapus, batal/geser occurrence, dan "geser ini & seterusnya". OWNER root pun **tidak** bisa mengubah kegiatan milik kelompok — ia harus punya akun di grup itu, atau meminta admin grup tersebut.
+- **Ubah** (`canEditActivity`): X ada di `adminGroupIds(U)` — `G === X` dengan peran ≥ ADMIN, atau U punya peran tambahan ADMIN di X (§3.2a). Berlaku untuk ubah template, hapus, batal/geser occurrence, dan "geser ini & seterusnya". OWNER root pun **tidak** bisa mengubah kegiatan milik kelompok — ia harus punya akun di grup itu, atau meminta admin grup tersebut.
 - Tidak ada opt-out: sub-grup tidak bisa menonaktifkan kegiatan warisan (MVP).
 
 ### 3.4 Reset password
@@ -490,8 +511,8 @@ function visibleGroupsWhere(session: Session): Prisma.GroupWhereInput   // { pat
 | `*.view`, `stats.view` | target.group dalam scope (kecuali `activity.view`, lihat §3.3) |
 | `member.*` | target.group dalam scope; `create`: grup daun |
 | `group.create/update/delete` | peran ≥ ADMIN; parent/target dalam scope; `delete`: kosong |
-| `activity.create` | peran ≥ ADMIN; `groupId === session.groupId` |
-| `activity.update/delete/split`, `occurrence.override` | peran ≥ ADMIN; `activity.groupId === session.groupId` |
+| `activity.create` | grup pemilik dipilih di form, di-resolve dalam scope (404 di luar scope); X ∈ `adminGroupIds` (peran utama ≥ ADMIN di X, atau peran tambahan ADMIN di X) |
+| `activity.update/delete/split`, `occurrence.override` | `activity.groupId ∈ adminGroupIds` (lihat §3.2a) |
 | `attendance.record` | §3.3 |
 | `survey.view` | target `{ surveyGroupPath }`: sama dengan `activity.view` (leluhur/grup user atau dalam scope; selain itu 404) |
 | `survey.create` | peran ≥ ADMIN; `groupId === session.groupId` |
@@ -516,7 +537,7 @@ Setiap Server Action: `auth()` → zod parse → resolve target → `authorize` 
 ### 4.1 Autentikasi & sesi
 - Auth.js v5 Credentials + **bcrypt cost 12**. Password minimal 8 karakter (zod). Pesan gagal login generik ("username atau password salah").
 - **Rate limit login**: tolak jika ≥ 5 gagal untuk username yang sama atau ≥ 20 gagal dari IP yang sama dalam 15 menit. Dihitung dari `AuditLog` (`auth.login_failed`), tidak perlu store terpisah.
-- JWT berisi `{ userId, groupId, role, groupPath }`. Di callback `jwt` (dipanggil tiap `auth()`), **query ulang `User` + `UserGroupRole`**: jika `isActive = false` → sesi dibatalkan; jika `role`/`groupId` berubah → token diperbarui. Satu query PK per request; ini disengaja agar nonaktifkan/turunkan peran langsung berlaku.
+- JWT berisi `{ userId, groupId, role, groupPath, extraRoles }`. Di callback `jwt` (dipanggil tiap `auth()`), **query ulang `User` + `UserGroupRole`**: jika `isActive = false` → sesi dibatalkan; jika `role`/`groupId` berubah → token diperbarui. Satu query PK per request; ini disengaja agar nonaktifkan/turunkan peran langsung berlaku.
 - Cookie sesi: `httpOnly`, `secure` (production), `sameSite=lax`, `maxAge` 7 hari.
 - Seed owner `admin/admin` dibuat dengan `mustChangePassword = true`.
 - `mustChangePassword = true` → middleware mengarahkan semua route (kecuali `/dashboard/akun/password`, `/login`) ke halaman ganti password.
@@ -544,7 +565,7 @@ Helper `audit(tx, { action, entity, entityId, groupId, before, after, meta })` d
 | Action | Kapan | before/after |
 |---|---|---|
 | `auth.login`, `auth.login_failed`, `auth.logout` | login/logout | `meta: { username }` |
-| `user.create`, `user.update_role`, `user.move`, `user.set_active`, `user.reset_password`, `user.change_password` | manajemen user | snapshot tanpa hash |
+| `user.create`, `user.update_role`, `user.add_extra_role`, `user.remove_extra_role`, `user.move`, `user.set_active`, `user.reset_password`, `user.change_password` | manajemen user | snapshot tanpa hash |
 | `group.create/update/delete`, `level.rename` | struktur | snapshot |
 | `organization.create` | `pnpm org:create` (`actorId: null`, `groupId` = grup akar) | `after` = nama, zona waktu, nama level, id grup akar (diikuti `user.create` untuk OWNER pertama) |
 | `organization.update` | ubah nama / zona waktu di `/dashboard/pengaturan` | `before`/`after` = nama + zona waktu |
@@ -676,7 +697,7 @@ Semua halaman aplikasi (wajib login) ada di bawah `/dashboard` dan memakai app s
 | `/dashboard/grup/[id]` | Detail (§7.2), tab: anggota (grup daun) **atau** sub-grup, kegiatan, pengguna, pengaturan (ADMIN/OWNER: rename + zona berbahaya hapus) — tiap daftar dipaginasi sendiri (`?subgrup=`, `?anggota=`, `?kegiatan=`, `?pengguna=`, 10/hal); aksi: lihat semua anggota, tambah anggota (daun, `/dashboard/anggota/baru?grup=`) atau tambah sub-grup (dialog) |
 | `/dashboard/anggota` | Tabel (paginasi `?page=`, 50/hal) + cari nama + filter grup (multi, termasuk turunan) / status; kolom bisa dipilih (§7.1); tombol WhatsApp per anggota |
 | `/dashboard/anggota/baru`, `/dashboard/anggota/[id]` | Form (`?grup=` memilih grup awal); detail (§7.2) tab profil, kehadiran (paginasi `?riwayat=`, 10/hal, tautan ke occurrence), ubah (form + zona berbahaya hapus soft); tombol WhatsApp |
-| `/dashboard/kegiatan` | Daftar **atau** kalender (toggle) per rentang tanggal — preset Hari ini/Minggu ini/Bulan ini/pilih tanggal (default Minggu ini) dengan tombol ‹ › per rentang, badge *warisan*, *konflik*, *dipindah*, *batal*; Keterangan occurrence (`overrideNotes` atau catatan kegiatan) tampil sebagai teks polos terpotong di daftar dan kalender; cari nama kegiatan (badge konflik tetap dihitung dari semua kegiatan); filter grup multi-select (dengan pintasan "pilih dengan turunannya") atas union §5.3; daftar dipaginasi 50/hal; semua state (grup, rentang, tampilan, cari) di URL; tombol **Cetak** membuka `/dashboard/kegiatan/cetak` dengan filter yang sama |
+| `/dashboard/kegiatan` | Daftar **atau** kalender (toggle; kalender berupa agenda per hari untuk rentang ≤ 7 hari, grid bulan untuk rentang lebih panjang) per rentang tanggal — preset Hari ini/Minggu ini/Bulan ini/pilih tanggal (default Minggu ini) dengan tombol ‹ › per rentang, badge *warisan*, *konflik*, *dipindah*, *batal*; Keterangan occurrence (`overrideNotes` atau catatan kegiatan) tampil sebagai teks polos terpotong di daftar dan kalender; cari nama kegiatan (badge konflik tetap dihitung dari semua kegiatan); filter grup multi-select (dengan pintasan "pilih dengan turunannya") atas union §5.3; daftar dipaginasi 50/hal; semua state (grup, rentang, tampilan, cari) di URL; tombol **Cetak** membuka `/dashboard/kegiatan/cetak` dengan filter yang sama |
 | `/dashboard/kegiatan/cetak` | Jadwal siap cetak untuk filter yang sama dengan daftar (`grup`, `q`, `range`, `anchor`, `from`, `to`), tanpa paginasi; satu tabel untuk seluruh rentang (kolom Tanggal, Jam, Kegiatan, Grup, Lokasi, Keterangan), Tanggal tampil sekali per tanggal efektif (rowspan) dengan garis pemisah, urut jam lalu nama, header tabel diulang tiap halaman cetak, baris tidak terbelah; label *Dipindah*/*Batal* sebagai teks; `batal=0` menyembunyikan yang batal (default tampil); rentang maks. `PRINT_MAX_MONTHS` (3) bulan; navigasi & toolbar disembunyikan saat cetak, A4 hitam-putih; dicetak lewat dialog browser (tanpa PDF server) |
 | `/dashboard/kegiatan/baru`, `/dashboard/kegiatan/[id]` | Form template; detail (§7.2) tab absensi per rentang (preset 7/30/90 hari, bulan ini, pilih tanggal; default 30 hari) dengan tabel per-occurrence & per-anggota (10/hal), jadwal 90 hari ke depan (`?jadwal=`, 10/hal; ubah satu tanggal lewat dialog, hanya `canEdit`), pengaturan (hanya `canEdit`: form, geser, zona berbahaya akhiri/hapus); aksi "Isi absensi hari ini" bila ada occurrence hari ini |
 | `/dashboard/kegiatan/[id]/[tanggal]` | Tabel absensi occurrence (nama, status, alasan, aksi Hadir/Izin yang langsung tersimpan; urut nama/status; filter nama/status/grup) — **tidak** dipaginasi (semua anggota perlu terlihat saat mengisi) |
@@ -767,7 +788,7 @@ Semua halaman aplikasi (wajib login) ada di bawah `/dashboard` dan memakai app s
 |---|---|
 | Relasi anggota (ayah, ibu, saudara, suami/istri, anak) | Tabel `MemberRelation(memberId, relatedId, type)` — tambah nanti, tidak mengubah `Member`. |
 | Foto anggota | Kolom `photoUrl` + object storage; tambah nanti. |
-| Multi-peran per user | Hapus `@unique` di `UserGroupRole.userId`; scope jadi union path. |
+| Multi-peran lintas cabang | Peran tambahan ADMIN di bawah grup utama sudah ada (§3.2a). Yang belum: peran di cabang lain (scope = union path) dan peran tambahan selain ADMIN. |
 | Syarat peserta kegiatan (perempuan saja, SMP, dll.) | Kolom JSON `criteria` di `Activity`; `expected()` sudah terpusat sehingga tinggal tambah filter. |
 | Riwayat pindah grup anggota | Tabel `MemberGroupHistory`; `PINDAH` saat ini membuat baris baru. |
 | Ekspor data / cetak | Perlu keputusan kebijakan PII dulu; audit `export.*`. |

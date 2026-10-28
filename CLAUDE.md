@@ -33,7 +33,7 @@ pnpm lint && pnpm tsc --noEmit
 - **Setiap mutasi menulis `AuditLog` di transaksi yang sama** lewat `audit(tx, …)`. `passwordHash` selalu diredaksi.
 - `isActive` dan `role` divalidasi ulang ke DB tiap request di callback `jwt`; jangan percaya JWT untuk keduanya.
 - `Group.depth === parent.depth + 1`; anggota hanya boleh di grup daun (depth = level terakhir).
-- Kegiatan milik grup X berlaku ke seluruh turunan X. **Ubah** kegiatan/occurrence hanya oleh user ≥ ADMIN yang `groupId === activity.groupId`. **Absensi** hanya oleh user di X atau di bawah X, untuk grup daun dalam scope, tanggal ≤ hari ini (kecuali ≥ ADMIN lewat tabel absensi `setMemberAttendance`), tanggal kunci sah menurut `occurrencesFor`.
+- Kegiatan milik grup X berlaku ke seluruh turunan X. **Ubah** kegiatan/occurrence hanya oleh user dengan peran ADMIN+ di `activity.groupId` (grup sendiri, atau `UserExtraRole` ADMIN; DESIGN.md §3.2a — peran tambahan tidak pernah memperluas scope). **Absensi** hanya oleh user di X atau di bawah X, untuk grup daun dalam scope, tanggal ≤ hari ini (kecuali ≥ ADMIN lewat tabel absensi `setMemberAttendance`), tanggal kunci sah menurut `occurrencesFor`.
 - `ActivityOccurrence` dibuat lazy (upsert saat absensi / override). Tidak ada job generator. `date` = tanggal kunci aturan; tanggal efektif = `overrideDate ?? date`.
 - Absen = anggota *expected* (`lib/stats.ts`) tanpa baris `Attendance`. Jangan simpan baris "tidak hadir".
 - Hapus grup hanya jika kosong (tanpa anak, anggota, kegiatan, user yang belum dihapus).

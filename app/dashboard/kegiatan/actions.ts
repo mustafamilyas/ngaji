@@ -35,14 +35,15 @@ import { occurrenceOverrideSchema } from "@/lib/validation/occurrence";
 type CreateResult = ActionResult<{ activity: Activity; hasConflict: boolean }>;
 
 /**
- * `groupId` is always the caller's own group (DESIGN.md §3.2 "kegiatan milik
- * grup user sendiri") — set here from the session rather than trusted from
- * `input`, so the create form never needs a group field at all.
+ * `input.groupId` is the owning group picked in the form. Never trusted:
+ * `createActivity` resolves it in scope and requires an ADMIN+ role there
+ * (own group or an additional role, DESIGN.md §3.2a). Defaults to the
+ * caller's own group when omitted.
  */
 export async function createActivityAction(input: unknown): Promise<CreateResult> {
   const session = await requireSession();
   const result = await runAction(async () => {
-    const parsed = activitySchema.safeParse({ ...(input as Record<string, unknown>), groupId: session.groupId });
+    const parsed = activitySchema.safeParse({ ...(input as Record<string, unknown>), groupId: (input as { groupId?: unknown })?.groupId ?? session.groupId });
     if (!parsed.success) {
       throw new ValidationError(parsed.error.issues[0]?.message ?? "Data tidak valid");
     }

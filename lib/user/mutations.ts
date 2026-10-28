@@ -5,13 +5,16 @@ import type { SessionUser } from "@/lib/auth/session-user";
 import { authorize } from "@/lib/authz";
 import { BCRYPT_COST } from "@/lib/constants";
 import { db } from "@/lib/db";
-import { ForbiddenError, ValidationError } from "@/lib/errors";
+import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 import { resolveGroup, resolveUser } from "@/lib/resolve";
+import { isInScope } from "@/lib/scope";
 import { toCreatedUserDto, toUserDto } from "./dto";
 import type { Role } from "@/lib/validation/enums";
 import type {
+  AddExtraRoleInput,
   CreateUserInput,
   MoveUserInput,
+  RemoveExtraRoleInput,
   ResetUserPasswordInput,
   SetUserActiveInput,
   UpdateUserRoleInput,
@@ -120,6 +123,63 @@ export async function updateUserRole(session: SessionUser, input: UpdateUserRole
   });
 }
 
+/**
+ * OWNER only (same rule as `updateUserRole`). The group must be strictly below the user's primary
+ * group — scope never widens, only the role at that group does (DESIGN.md §3.2a).
+ */
+export async function addExtraRole(session: SessionUser, input: AddExtraRoleInput) {
+  const user = await resolveUser(session, input.userId);
+  requireRole(user);
+  const group = await resolveGroup(session, input.groupId);
+
+  authorize(session, "user.updateRole", { userId: user.id, groupPath: user.role.group.path });
+
+  if (group.id === user.role.groupId || !isInScope(group.path, user.role.group.path)) {
+    throw new ValidationError("Grup harus berada di bawah grup utama pengguna");
+  }
+  if (user.extraRoles.some((extra) => extra.groupId === group.id)) {
+    throw new ValidationError("Pengguna sudah punya peran di grup ini");
+  }
+
+  return db.$transaction(async (tx) => {
+    const created = await tx.userExtraRole.create({
+      data: { userId: user.id, groupId: group.id, role: input.role },
+    });
+    await audit(tx, {
+      actorId: Number(session.id),
+      action: "user.add_extra_role",
+      entity: "User",
+      entityId: user.id,
+      groupId: group.id,
+      after: { role: created.role, groupId: created.groupId },
+    });
+    return created;
+  });
+}
+
+export async function removeExtraRole(session: SessionUser, input: RemoveExtraRoleInput) {
+  const user = await resolveUser(session, input.userId);
+  requireRole(user);
+
+  authorize(session, "user.updateRole", { userId: user.id, groupPath: user.role.group.path });
+
+  const extra = user.extraRoles.find((r) => r.groupId === input.groupId);
+  if (!extra) throw new NotFoundError();
+
+  return db.$transaction(async (tx) => {
+    await tx.userExtraRole.delete({ where: { id: extra.id } });
+    await audit(tx, {
+      actorId: Number(session.id),
+      action: "user.remove_extra_role",
+      entity: "User",
+      entityId: user.id,
+      groupId: extra.groupId,
+      before: { role: extra.role, groupId: extra.groupId },
+    });
+    return extra;
+  });
+}
+
 /** OWNER only; destination group resolved (and scope-checked) independently of the user's current group (DESIGN.md §3.2). */
 export async function moveUser(session: SessionUser, input: MoveUserInput) {
   const user = await resolveUser(session, input.userId);
@@ -127,6 +187,14 @@ export async function moveUser(session: SessionUser, input: MoveUserInput) {
   const destination = await resolveGroup(session, input.groupId);
 
   authorize(session, "user.move", { userId: user.id, groupPath: user.role.group.path });
+
+  // Additional roles only exist below the primary group (DESIGN.md §3.2a): they must still be inside the new scope.
+  const stranded = user.extraRoles.filter(
+    (extra) => extra.groupId === destination.id || !isInScope(extra.group.path, destination.path),
+  );
+  if (stranded.length > 0) {
+    throw new ValidationError("Hapus peran tambahan di luar grup tujuan terlebih dahulu");
+  }
 
   return db.$transaction(async (tx) => {
     const updated = await tx.userGroupRole.update({

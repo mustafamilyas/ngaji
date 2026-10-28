@@ -104,7 +104,7 @@ export async function resolveOccurrence(session: SessionUser, occurrenceId: numb
 export async function resolveUser(session: SessionUser, userId: number) {
   const user = await db.user.findUnique({
     where: { id: userId },
-    include: { role: { include: { group: true } } },
+    include: { role: { include: { group: true } }, extraRoles: { include: { group: true } } },
   });
   if (!user || !user.role || !isInScope(user.role.group.path, session.groupPath)) {
     throw new NotFoundError();

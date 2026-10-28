@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useTransition } from "react";
+import { type ReactNode, useState, useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { Save } from "lucide-react";
 import { createActivityAction, splitActivityAction, updateActivityAction } from "@/app/dashboard/kegiatan/actions";
@@ -55,7 +55,13 @@ function Field({
 }
 
 type ActivityFormProps =
-  | { mode: "create"; /** The organization's "today" (`YYYY-MM-DD`), computed on the server. */ today: string }
+  | {
+      mode: "create";
+      /** The organization's "today" (`YYYY-MM-DD`), computed on the server. */
+      today: string;
+      /** Groups the user may own an activity for (ADMIN+ role there); the first is preselected. */
+      ownerGroups: { id: number; name: string; parentName?: string }[];
+    }
   | { mode: "edit"; activityId: number; defaultValues: ActivityUpdateInput }
   | { mode: "split"; activityId: number; defaultValues: ActivityUpdateInput };
 
@@ -76,6 +82,7 @@ const emptyDefaults = (today: string): ActivityUpdateInput => ({
 export function ActivityForm(props: ActivityFormProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [ownerGroupId, setOwnerGroupId] = useState(props.mode === "create" ? props.ownerGroups[0]?.id : undefined);
   const {
     register,
     handleSubmit,
@@ -99,7 +106,7 @@ export function ActivityForm(props: ActivityFormProps) {
     startTransition(async () => {
       const result =
         props.mode === "create"
-          ? await createActivityAction(values)
+          ? await createActivityAction({ ...values, groupId: ownerGroupId })
           : props.mode === "edit"
             ? await updateActivityAction(props.activityId, values)
             : await splitActivityAction({ ...values, activityId: props.activityId });
@@ -116,6 +123,24 @@ export function ActivityForm(props: ActivityFormProps) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 sm:grid-cols-2">
+      {props.mode === "create" && (
+        <Field label="Grup pemilik" htmlFor="ownerGroupId" wide>
+          <select
+            id="ownerGroupId"
+            className={inputClass}
+            value={ownerGroupId}
+            onChange={(event) => setOwnerGroupId(Number(event.target.value))}
+          >
+            {props.ownerGroups.map((group) => (
+              <option key={group.id} value={group.id}>
+                {group.parentName ? `${group.name} (${group.parentName})` : group.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">Kegiatan berlaku untuk grup ini dan semua turunannya.</p>
+        </Field>
+      )}
+
       <Field label="Nama" htmlFor="name" error={errors.name?.message}>
         <input id="name" className={inputClass} {...register("name")} />
       </Field>

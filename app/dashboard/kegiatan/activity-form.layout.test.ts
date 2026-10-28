@@ -9,7 +9,7 @@ vi.mock("next/navigation", () => ({
 
 import { ActivityForm } from "./activity-form";
 
-const create = () => renderToStaticMarkup(createElement(ActivityForm, { mode: "create", today: "2026-01-01" }));
+const create = () => renderToStaticMarkup(createElement(ActivityForm, { mode: "create", today: "2026-01-01", ownerGroups: [{ id: 1, name: "Grup" }] }));
 
 function tag(html: string, id: string): string {
   return html.match(new RegExp(`<(?:input|select|textarea)[^>]*\\bid="${id}"[^>]*>`))?.[0] ?? "";

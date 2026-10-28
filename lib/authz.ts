@@ -84,9 +84,21 @@ export function canViewActivity(session: SessionUser, activityGroupPath: string)
   );
 }
 
-/** DESIGN.md §3.3 "Ubah": strictly the owning group, role >= ADMIN. No override for root OWNER. */
+/**
+ * Groups where the session holds ADMIN or higher: its own group (primary role) and every
+ * additional ADMIN role (DESIGN.md §3.2a). Never derived from scope.
+ */
+export function adminGroupIds(session: SessionUser): number[] {
+  const ids = atLeast(session.role, "ADMIN") ? [session.groupId] : [];
+  for (const extra of session.extraRoles ?? []) {
+    if (atLeast(extra.role, "ADMIN")) ids.push(extra.groupId);
+  }
+  return ids;
+}
+
+/** DESIGN.md §3.3 "Ubah": strictly a group where the user holds ADMIN+ (own group or an additional role). No override for root OWNER. */
 export function canEditActivity(session: SessionUser, activityGroupId: number): boolean {
-  return session.groupId === activityGroupId && atLeast(session.role, "ADMIN");
+  return adminGroupIds(session).includes(activityGroupId);
 }
 
 /**
@@ -231,8 +243,7 @@ export function authorize(session: SessionUser, action: Action, target?: unknown
 
     case "activity.create": {
       const { groupId } = target as ActivityGroupTarget;
-      if (!atLeast(session.role, "ADMIN")) throw new ForbiddenError();
-      if (groupId !== session.groupId) throw new ForbiddenError();
+      if (!canEditActivity(session, groupId)) throw new ForbiddenError();
       return;
     }
 

@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, userEvent, waitFor, within } from "@/lib/test/dom";
 
 vi.mock("./actions", () => ({
+  addExtraRoleAction: vi.fn(),
+  removeExtraRoleAction: vi.fn(),
   moveUserAction: vi.fn(),
   resetUserPasswordAction: vi.fn(),
   setUserActiveAction: vi.fn(),
@@ -27,6 +29,7 @@ const renderDialog = (props: Partial<React.ComponentProps<typeof ManageUserDialo
   render(
     <ManageUserDialog
       userId={9}
+      extraRoles={[]}
       userName="Budi"
       role="USER"
       groupId={3}
@@ -78,6 +81,16 @@ describe("ManageUserDialog", () => {
 
     expect(within(dialog).getByRole("heading", { name: "Aktifkan akun" })).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Aktifkan" })).toBeInTheDocument();
+  });
+
+  it("lists additional roles with a remove button and an add picker", async () => {
+    const user = userEvent.setup();
+    renderDialog({ extraRoles: [{ groupId: 4, groupName: "Kelompok B" }] });
+    const dialog = await open(user);
+
+    expect(within(dialog).getByRole("heading", { name: "Peran tambahan" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Hapus peran ADMIN di Kelompok B" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Tambah" })).toBeDisabled();
   });
 
   it("changes the role", async () => {

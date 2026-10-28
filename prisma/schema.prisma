@@ -89,6 +89,7 @@ model Group {
   surveys      Survey[]
   memberViews  MemberView[]
   userRoles    UserGroupRole[]
+  extraRoles   UserExtraRole[]
 
   @@index([path])
   @@index([parentId])
@@ -106,6 +107,7 @@ model User {
   updatedAt          DateTime @updatedAt
 
   role               UserGroupRole?
+  extraRoles         UserExtraRole[]
   createdMembers     Member[]         @relation("memberCreatedBy")
   createdActivities  Activity[]       @relation("activityCreatedBy")
   recordedAttendance Attendance[]     @relation("attendanceRecordedBy")
@@ -127,6 +129,22 @@ model UserGroupRole {
   user      User     @relation(fields: [userId], references: [id])
   group     Group    @relation(fields: [groupId], references: [id])
 
+  @@index([groupId])
+}
+
+/// Additional ADMIN role at a group strictly below the user's primary `UserGroupRole` group (DESIGN.md §3.2a).
+/// Scope never comes from here: it stays the primary role's scope.
+model UserExtraRole {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  groupId   Int
+  role      String // Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+  group     Group    @relation(fields: [groupId], references: [id])
+
+  @@unique([userId, groupId])
   @@index([groupId])
 }
 

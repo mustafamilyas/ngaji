@@ -2,19 +2,23 @@
 
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/auth/require-session";
-import type { UserGroupRole } from "@/lib/generated/prisma/client";
+import type { UserExtraRole, UserGroupRole } from "@/lib/generated/prisma/client";
 import { type ActionResult, ValidationError, runAction } from "@/lib/errors";
 import type { CreatedUserDto, UserDto } from "@/lib/user/dto";
 import {
+  addExtraRole,
   createUser,
   moveUser,
+  removeExtraRole,
   resetUserPassword,
   setUserActive,
   updateUserRole,
 } from "@/lib/user/mutations";
 import {
+  addExtraRoleSchema,
   createUserSchema,
   moveUserSchema,
+  removeExtraRoleSchema,
   resetUserPasswordSchema,
   setUserActiveSchema,
   updateUserRoleSchema,
@@ -117,6 +121,49 @@ export async function resetUserPasswordAction(
       throw new ValidationError(parsed.error.issues[0]?.message ?? "Data tidak valid");
     }
     return resetUserPassword(session, parsed.data);
+  });
+  if (result.ok) {
+    revalidatePath("/dashboard/pengguna");
+  }
+  return result;
+}
+
+export async function addExtraRoleAction(
+  _prevState: ActionResult<UserExtraRole> | null,
+  formData: FormData,
+): Promise<ActionResult<UserExtraRole>> {
+  const session = await requireSession();
+  const result = await runAction(async () => {
+    const parsed = addExtraRoleSchema.safeParse({
+      userId: formData.get("userId"),
+      groupId: formData.get("groupId"),
+      role: "ADMIN", // the only additional role there is (EXTRA_ROLES); not a form field
+    });
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.issues[0]?.message ?? "Data tidak valid");
+    }
+    return addExtraRole(session, parsed.data);
+  });
+  if (result.ok) {
+    revalidatePath("/dashboard/pengguna");
+  }
+  return result;
+}
+
+export async function removeExtraRoleAction(
+  _prevState: ActionResult<UserExtraRole> | null,
+  formData: FormData,
+): Promise<ActionResult<UserExtraRole>> {
+  const session = await requireSession();
+  const result = await runAction(async () => {
+    const parsed = removeExtraRoleSchema.safeParse({
+      userId: formData.get("userId"),
+      groupId: formData.get("groupId"),
+    });
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.issues[0]?.message ?? "Data tidak valid");
+    }
+    return removeExtraRole(session, parsed.data);
   });
   if (result.ok) {
     revalidatePath("/dashboard/pengguna");

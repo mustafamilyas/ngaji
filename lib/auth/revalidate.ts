@@ -15,7 +15,7 @@ export async function revalidateSessionUser(
 ): Promise<SessionUser | null> {
   const user = await db.user.findUnique({
     where: { id: userId },
-    include: { role: { include: { group: { include: { organization: true } } } } },
+    include: { role: { include: { group: { include: { organization: true } } } }, extraRoles: true },
   });
 
   if (!user || !user.isActive || !user.role) return null;

@@ -162,6 +162,11 @@ export default async function UsersPage({
                       <td className={stackedCell}>
                         <PhoneLabel>Peran</PhoneLabel>
                         <Badge variant="secondary">{role}</Badge>
+                        {userRole.user.extraRoles.length > 0 && (
+                          <span className="ml-1.5 text-xs text-muted-foreground">
+                            +ADMIN di {userRole.user.extraRoles.map((extra) => extra.group.name).join(", ")}
+                          </span>
+                        )}
                       </td>
                       <td className={stackedCell}>
                         <PhoneLabel>Grup</PhoneLabel>
@@ -190,6 +195,10 @@ export default async function UsersPage({
                             canManage={canManage}
                             canReset={canReset}
                             groups={groups}
+                            extraRoles={userRole.user.extraRoles.map((extra) => ({
+                              groupId: extra.groupId,
+                              groupName: extra.group.name,
+                            }))}
                           />
                         )}
                       </td>

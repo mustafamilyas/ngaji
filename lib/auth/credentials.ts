@@ -43,7 +43,7 @@ export async function verifyCredentials(input: unknown): Promise<CredentialsResu
 
   const user = await db.user.findUnique({
     where: { username },
-    include: { role: { include: { group: { include: { organization: true } } } } },
+    include: { role: { include: { group: { include: { organization: true } } } }, extraRoles: true },
   });
 
   if (!user) {

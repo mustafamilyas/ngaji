@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
-### Requirement: One user, one group, one role
-Each user SHALL have exactly one `UserGroupRole (groupId, role)`. Users SHALL never be deleted; `isActive` controls access.
+### Requirement: One primary role per user
+Each user SHALL have exactly one `UserGroupRole (groupId, role)`, which alone defines the user's scope. Users SHALL never be deleted; `isActive` controls access.
 
 #### Scenario: Deactivate instead of delete
 - **WHEN** an OWNER "removes" a user
@@ -17,6 +17,13 @@ OWNER and ADMIN SHALL create USER or ADMIN accounts for any group in scope. Only
 #### Scenario: ADMIN cannot create OWNER
 - **WHEN** an ADMIN submits role OWNER
 - **THEN** the system responds 403
+
+### Requirement: Additional ADMIN roles
+Only an OWNER (same rules as changing a role) SHALL add or remove a `UserExtraRole`. Its group SHALL be strictly below the user's primary group, with at most one row per user and group; the role SHALL be ADMIN. It SHALL NOT widen the user's scope. Moving a user whose additional roles would fall outside the destination's scope SHALL be rejected. Add and remove SHALL be audited (`user.add_extra_role`, `user.remove_extra_role`).
+
+#### Scenario: Group above or equal to primary
+- **WHEN** an OWNER adds an additional role at the user's primary group or at an ancestor of it
+- **THEN** the system rejects the request
 
 ### Requirement: Change role, move group, activate/deactivate
 Only OWNER SHALL change a user's role, move a user to another group in scope, or toggle `isActive`, subject to the self-protection rules in `authorization`.

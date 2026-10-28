@@ -5,7 +5,7 @@ import { authorize } from "@/lib/authz";
 import { addDays } from "@/lib/dates";
 import { db } from "@/lib/db";
 import { ValidationError } from "@/lib/errors";
-import { resolveActivity } from "@/lib/resolve";
+import { resolveActivity, resolveGroup } from "@/lib/resolve";
 import { endingDeletesActivity } from "./end";
 import type {
   ActivityInput,
@@ -38,7 +38,9 @@ function templateData(input: TemplateFields) {
 }
 
 export async function createActivity(session: SessionUser, input: ActivityInput) {
-  authorize(session, "activity.create", { groupId: input.groupId });
+  // The owning group comes from the client: resolve it (scope check, 404) before the ADMIN+ check.
+  const group = await resolveGroup(session, input.groupId);
+  authorize(session, "activity.create", { groupId: group.id });
 
   const activity = await db.$transaction(async (tx) => {
     const created = await tx.activity.create({
@@ -55,7 +57,7 @@ export async function createActivity(session: SessionUser, input: ActivityInput)
     return created;
   });
 
-  const hasConflict = await activityHasConflict(activity.id, session.groupPath, session.timeZone);
+  const hasConflict = await activityHasConflict(activity.id, group.path, session.timeZone);
   return { activity, hasConflict };
 }
 

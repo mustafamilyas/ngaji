@@ -96,12 +96,14 @@ export async function deleteGroup(session: SessionUser, groupId: number) {
   const group = await resolveGroup(session, groupId);
   authorize(session, "group.delete", { groupPath: group.path });
 
-  const [childCount, memberCount, activityCount, userCount] = await Promise.all([
+  const [childCount, memberCount, activityCount, primaryCount, extraCount] = await Promise.all([
     db.group.count({ where: { parentId: group.id } }),
     db.member.count({ where: { groupId: group.id } }),
     db.activity.count({ where: { groupId: group.id } }),
     db.userGroupRole.count({ where: { groupId: group.id } }),
+    db.userExtraRole.count({ where: { groupId: group.id } }),
   ]);
+  const userCount = primaryCount + extraCount;
 
   const attached: string[] = [];
   if (childCount > 0) attached.push("sub-grup");
