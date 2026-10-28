@@ -63,8 +63,15 @@ describe("ActivityListPage toolbar phone and tablet sizes", () => {
     expect(html).toMatch(/<select[^>]*aria-label="Urutkan"[^>]*>/);
   });
 
-  it("gives the calendar 44px day cells and a legend on phones", async () => {
-    const html = await render("kegiatan-calendar-cells", { view: "calendar" });
+  it("shows the week range as an agenda with the activities themselves", async () => {
+    const html = await render("kegiatan-calendar-agenda", { view: "calendar", range: "minggu" });
+
+    expect(html).toMatch(/<ol class="[^"]*divide-y/);
+    expect(html).not.toContain("data-calendar-legend");
+  });
+
+  it("gives the month calendar 44px day cells and a legend on phones", async () => {
+    const html = await render("kegiatan-calendar-cells", { view: "calendar", range: "bulan" });
 
     expect(html).toMatch(/<div class="[^"]*\bp-1\b[^"]*\bsm:p-4\b[^"]*"><div class="flex flex-col gap-1">/);
     expect(html).toMatch(/<p[^>]*data-calendar-legend[^>]*class="[^"]*\bsm:hidden\b/);

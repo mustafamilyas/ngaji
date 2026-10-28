@@ -139,7 +139,37 @@ describe("ActivityListPage", () => {
     expect(html).toContain("1–31 Jan 2024");
   });
 
-  it("renders the calendar view with the expected number of day cells and occurrence badges", async () => {
+  it("renders the calendar of the default week range as an agenda of full activity entries", async () => {
+    const fixture = await buildPageFixture("kegiatan-list-agenda");
+    const branchAdmin = sessionFor(fixture.actorId, "ADMIN", fixture.branch);
+    await createActivity(branchAdmin, {
+      groupId: fixture.branch.id,
+      name: "Kajian Cabang",
+      location: "Aula Cabang",
+      startTime: "19:00",
+      durationMinutes: 60,
+      freq: "ONCE",
+      interval: 1,
+      weekdays: [],
+      startsOn: today(DEFAULT_TIMEZONE),
+      endsOn: today(DEFAULT_TIMEZONE),
+    });
+
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "ADMIN", fixture.leaf) });
+
+    const html = renderToStaticMarkup(
+      await ActivityListPage({ searchParams: Promise.resolve({ view: "calendar" }) }),
+    );
+
+    expect(html).not.toContain("min-h-16");
+    expect(html).toContain("Kajian Cabang");
+    expect(html).toContain("Aula Cabang");
+    expect(html).toContain("Warisan");
+    expect(html).toContain("Hari ini");
+    expect((html.match(/Tidak ada kegiatan\./g) ?? []).length).toBe(6);
+  });
+
+  it("renders the calendar of a month range as a grid with the expected number of day cells", async () => {
     const fixture = await buildPageFixture("kegiatan-list-calendar");
     const branchAdmin = sessionFor(fixture.actorId, "ADMIN", fixture.branch);
     await createActivity(branchAdmin, {
@@ -159,10 +189,10 @@ describe("ActivityListPage", () => {
     mockAuthSession(auth, { user: session });
 
     const html = renderToStaticMarkup(
-      await ActivityListPage({ searchParams: Promise.resolve({ view: "calendar" }) }),
+      await ActivityListPage({ searchParams: Promise.resolve({ view: "calendar", range: "bulan" }) }),
     );
 
-    const month = sundayOf(today(DEFAULT_TIMEZONE));
+    const month = today(DEFAULT_TIMEZONE);
     const gridStart = sundayOf(monthStartOf(month));
     const gridEnd = addDays(sundayOf(monthEndOf(month)), 6);
     const expectedCells = daysBetween(gridStart, gridEnd) + 1;

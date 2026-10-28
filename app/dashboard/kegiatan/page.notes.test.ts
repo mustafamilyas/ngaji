@@ -130,7 +130,7 @@ describe("ActivityListPage Keterangan", () => {
       overrideNotes: "Pengajar: Ilyas",
     });
 
-    const html = await render(admin, { view: "calendar" });
+    const html = await render(admin, { view: "calendar", range: "bulan", anchor: "2026-03-15" });
 
     expect(count(html, "Pengajar: Ilyas")).toBe(2); // visible text + title attribute
     expect(count(html, NOTES_MARKER)).toBe(1);
@@ -141,7 +141,7 @@ describe("ActivityListPage Keterangan", () => {
     const fixture = await buildPageFixture("notes-calendar-markup");
     const { admin } = await weekly(fixture, "leaf", "Kalender Markup", "<i>x</i>");
 
-    const html = await render(admin, { view: "calendar" });
+    const html = await render(admin, { view: "calendar", range: "bulan", anchor: "2026-03-15" });
 
     expect(html).toContain("&lt;i&gt;x&lt;/i&gt;");
     expect(html).not.toContain("<i>x");
@@ -195,7 +195,7 @@ describe("ActivityListPage Keterangan", () => {
       overrideNotes: "Pengajar: Ilyas",
     });
 
-    const html = await render(admin, { view: "calendar" });
+    const html = await render(admin, { view: "calendar", range: "bulan", anchor: "2026-03-15" });
 
     expect(count(html, "data-day-dots")).toBe(5); // one per Monday with an occurrence
     expect(count(html, "data-notes-marker")).toBe(1); // only 03-23 has notes

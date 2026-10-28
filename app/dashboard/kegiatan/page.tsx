@@ -30,7 +30,7 @@ import { WEEKDAY_LABELS } from "@/lib/activity/labels";
 import { listActivityOccurrences } from "@/lib/activity/list";
 import { ACTIVITY_SORT_KEYS, type ActivitySortKey, DEFAULT_ACTIVITY_SORT, sortActivityEntries } from "@/lib/activity/list-sort";
 import { visibleGroupsWhere } from "@/lib/authz";
-import { ACTIVITY_LIST_DATE_RANGE, PAGE_SIZE } from "@/lib/constants";
+import { ACTIVITY_CALENDAR_DATE_RANGE, ACTIVITY_LIST_DATE_RANGE, PAGE_SIZE } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { today, weekdayOf } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
@@ -53,13 +53,14 @@ export default async function ActivityListPage({
   const params = await searchParams;
 
   const now = today(session.user.timeZone);
-  const dateRange = resolveDateRange(params, ACTIVITY_LIST_DATE_RANGE, now);
+  const view = params.view === "calendar" ? "calendar" : "list";
+  // The calendar only shows whole calendar periods (day, week, month), so it has no free from–to range.
+  const rangeConfig = view === "calendar" ? ACTIVITY_CALENDAR_DATE_RANGE : ACTIVITY_LIST_DATE_RANGE;
+  const dateRange = resolveDateRange(params, rangeConfig, now);
   const { mode: range, anchor } = dateRange;
   // ACTIVITY_LIST_DATE_RANGE has no open-ended mode, so both bounds are always set.
   const from = dateRange.from!;
   const to = dateRange.to!;
-
-  const view = params.view === "calendar" ? "calendar" : "list";
 
   const groupIds = parseGroupIds(params.grup);
   const q = parseSearch(params.q);
@@ -206,7 +207,7 @@ export default async function ActivityListPage({
               withDescendantsAction
               hint="Menampilkan kegiatan yang berlaku untuk grup terpilih, termasuk dari grup induknya."
             />
-            <DateRangeFilter range={dateRange} {...ACTIVITY_LIST_DATE_RANGE} today={now} />
+            <DateRangeFilter range={dateRange} {...rangeConfig} today={now} />
             {view === "list" && (
               <SortSelect
                 options={[
@@ -229,7 +230,7 @@ export default async function ActivityListPage({
       >
         {view === "calendar" ? (
           <div className="p-1 sm:p-4">
-            <ActivityCalendar entries={entries} month={from} dayHref={dayHref} />
+            <ActivityCalendar entries={entries} from={from} to={to} today={now} dayHref={dayHref} />
           </div>
         ) : entries.length > 0 ? (
           <div className="overflow-x-auto">
