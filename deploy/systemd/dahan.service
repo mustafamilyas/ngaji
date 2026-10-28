@@ -1,12 +1,12 @@
 [Unit]
-Description=Ngaji
+Description=Dahan
 After=network.target
 
 [Service]
 Type=simple
-User=ngaji
-Group=ngaji
-WorkingDirectory=/opt/ngaji
+User=dahan
+Group=dahan
+WorkingDirectory=/opt/dahan
 # .env in WorkingDirectory is read by Next.js itself (DATABASE_URL, AUTH_SECRET, AUTH_TRUST_HOST).
 Environment=NODE_ENV=production
 ExecStart=/usr/bin/pnpm start -H 127.0.0.1 -p 3000
@@ -22,7 +22,7 @@ ProtectKernelTunables=true
 ProtectControlGroups=true
 RestrictSUIDSGID=true
 LockPersonality=true
-ReadWritePaths=/var/lib/ngaji /var/backups/ngaji
+ReadWritePaths=/var/lib/dahan /var/backups/dahan
 
 [Install]
 WantedBy=multi-user.target

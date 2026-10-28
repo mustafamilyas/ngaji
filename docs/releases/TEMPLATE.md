@@ -23,7 +23,7 @@ _Group as Added / Changed / Fixed / Removed. One line each._
 ## 3. Risk and impact
 
 - **Migrations:** _none, or list `prisma/migrations/<name>` with what it does and whether it is reversible._
-- **Config / env changes:** _new or changed variables in `/opt/ngaji/.env`, Nginx, systemd. "None" if none._
+- **Config / env changes:** _new or changed variables in `/opt/dahan/.env`, Nginx, systemd. "None" if none._
 - **Data impact:** _backfills, destructive changes, expected downtime._
 - **Sessions:** _do users have to log in again?_
 - **Dependency audit exceptions:** _new rows added to DEPLOYMENT.md §5, or "none"._
@@ -35,7 +35,7 @@ _Group as Added / Changed / Fixed / Removed. One line each._
 - [ ] `pnpm audit:viewport` exits 0 (only if UI changed)
 - [ ] `pnpm audit --prod` clean or exceptions recorded (DEPLOYMENT.md §5)
 - [ ] DESIGN.md and OpenSpec specs updated if a design decision changed
-- [ ] Fresh backup ran and succeeded: `sudo systemctl start ngaji-backup.service`
+- [ ] Fresh backup ran and succeeded: `sudo systemctl start dahan-backup.service`
 - [ ] VPS snapshot taken in the IDCloudHost console (name: `pre-vX.Y.Z`)
 - [ ] Commit tagged: `git tag vX.Y.Z && git push origin vX.Y.Z`
 
@@ -44,13 +44,13 @@ _Group as Added / Changed / Fixed / Removed. One line each._
 Standard upgrade (DEPLOYMENT.md §9):
 
 ```bash
-cd /opt/ngaji
-sudo -u ngaji git fetch --tags && sudo -u ngaji git checkout vX.Y.Z
-sudo -u ngaji pnpm install --frozen-lockfile
-sudo -u ngaji pnpm prisma generate
-sudo -u ngaji pnpm prisma migrate deploy
-sudo -u ngaji pnpm build
-sudo systemctl restart ngaji
+cd /opt/dahan
+# send the code first: DEPLOYMENT.md §4 "Send the code" with <ref> = vX.Y.Z
+sudo -u dahan pnpm install --frozen-lockfile
+sudo -u dahan pnpm prisma generate
+sudo -u dahan pnpm prisma migrate deploy
+sudo -u dahan pnpm build
+sudo systemctl restart dahan
 ```
 
 _Extra steps specific to this release (new env var, one-off script, ...) go here, in order. "None" if none._
@@ -61,7 +61,7 @@ Run these on the live URL. Tick each box and note anything odd. The **Core** blo
 
 ### Core
 
-- [ ] `systemctl status ngaji` is active; `journalctl -u ngaji -n 50` shows no errors and no PII
+- [ ] `systemctl status dahan` is active; `journalctl -u dahan -n 50` shows no errors and no PII
 - [ ] `curl -I http://<domain>/login` → 301 to https
 - [ ] `curl -I https://<domain>/login` → 200 with `Content-Security-Policy` and `Strict-Transport-Security`
 - [ ] Port 3000 refused from outside: `curl -m 5 http://<server-ip>:3000` fails
@@ -80,7 +80,7 @@ Run these on the live URL. Tick each box and note anything odd. The **Core** blo
 
 ## 7. Rollback
 
-1. App-only problem, no migration applied: `git checkout <previous tag>`, rebuild, `systemctl restart ngaji`.
+1. App-only problem, no migration applied: send the previous tag the same way (DEPLOYMENT.md §4), rebuild, `systemctl restart dahan`.
 2. Migration applied or data damaged: restore the `pre-vX.Y.Z` VPS snapshot, or run `scripts/restore.sh` with the pre-upgrade backup (DEPLOYMENT.md §8) and redeploy the previous tag.
 3. Record what happened in section 8 and set Status to `Rolled back`.
 

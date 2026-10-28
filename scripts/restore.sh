@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Restore the Ngaji database from an encrypted backup.
+# Restore the Dahan database from an encrypted backup.
 #
 # Usage: restore.sh <object|file> <age-identity-file>
-#   <object>  a name in the bucket, e.g. daily/ngaji-2026-11-01.db.gz.age or monthly/ngaji-2026-11.db.gz.age
-#             (needs rclone config and BACKUP_BUCKET, i.e. run with /etc/ngaji/backup.env loaded)
+#   <object>  a name in the bucket, e.g. daily/dahan-2026-11-01.db.gz.age or monthly/dahan-2026-11.db.gz.age
+#             (needs rclone config and BACKUP_BUCKET, i.e. run with /etc/dahan/backup.env loaded)
 #   <file>    a local .db.gz.age path (an existing file wins over an object name)
 #
 # Aborts before touching production on a wrong key or a corrupt backup.
@@ -13,9 +13,9 @@ set -euo pipefail
 
 SRC="${1:?usage: restore.sh <object|file> <age-identity-file>}"
 IDENTITY="${2:?usage: restore.sh <object|file> <age-identity-file>}"
-DB_PATH="${DB_PATH:-/var/lib/ngaji/production.db}"
-SERVICE="${SERVICE:-ngaji}"
-APP_USER="${APP_USER:-ngaji}"
+DB_PATH="${DB_PATH:-/var/lib/dahan/production.db}"
+SERVICE="${SERVICE:-dahan}"
+APP_USER="${APP_USER:-dahan}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:3000/login}"
 SKIP_SERVICE="${SKIP_SERVICE:-0}"
 
