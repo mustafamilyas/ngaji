@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { isAncestorOf, isInScope } from "@/lib/scope";
+import { canViewTag, visibleTagWhere } from "@/lib/tag/access";
 import type { Definition, Rule } from "@/lib/validation/member-view";
 import type { SessionUser } from "./auth/session-user";
 
@@ -84,6 +85,34 @@ export async function resolveSurvey(session: SessionUser, surveyId: number) {
   if (!visible) throw new NotFoundError();
 
   return survey;
+}
+
+/**
+ * Resolves to a tag the session may see: owned by its own group, an ancestor,
+ * or a descendant (DESIGN.md §13.2). Anything else, a deleted tag or another
+ * organization's tag is a 404. Whether the tag may also be *used* is
+ * `authorize("tag.use")`'s job (403); the owner group is included for it.
+ */
+export async function resolveTag(session: SessionUser, tagId: number) {
+  const tag = await db.tag.findUnique({ where: { id: tagId }, include: { group: true } });
+  if (!tag || !canViewTag(session, tag.group.path)) throw new NotFoundError();
+  return tag;
+}
+
+/**
+ * List variant for filters: ids that are missing, deleted or not visible are
+ * dropped instead of failing the page (design D5). Input order, de-duplicated.
+ */
+export async function resolveVisibleTags(session: SessionUser, tagIds: number[]) {
+  const ids = [...new Set(tagIds)];
+  if (ids.length === 0) return [];
+
+  const tags = await db.tag.findMany({
+    where: { id: { in: ids }, ...visibleTagWhere(session) },
+    include: { group: true },
+  });
+  const byId = new Map(tags.map((tag) => [tag.id, tag]));
+  return ids.flatMap((id) => byId.get(id) ?? []);
 }
 
 export async function resolveOccurrence(session: SessionUser, occurrenceId: number) {

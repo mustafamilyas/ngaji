@@ -5,7 +5,7 @@ import { PrismaClient } from "./generated/prisma/client";
 export { resolveDatabaseUrl };
 
 /**
- * Every Group/Member/Activity/Survey/MemberView read goes through this extension so a missing
+ * Every Group/Member/Activity/Survey/MemberView/Tag read goes through this extension so a missing
  * `deletedAt: null` filter can never leak a soft-deleted row (see DESIGN.md §2).
  */
 const adapter = new PrismaBetterSqlite3({ url: resolveDatabaseUrl() });
@@ -56,6 +56,20 @@ export const db = new PrismaClient({ adapter }).$extends({
       },
     },
     survey: {
+      findMany({ args, query }) {
+        return query({ ...args, where: { ...args.where, deletedAt: null } });
+      },
+      findFirst({ args, query }) {
+        return query({ ...args, where: { ...args.where, deletedAt: null } });
+      },
+      findUnique({ args, query }) {
+        return query({ ...args, where: { ...args.where, deletedAt: null } });
+      },
+      count({ args, query }) {
+        return query({ ...args, where: { ...args.where, deletedAt: null } });
+      },
+    },
+    tag: {
       findMany({ args, query }) {
         return query({ ...args, where: { ...args.where, deletedAt: null } });
       },

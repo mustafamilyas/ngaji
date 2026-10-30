@@ -11,7 +11,9 @@ import {
   resolveMember,
   resolveOccurrence,
   resolveSurvey,
+  resolveTag,
   resolveUser,
+  resolveVisibleTags,
 } from "./resolve";
 import type { SessionUser } from "./auth/session-user";
 
@@ -499,6 +501,64 @@ describe("lib/resolve", () => {
         await resolveDefinitionGroupsLenient(session, definition);
         expect(definition).toEqual(snapshot);
       });
+    });
+  });
+
+  describe("resolveTag / resolveVisibleTags", () => {
+    const newTag = (groupId: number, key: string, extra: { deletedAt?: Date } = {}) =>
+      db.tag.create({ data: { groupId, key, color: "blue", createdById: owner.id, ...extra } });
+
+    it("resolves a tag owned by the caller's group, an ancestor, or a descendant", async () => {
+      const own = await newTag(branchA.id, "own");
+      const inherited = await newTag(root.id, "inherited");
+      const below = await newTag(leafA.id, "below");
+      const session = sessionAt(branchA.id, branchA.path);
+      for (const tag of [own, inherited, below]) {
+        expect((await resolveTag(session, tag.id)).id).toBe(tag.id);
+      }
+    });
+
+    it("includes the owner group so callers can run the pure access rules", async () => {
+      const tag = await newTag(root.id, "with-group");
+      const resolved = await resolveTag(sessionAt(branchA.id, branchA.path), tag.id);
+      expect(resolved.group.path).toBe(root.path);
+    });
+
+    it("throws NotFoundError for a sibling-branch tag", async () => {
+      const tag = await newTag(branchB.id, "sibling");
+      await expect(resolveTag(sessionAt(branchA.id, branchA.path), tag.id)).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it("throws NotFoundError for a missing id and a soft-deleted tag", async () => {
+      const deleted = await newTag(branchA.id, "gone", { deletedAt: new Date() });
+      const session = sessionAt(branchA.id, branchA.path);
+      await expect(resolveTag(session, 999_999)).rejects.toBeInstanceOf(NotFoundError);
+      await expect(resolveTag(session, deleted.id)).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it("throws NotFoundError for a tag of another organization", async () => {
+      const otherOrg = await db.organization.create({ data: { name: "Other Tag Org" } });
+      const otherRoot = await db.group.create({
+        data: { organizationId: otherOrg.id, depth: 0, name: "Other Root", path: "" },
+      });
+      await db.group.update({ where: { id: otherRoot.id }, data: { path: `${otherRoot.id}/` } });
+      const tag = await newTag(otherRoot.id, "foreign");
+      await expect(resolveTag(sessionAt(root.id, root.path), tag.id)).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it("list variant keeps visible tags in input order, de-duplicated, and drops the rest without throwing", async () => {
+      const a = await newTag(root.id, "list-a");
+      const b = await newTag(leafA.id, "list-b");
+      const sibling = await newTag(branchB.id, "list-sibling");
+      const deleted = await newTag(branchA.id, "list-gone", { deletedAt: new Date() });
+      const session = sessionAt(branchA.id, branchA.path);
+
+      const tags = await resolveVisibleTags(session, [b.id, sibling.id, a.id, 999_999, deleted.id, b.id]);
+      expect(tags.map((t) => t.id)).toEqual([b.id, a.id]);
+    });
+
+    it("list variant returns [] for an empty input", async () => {
+      expect(await resolveVisibleTags(sessionAt(root.id, root.path), [])).toEqual([]);
     });
   });
 });

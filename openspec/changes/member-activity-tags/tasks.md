@@ -15,7 +15,7 @@
 
 ## 3. Server: tags and links
 
-- [ ] 3.1 `resolveTag` / `resolveVisibleTags` in `lib/resolve.ts` (404 when not visible/deleted/other org; list variant drops); verify `lib/resolve.test.ts`
+- [x] 3.1 `resolveTag` / `resolveVisibleTags` in `lib/resolve.ts` (404 when not visible/deleted/other org; list variant drops); verify `lib/resolve.test.ts`
 - [ ] 3.2 `lib/tag/mutations.ts`: create, rename (key rename = updateMany), recolor, soft delete (key delete = all values) with ancestor-chain uniqueness, simple-vs-key conflict, `TAG_MAX_PER_GROUP`, audit `tag.*`; verify `mutations.test.ts` for every scenario in specs/tags
 - [ ] 3.3 `attachMemberTag` / `detachMemberTag` / `attachActivityTag` / `detachActivityTag` with exclusivity in-transaction, `TAG_MAX_PER_ENTITY`, idempotent attach (no audit), audit `member.tag/untag`, `activity.tag/untag`; verify tests for specs/tag-assignment scenarios
 - [ ] 3.4 `bulkTagMembers(session, { memberIds, tagId, op })`: resolve all ids, reject whole batch on any failure, one audit entry with `replacedTagIds`; verify tests (bulk replace, one out-of-scope id rejects all, cap `PAGE_SIZE`)

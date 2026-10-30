@@ -29,7 +29,7 @@ pnpm lint && pnpm tsc --noEmit
 - Setiap query list difilter **scope** user: `group.path startsWith user.groupPath` (path memuat id sendiri + `/` penutup).
 - **Setiap ID dari client** (`groupId`, `memberId`, `activityId`, `occurrenceId`, `userId`, tanggal) di-resolve ke entitasnya di server lalu dicek scope + aturan. Jangan pernah percaya ID/path dari client.
 - Semua mutasi lewat `authorize(session, action, target)` di `lib/authz.ts`; entitas di luar scope → 404, bukan 403.
-- **Tidak ada hard delete.** `Group`, `Member`, `Activity` soft delete (`deletedAt`); `User` hanya `isActive`. Setiap query ketiga tabel itu wajib `deletedAt: null`.
+- **Tidak ada hard delete.** `Group`, `Member`, `Activity` soft delete (`deletedAt`); `User` hanya `isActive`. Setiap query ketiga tabel itu wajib `deletedAt: null`. `Tag` juga soft delete dan difilter otomatis oleh `lib/db.ts` (baris tautan `MemberTag`/`ActivityTag` di-hard-delete dan diaudit).
 - **Setiap mutasi menulis `AuditLog` di transaksi yang sama** lewat `audit(tx, …)`. `passwordHash` selalu diredaksi.
 - `isActive` dan `role` divalidasi ulang ke DB tiap request di callback `jwt`; jangan percaya JWT untuk keduanya.
 - `Group.depth === parent.depth + 1`; anggota hanya boleh di grup daun (depth = level terakhir).

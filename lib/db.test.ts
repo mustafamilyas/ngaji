@@ -146,4 +146,22 @@ describe("db soft-delete extension", () => {
     expect(await db.memberView.findUnique({ where: { id: deleted.id } })).toBeNull();
     expect(await db.memberView.count({ where: { groupId: group.id } })).toBe(1);
   });
+
+  it("excludes a soft-deleted Tag from findMany, findFirst, findUnique and count", async () => {
+    const group = await db.group.create({
+      data: { organizationId, depth: 0, name: "Tag Group", path: "0/" },
+    });
+    const owner = await db.user.create({
+      data: { username: `tag-owner-${group.id}`, passwordHash: "x", name: "Owner" },
+    });
+    const base = { groupId: group.id, createdById: owner.id, color: "blue" };
+    const kept = await db.tag.create({ data: { ...base, key: "kept" } });
+    const deleted = await db.tag.create({ data: { ...base, key: "deleted", deletedAt: new Date() } });
+
+    const rows = await db.tag.findMany({ where: { groupId: group.id } });
+    expect(rows.map((r) => r.id)).toEqual([kept.id]);
+    expect(await db.tag.findFirst({ where: { id: deleted.id } })).toBeNull();
+    expect(await db.tag.findUnique({ where: { id: deleted.id } })).toBeNull();
+    expect(await db.tag.count({ where: { groupId: group.id } })).toBe(1);
+  });
 });
