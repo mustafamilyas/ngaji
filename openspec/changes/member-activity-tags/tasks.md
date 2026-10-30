@@ -29,7 +29,7 @@
 - [x] 4.2 Member list query: any-of tag filter + include visible tag links; verify `app/dashboard/anggota/page.test.ts` / queries test (any-of, scope not widened, invisible id dropped) and add a `lib/isolation.test.ts` case that filtering by org B's tag id returns no org B member (the "filter" half of 3.7 needs this query)
 - [x] 4.3 Activity list/calendar: filter entries by tag after conflict detection (same place as `q`), conflicts unchanged, include visible links; verify `app/dashboard/kegiatan/page.test.ts`
 - [x] 4.4 Print page accepts `tag`, "Cetak" link carries it; verify print tests for the modified activity-schedule-print scenarios
-- [ ] 4.5 Query listing tags visible to the user (for filter) and usable (for picker), grouped by owner; verify unit test
+- [x] 4.5 `listTags` in `lib/tag/list.ts`: tags visible to the user (for filter) and usable (for picker), grouped by owner (own group, ancestors nearest-first, descendants); verify unit test
 
 ## 5. UI
 
