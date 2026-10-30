@@ -195,5 +195,17 @@ describe("lib/group/mutations", () => {
 
       await expect(deleteGroup(session, leafA.id)).rejects.toBeInstanceOf(ValidationError);
     });
+
+    it("rejects deleting a group that still owns a tag, but ignores deleted tags", async () => {
+      const session = sessionAt("ADMIN", branchA.id, branchA.path);
+      const created = await createGroup(session, { parentId: branchA.id, name: "Owns Tags" });
+      const tag = await db.tag.create({ data: { groupId: created.id, key: "fokus", color: "blue", createdById: actorId } });
+
+      await expect(deleteGroup(session, created.id)).rejects.toThrow(/tag/);
+      expect(await db.group.findUnique({ where: { id: created.id } })).not.toBeNull();
+
+      await db.tag.update({ where: { id: tag.id }, data: { deletedAt: new Date() } });
+      await expect(deleteGroup(session, created.id)).resolves.toMatchObject({ id: created.id });
+    });
   });
 });

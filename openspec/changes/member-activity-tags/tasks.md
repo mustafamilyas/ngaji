@@ -20,7 +20,7 @@
 - [x] 3.3 `attachMemberTag` / `detachMemberTag` / `attachActivityTag` / `detachActivityTag` with exclusivity in-transaction, `TAG_MAX_PER_ENTITY`, idempotent attach (no audit), audit `member.tag/untag`, `activity.tag/untag`; verify tests for specs/tag-assignment scenarios
 - [x] 3.4 `bulkTagMembers(session, { memberIds, tagId, op })`: resolve all ids, reject whole batch on any failure, one audit entry with `memberIds` (changed members only) and `replacedLinks` (`{memberId, tagId}` pairs); no-op members skipped, any cap overflow rejects the batch; verify tests (bulk replace, one out-of-scope id rejects all, cap `PAGE_SIZE`)
 - [x] 3.5 `splitActivity` copies tag links to the new activity in the same transaction; verify existing split test extended
-- [ ] 3.6 Group delete emptiness check includes non-deleted owned tags; verify `lib/group/mutations.test.ts`
+- [x] 3.6 Group delete emptiness check includes non-deleted owned tags; verify `lib/group/mutations.test.ts`
 - [ ] 3.7 Add tag cases to `lib/isolation.test.ts` (org B cannot see/use/filter org A tags)
 
 ## 4. Server: filtering and queries

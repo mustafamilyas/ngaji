@@ -89,17 +89,18 @@ export async function renameGroup(session: SessionUser, input: RenameGroupInput)
 
 /**
  * "Kosong" (group-hierarchy spec) = no non-deleted children, members,
- * activities, or `UserGroupRole` rows — an inactive user still occupies
+ * activities, owned tags, or `UserGroupRole` rows — an inactive user still occupies
  * their `groupId`, so `isActive` is irrelevant here.
  */
 export async function deleteGroup(session: SessionUser, groupId: number) {
   const group = await resolveGroup(session, groupId);
   authorize(session, "group.delete", { groupPath: group.path });
 
-  const [childCount, memberCount, activityCount, primaryCount, extraCount] = await Promise.all([
+  const [childCount, memberCount, activityCount, tagCount, primaryCount, extraCount] = await Promise.all([
     db.group.count({ where: { parentId: group.id } }),
     db.member.count({ where: { groupId: group.id } }),
     db.activity.count({ where: { groupId: group.id } }),
+    db.tag.count({ where: { groupId: group.id } }),
     db.userGroupRole.count({ where: { groupId: group.id } }),
     db.userExtraRole.count({ where: { groupId: group.id } }),
   ]);
@@ -109,6 +110,7 @@ export async function deleteGroup(session: SessionUser, groupId: number) {
   if (childCount > 0) attached.push("sub-grup");
   if (memberCount > 0) attached.push("anggota");
   if (activityCount > 0) attached.push("kegiatan");
+  if (tagCount > 0) attached.push("tag");
   if (userCount > 0) attached.push("pengguna");
   if (attached.length > 0) {
     throw new ValidationError(`Tidak bisa menghapus grup: masih ada ${attached.join(", ")}`);
