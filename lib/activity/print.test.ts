@@ -20,6 +20,7 @@ function entry(overrides: Partial<ActivityListEntry>): ActivityListEntry {
     hasConflict: false,
     canEdit: false,
     canRecord: false,
+    tags: [],
     ...overrides,
   };
 }

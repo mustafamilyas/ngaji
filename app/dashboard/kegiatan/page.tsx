@@ -34,7 +34,7 @@ import { ACTIVITY_CALENDAR_DATE_RANGE, ACTIVITY_LIST_DATE_RANGE, PAGE_SIZE } fro
 import { db } from "@/lib/db";
 import { today, weekdayOf } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
-import { formatDate, formatDateRange, parseGroupIds, parsePage, parseSearch, resolveDateRange } from "@/lib/filters";
+import { formatDate, formatDateRange, parseGroupIds, parsePage, parseSearch, parseTagIds, resolveDateRange } from "@/lib/filters";
 import { pageHref, paginate } from "@/lib/pagination";
 import { parseSort, sortHref, sortPreserve } from "@/lib/sort";
 import { cn } from "@/lib/utils";
@@ -64,12 +64,13 @@ export default async function ActivityListPage({
 
   const groupIds = parseGroupIds(params.grup);
   const q = parseSearch(params.q);
+  const tagIds = parseTagIds(params.tag);
   const page = parsePage(params.page);
 
   const [{ entries, groups }, visibleGroups] = await Promise.all([
     (async () => {
       try {
-        return await listActivityOccurrences(session.user, { from, to, groupIds, search: q });
+        return await listActivityOccurrences(session.user, { from, to, groupIds, search: q, tagIds });
       } catch (error) {
         if (error instanceof NotFoundError) notFound();
         throw error;
@@ -117,7 +118,7 @@ export default async function ActivityListPage({
   const listPage = paginate(sorted, page, PAGE_SIZE);
 
   const groupsLabel = groups.length === 1 ? groups[0].name : `${groups.length} grup`;
-  const isFiltered = Boolean(groupIds || q || range !== ACTIVITY_LIST_DATE_RANGE.defaultMode || anchor !== now);
+  const isFiltered = Boolean(groupIds || q || tagIds || range !== ACTIVITY_LIST_DATE_RANGE.defaultMode || anchor !== now);
   const todayCount = entries.filter((e) => e.effectiveDate === now && e.status !== "CANCELLED").length;
   const conflictCount = entries.filter((e) => e.hasConflict).length;
   const cancelledCount = entries.filter((e) => e.status === "CANCELLED").length;

@@ -278,4 +278,103 @@ describe("lib/activity/list listActivityOccurrences", () => {
       expect(groups.map((g) => g.id)).toEqual([leaf.id]);
     });
   });
+
+  describe("tags", () => {
+    const once = (groupId: number, name: string, startTime: string, date = "2026-07-01") => ({
+      groupId,
+      name,
+      location: "Aula",
+      startTime,
+      durationMinutes: 60,
+      freq: "ONCE" as const,
+      interval: 1,
+      weekdays: [],
+      startsOn: date,
+      endsOn: date,
+    });
+    const makeTag = (groupId: number, key: string, value: string | null = null, deletedAt: Date | null = null) =>
+      db.tag.create({ data: { groupId, key, value, color: "blue", createdById: actorId, deletedAt } });
+    const link = (activityId: number, tagId: number) =>
+      db.activityTag.create({ data: { activityId, tagId, createdById: actorId } });
+    const range = { from: "2026-07-01", to: "2026-07-01" };
+    const names = (entries: { activityName: string }[]) => entries.map((e) => e.activityName).sort();
+
+    it("keeps only activities with any selected tag, ANDed with search, and keeps conflict badges computed over all", async () => {
+      const admin = sessionAt("ADMIN", leaf.id, leaf.path);
+      const focus = await makeTag(leaf.id, "list-fokus");
+      const prio = await makeTag(leaf.id, "list-prio", "tinggi");
+      const { activity: a1 } = await createActivity(admin, once(leaf.id, "Tag Satu", "08:00"));
+      const { activity: a2 } = await createActivity(admin, once(leaf.id, "Tag Dua", "10:00"));
+      // Same slot as Tag Satu, no tag: still makes Tag Satu a conflict.
+      await createActivity(admin, once(leaf.id, "Tag Tiga Tanpa", "08:30"));
+      await link(a1.id, focus.id);
+      await link(a2.id, prio.id);
+
+      const { entries } = await listActivityOccurrences(admin, { ...range, tagIds: [focus.id, prio.id] });
+      expect(names(entries)).toEqual(["Tag Dua", "Tag Satu"]);
+      expect(entries.find((e) => e.activityName === "Tag Satu")?.hasConflict).toBe(true);
+      expect(entries.find((e) => e.activityName === "Tag Dua")?.hasConflict).toBe(false);
+
+      const narrowed = await listActivityOccurrences(admin, { ...range, tagIds: [focus.id, prio.id], search: "dua" });
+      expect(names(narrowed.entries)).toEqual(["Tag Dua"]);
+    });
+
+    it("drops invisible or deleted ids, and treats none left as no filter", async () => {
+      const admin = sessionAt("ADMIN", leaf.id, leaf.path);
+      const { activity } = await createActivity(admin, once(leaf.id, "Drop Satu", "13:00", "2026-07-02"));
+      const sibling = await makeTag(root.id, "list-root-visible");
+      const otherLeafRow = await db.group.create({
+        data: { organizationId: (await db.group.findUniqueOrThrow({ where: { id: leaf.id } })).organizationId, parentId: branch.id, depth: 2, name: "Leaf 2", path: "" },
+      });
+      const leaf2 = await db.group.update({ where: { id: otherLeafRow.id }, data: { path: `${branch.path}${otherLeafRow.id}/` } });
+      const hidden = await makeTag(leaf2.id, "list-hidden");
+      const deleted = await makeTag(leaf.id, "list-gone", null, new Date());
+      await link(activity.id, sibling.id);
+
+      const day = { from: "2026-07-02", to: "2026-07-02" };
+      const filtered = await listActivityOccurrences(admin, { ...day, tagIds: [sibling.id, hidden.id, deleted.id, 999_999] });
+      expect(names(filtered.entries)).toEqual(["Drop Satu"]);
+
+      const none = await listActivityOccurrences(admin, { ...day, tagIds: [hidden.id, deleted.id] });
+      expect(names(none.entries)).toEqual(["Drop Satu"]);
+    });
+
+    it("does not widen scope or visibility: only activities already listed can match", async () => {
+      const branchAdmin = sessionAt("ADMIN", branch.id, branch.path);
+      const tag = await makeTag(branch.id, "list-wide");
+      const { activity: mine } = await createActivity(branchAdmin, once(branch.id, "Wide Cabang", "15:00", "2026-07-03"));
+      await link(mine.id, tag.id);
+
+      const leafAdmin = sessionAt("ADMIN", leaf.id, leaf.path);
+      const { entries } = await listActivityOccurrences(leafAdmin, { from: "2026-07-03", to: "2026-07-03", tagIds: [tag.id] });
+      expect(names(entries)).toEqual(["Wide Cabang"]);
+      const rootOwner = sessionAt("OWNER", root.id, root.path);
+      const other = await listActivityOccurrences(rootOwner, { from: "2026-07-03", to: "2026-07-03", groupIds: [leaf.id], tagIds: [tag.id] });
+      expect(names(other.entries)).toEqual(["Wide Cabang"]);
+    });
+
+    it("includes each entry's visible tags, ordered by key then value, hiding invisible and deleted ones", async () => {
+      const admin = sessionAt("ADMIN", leaf.id, leaf.path);
+      const { activity } = await createActivity(admin, once(leaf.id, "Chip Satu", "17:00", "2026-07-04"));
+      const b = await makeTag(branch.id, "list-chip-b", "z");
+      const a2 = await makeTag(leaf.id, "list-chip-a", "2");
+      const a1 = await makeTag(leaf.id, "list-chip-a", "1");
+      const deleted = await makeTag(leaf.id, "list-chip-gone", null, new Date());
+      const orgRow = await db.group.findUniqueOrThrow({ where: { id: leaf.id } });
+      const sibRow = await db.group.create({
+        data: { organizationId: orgRow.organizationId, parentId: branch.id, depth: 2, name: "Leaf 3", path: "" },
+      });
+      const sib = await db.group.update({ where: { id: sibRow.id }, data: { path: `${branch.path}${sibRow.id}/` } });
+      const hidden = await makeTag(sib.id, "list-chip-hidden");
+      for (const t of [b, a2, a1, deleted, hidden]) await link(activity.id, t.id);
+
+      const { entries } = await listActivityOccurrences(admin, { from: "2026-07-04", to: "2026-07-04" });
+      expect(entries[0].tags.map((t) => [t.key, t.value])).toEqual([
+        ["list-chip-a", "1"],
+        ["list-chip-a", "2"],
+        ["list-chip-b", "z"],
+      ]);
+      expect(entries[0].tags[0]).toEqual({ id: a1.id, groupId: leaf.id, key: "list-chip-a", value: "1", color: "blue" });
+    });
+  });
 });

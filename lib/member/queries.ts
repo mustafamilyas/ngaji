@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { clampPage } from "@/lib/pagination";
 import { resolveGroups, resolveVisibleTags } from "@/lib/resolve";
 import type { SortState } from "@/lib/sort";
-import { visibleTagWhere } from "@/lib/tag/access";
+import { visibleTagLinks } from "@/lib/tag/include";
 import type { MemberStatus } from "@/lib/validation/enums";
 
 /** Sortable `/dashboard/anggota` columns → the field they order by. Keys match `MEMBER_COLUMNS` (plus the name). */
@@ -65,12 +65,7 @@ export async function listMembers(session: SessionUser, filter: ListMembersFilte
     take: PAGE_SIZE,
     include: {
       group: { include: { parent: { select: { name: true } } } },
-      // Only links to tags the caller may see (and that are not deleted): the soft-delete extension does not reach nested includes.
-      tags: {
-        where: { tag: visibleTagWhere(session) },
-        select: { tag: { select: { id: true, groupId: true, key: true, value: true, color: true } } },
-        orderBy: [{ tag: { key: "asc" as const } }, { tag: { value: "asc" as const } }],
-      },
+      tags: visibleTagLinks(session),
     },
   });
 

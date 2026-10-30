@@ -39,6 +39,24 @@ describe("ActivityListPage", () => {
     expect(html).toContain("Kegiatan");
   });
 
+  it("filters by the tag param, dropping ids the user cannot see", async () => {
+    const fixture = await buildPageFixture("kegiatan-list-tag");
+    const session = sessionFor(fixture.actorId, "OWNER", fixture.root);
+    mockAuthSession(auth, { user: session });
+    const tag = await db.tag.create({ data: { groupId: fixture.root.id, key: "fokus", color: "blue", createdById: fixture.actorId } });
+    const other = await buildPageFixture("kegiatan-list-tag-other");
+    const foreign = await db.tag.create({ data: { groupId: other.root.id, key: "asing", color: "red", createdById: other.actorId } });
+
+    const without = renderToStaticMarkup(await ActivityListPage({ searchParams: Promise.resolve({ tag: String(tag.id) }) }));
+    expect(without).not.toContain("Kajian Uji");
+
+    await db.activityTag.create({ data: { activityId: fixture.activityId, tagId: tag.id, createdById: fixture.actorId } });
+    const withTag = renderToStaticMarkup(
+      await ActivityListPage({ searchParams: Promise.resolve({ tag: `${tag.id},${foreign.id}` }) }),
+    );
+    expect(withTag).toContain("Kajian Uji");
+  });
+
   it("redirects to /login when there is no session", async () => {
     mockAuthSession(auth, null);
     await expect(ActivityListPage({ searchParams: Promise.resolve({}) })).rejects.toMatchObject({

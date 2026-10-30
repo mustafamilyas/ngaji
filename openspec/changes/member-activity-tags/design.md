@@ -58,7 +58,7 @@ For list rendering, `visibleTagWhere(user)` builds one Prisma `where` on `tag.gr
 `attachTag(tx, entity, tag)`: if `tag.value != null`, delete links on that entity whose tag has the same `groupId` + `key` and a different id, collect them as `replacedTagIds`, then `upsert`/`createMany` the new link (skip if present). Bulk does the same with `deleteMany` over `memberId IN ids` and one `createMany`. Link rows are hard-deleted: they are associations, not records (same as replacing attendance), and every removal is captured in the audit `meta`.
 
 ### D5. Filtering
-`?tag=` parsed by a new `parseIdList` use in `lib/filters.ts` (same shape as `grup`), capped at `MAX_TAG_FILTER_IDS`. Server resolves ids with `resolveVisibleTags` (drop-not-404, like the activity group filter). Member query adds `tags: { some: { tagId: { in: ids } } }`. Activity list filters the activity set before occurrence expansion, so conflicts (computed over all activities) are untouched — same place `q` is applied today. Print reuses the list's filter parser.
+`?tag=` parsed by a new `parseIdList` use in `lib/filters.ts` (same shape as `grup`), capped at `MAX_TAG_FILTER_IDS`. Server resolves ids with `resolveVisibleTags` (drop-not-404, like the activity group filter). Member query adds `tags: { some: { tagId: { in: ids } } }`. Activity list narrows the entries after conflict detection, exactly where `q` is applied today, so conflict badges (computed over every activity) are untouched. Print reuses the list's filter parser.
 
 ### D6. UI
 - `components/tags/tag-chip.tsx` (color token → Tailwind classes map, text always shown, `print:` black border).
