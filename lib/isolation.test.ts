@@ -310,6 +310,13 @@ describe("cross-organization isolation", () => {
       expect(tags.some((t) => t.id === aTagId)).toBe(true);
     });
 
+    it("filtering the member list by another organization's tag id lists no member of that organization", async () => {
+      const { members } = await listMembers(A.owner, { tagIds: [bTagId] });
+      expect(members.some((m) => m.id === B.memberId)).toBe(false);
+      // The id is dropped, so the filter is empty rather than "match nothing".
+      expect(members.some((m) => m.id === A.memberId)).toBe(true);
+    });
+
     it("404s on recolor, rename and delete of another organization's tag, writing nothing", async () => {
       const before = await auditCountFor("Tag", [bTagId, bValueTagId]);
       await expect(recolorTag(A.owner, { tagId: bTagId, color: "green" })).rejects.toBeInstanceOf(NotFoundError);

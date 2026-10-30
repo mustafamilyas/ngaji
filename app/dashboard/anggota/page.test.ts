@@ -40,6 +40,26 @@ describe("MembersPage", () => {
     expect(html).toContain("Anggota Uji");
   });
 
+  it("filters by the tag param, dropping ids the user cannot see", async () => {
+    const fixture = await buildPageFixture("anggota-list-tag");
+    const session = sessionFor(fixture.actorId, "OWNER", fixture.root);
+    mockAuthSession(auth, { user: session });
+    const tag = await db.tag.create({ data: { groupId: fixture.root.id, key: "fokus", color: "blue", createdById: fixture.actorId } });
+    const other = await buildPageFixture("anggota-list-tag-other");
+    const foreign = await db.tag.create({ data: { groupId: other.root.id, key: "asing", color: "red", createdById: other.actorId } });
+
+    const without = renderToStaticMarkup(
+      await MembersPage({ searchParams: Promise.resolve({ tag: String(tag.id) }) }),
+    );
+    expect(without).toContain("Tidak ada anggota yang cocok");
+
+    await db.memberTag.create({ data: { memberId: fixture.memberId, tagId: tag.id, createdById: fixture.actorId } });
+    const withTag = renderToStaticMarkup(
+      await MembersPage({ searchParams: Promise.resolve({ tag: `${tag.id},${foreign.id}` }) }),
+    );
+    expect(withTag).toContain("Anggota Uji");
+  });
+
   it("redirects to /login when there is no session", async () => {
     mockAuthSession(auth, null);
     await expect(MembersPage({ searchParams: Promise.resolve({}) })).rejects.toMatchObject({

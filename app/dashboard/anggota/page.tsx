@@ -15,7 +15,7 @@ import { visibleGroupsWhere } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { monthStartOf, today } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
-import { parseGroupIds, parsePage, parseSearch } from "@/lib/filters";
+import { parseGroupIds, parsePage, parseSearch, parseTagIds } from "@/lib/filters";
 import { MEMBER_COLUMNS_COOKIE, MEMBER_COLUMNS, parseMemberColumns } from "@/lib/member/columns";
 import { MEMBER_STATUS_LABELS } from "@/lib/member/labels";
 import { DEFAULT_MEMBER_SORT, listMembers, MEMBER_SORT_KEYS } from "@/lib/member/queries";
@@ -41,6 +41,7 @@ export default async function MembersPage({
   const params = await searchParams;
   const q = parseSearch(params.q);
   const groupIds = parseGroupIds(params.grup);
+  const tagIds = parseTagIds(params.tag);
   const status = typeof params.status === "string" && isMemberStatus(params.status) ? params.status : undefined;
   const page = parsePage(params.page);
   const columns = parseMemberColumns((await cookies()).get(MEMBER_COLUMNS_COOKIE)?.value);
@@ -53,7 +54,7 @@ export default async function MembersPage({
     await Promise.all([
       (async () => {
         try {
-          return await listMembers(session.user, { search: q, groupIds, status, page, sort });
+          return await listMembers(session.user, { search: q, groupIds, tagIds, status, page, sort });
         } catch (error) {
           if (error instanceof NotFoundError) notFound();
           throw error;
@@ -68,7 +69,7 @@ export default async function MembersPage({
       db.member.count({ where: { ...scope, status: "AKTIF" } }),
       db.member.count({ where: { ...scope, joinedAt: { gte: monthStartOf(today(session.user.timeZone)) } } }),
     ]);
-  const isFiltered = Boolean(q || groupIds || status);
+  const isFiltered = Boolean(q || groupIds || tagIds || status);
 
   return (
     <div className="flex flex-col gap-6">
