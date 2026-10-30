@@ -16,10 +16,14 @@ import { listMembers } from "@/lib/member/queries";
 import { deleteMemberView } from "@/lib/member-view/mutations";
 import { listMemberViews } from "@/lib/member-view/list";
 import { getOrganization } from "@/lib/organization";
+import { resolveTag, resolveVisibleTags } from "@/lib/resolve";
 import { deleteSurvey } from "@/lib/survey/mutations";
 import { listSurveys } from "@/lib/survey/list";
 import { saveResponse } from "@/lib/survey/responses";
 import { surveyStatistics } from "@/lib/survey/stats";
+import { attachActivityTag, attachMemberTag, bulkTagMembers, detachMemberTag } from "@/lib/tag/assign";
+import { visibleTagWhere } from "@/lib/tag/access";
+import { createTag, deleteTag, deleteTagKey, recolorTag, renameTagKey } from "@/lib/tag/mutations";
 import { buildOrgFixture, type OrgFixture } from "@/lib/test/fixtures";
 import { createUser, resetUserPassword, setUserActive, updateUserRole } from "@/lib/user/mutations";
 import { listUsers, listUsersInScope } from "@/lib/user/queries";
@@ -34,6 +38,9 @@ describe("cross-organization isolation", () => {
   let bViewId: number;
   let bOccurrenceDate: string;
   let bExtraOwnerIds: number[];
+  let bTagId: number;
+  let bValueTagId: number;
+  let aTagId: number;
 
   beforeAll(async () => {
     A = await buildOrgFixture("iso-a");
@@ -69,6 +76,17 @@ describe("cross-organization isolation", () => {
     await db.attendance.create({
       data: { occurrenceId: occurrence.id, memberId: B.memberId, status: "HADIR", recordedById: B.actorId },
     });
+
+    // Org B's tags, linked to B's member and activity; org A has a tag with the same key.
+    const bTag = await db.tag.create({ data: { groupId: B.root.id, key: "fokus", color: "red", createdById: B.actorId } });
+    const bValueTag = await db.tag.create({
+      data: { groupId: B.root.id, key: "prioritas", value: "tinggi", color: "blue", createdById: B.actorId },
+    });
+    bTagId = bTag.id;
+    bValueTagId = bValueTag.id;
+    await db.memberTag.create({ data: { memberId: B.memberId, tagId: bTag.id, createdById: B.actorId } });
+    await db.activityTag.create({ data: { activityId: B.activityId, tagId: bTag.id, createdById: B.actorId } });
+    aTagId = (await db.tag.create({ data: { groupId: A.root.id, key: "fokus", color: "teal", createdById: A.actorId } })).id;
 
     await db.$transaction((tx) =>
       audit(tx, {
@@ -276,6 +294,49 @@ describe("cross-organization isolation", () => {
       // Org B has three active OWNERs; that must not count for org A.
       await expect(setUserActive(A.owner, { userId: A.actorId, isActive: false })).rejects.toThrow();
       expect(await db.user.findUnique({ where: { id: A.actorId } })).toMatchObject({ isActive: true });
+    });
+  });
+
+  describe("tag", () => {
+    it("404s on resolving another organization's tag and drops it from a filter list", async () => {
+      await expect(resolveTag(A.owner, bTagId)).rejects.toBeInstanceOf(NotFoundError);
+      const visible = await resolveVisibleTags(A.owner, [bTagId, bValueTagId, aTagId]);
+      expect(visible.map((t) => t.id)).toEqual([aTagId]);
+    });
+
+    it("never selects another organization's tags through the visibility filter", async () => {
+      const tags = await db.tag.findMany({ where: visibleTagWhere(A.owner) });
+      expect(tags.some((t) => t.groupId === B.root.id)).toBe(false);
+      expect(tags.some((t) => t.id === aTagId)).toBe(true);
+    });
+
+    it("404s on recolor, rename and delete of another organization's tag, writing nothing", async () => {
+      const before = await auditCountFor("Tag", [bTagId, bValueTagId]);
+      await expect(recolorTag(A.owner, { tagId: bTagId, color: "green" })).rejects.toBeInstanceOf(NotFoundError);
+      await expect(renameTagKey(A.owner, { tagId: bTagId, newKey: "bocor" })).rejects.toBeInstanceOf(NotFoundError);
+      await expect(deleteTag(A.owner, { tagId: bTagId })).rejects.toBeInstanceOf(NotFoundError);
+      await expect(deleteTagKey(A.owner, { tagId: bValueTagId })).rejects.toBeInstanceOf(NotFoundError);
+      expect(await db.tag.findUnique({ where: { id: bTagId } })).toMatchObject({ key: "fokus", color: "red" });
+      expect(await auditCountFor("Tag", [bTagId, bValueTagId])).toBe(before);
+    });
+
+    it("does not treat another organization's key as taken", async () => {
+      const tag = await createTag(A.owner, { key: "prioritas", value: "tinggi", color: "blue" });
+      expect(tag.groupId).toBe(A.root.id);
+    });
+
+    it("404s when attaching or detaching across organizations, in either direction, and for bulk", async () => {
+      await expect(attachMemberTag(A.owner, { memberId: A.memberId, tagId: bTagId })).rejects.toBeInstanceOf(NotFoundError);
+      await expect(attachMemberTag(A.owner, { memberId: B.memberId, tagId: aTagId })).rejects.toBeInstanceOf(NotFoundError);
+      await expect(detachMemberTag(A.owner, { memberId: B.memberId, tagId: bTagId })).rejects.toBeInstanceOf(NotFoundError);
+      await expect(attachActivityTag(A.owner, { activityId: B.activityId, tagId: aTagId })).rejects.toBeInstanceOf(NotFoundError);
+      await expect(
+        bulkTagMembers(A.owner, { memberIds: [A.memberId, B.memberId], tagId: aTagId, op: "add" }),
+      ).rejects.toBeInstanceOf(NotFoundError);
+
+      expect(await db.memberTag.count({ where: { memberId: B.memberId } })).toBe(1);
+      expect(await db.memberTag.count({ where: { memberId: A.memberId } })).toBe(0);
+      expect(await db.activityTag.count({ where: { activityId: B.activityId } })).toBe(1);
     });
   });
 

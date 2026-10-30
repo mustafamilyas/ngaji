@@ -21,12 +21,12 @@
 - [x] 3.4 `bulkTagMembers(session, { memberIds, tagId, op })`: resolve all ids, reject whole batch on any failure, one audit entry with `memberIds` (changed members only) and `replacedLinks` (`{memberId, tagId}` pairs); no-op members skipped, any cap overflow rejects the batch; verify tests (bulk replace, one out-of-scope id rejects all, cap `PAGE_SIZE`)
 - [x] 3.5 `splitActivity` copies tag links to the new activity in the same transaction; verify existing split test extended
 - [x] 3.6 Group delete emptiness check includes non-deleted owned tags; verify `lib/group/mutations.test.ts`
-- [ ] 3.7 Add tag cases to `lib/isolation.test.ts` (org B cannot see/use/filter org A tags)
+- [x] 3.7 Add tag cases to `lib/isolation.test.ts` (org B cannot see/use/filter org A tags)
 
 ## 4. Server: filtering and queries
 
 - [ ] 4.1 Parse `tag` in `lib/filters.ts` (comma ids, cap `MAX_TAG_FILTER_IDS`); verify `lib/filters.test.ts`
-- [ ] 4.2 Member list query: any-of tag filter + include visible tag links; verify `app/dashboard/anggota/page.test.ts` / queries test (any-of, scope not widened, invisible id dropped)
+- [ ] 4.2 Member list query: any-of tag filter + include visible tag links; verify `app/dashboard/anggota/page.test.ts` / queries test (any-of, scope not widened, invisible id dropped) and add a `lib/isolation.test.ts` case that filtering by org B's tag id returns no org B member (the "filter" half of 3.7 needs this query)
 - [ ] 4.3 Activity list/calendar: filter activities by tag before expansion, conflicts unchanged, include visible links; verify `app/dashboard/kegiatan/page.test.ts`
 - [ ] 4.4 Print page accepts `tag`, "Cetak" link carries it; verify print tests for the modified activity-schedule-print scenarios
 - [ ] 4.5 Query listing tags visible to the user (for filter) and usable (for picker), grouped by owner; verify unit test
