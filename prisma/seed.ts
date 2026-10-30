@@ -238,6 +238,12 @@ async function seedSecondOrganization() {
       createdById: owner.id,
     },
   });
+
+  const pemula = await db.tag.create({
+    data: { groupId: kelompokSatu.id, createdById: owner.id, key: "pemula", color: "amber" },
+  });
+  const firstMember = await db.member.findFirstOrThrow({ where: { groupId: kelompokSatu.id }, orderBy: { id: "asc" } });
+  await db.memberTag.create({ data: { memberId: firstMember.id, tagId: pemula.id, createdById: owner.id } });
 }
 
 async function main() {
@@ -742,10 +748,34 @@ async function main() {
     });
   }
 
+  // --- Tags (Desa Menteng and Kelompok A) ---------------------------------
+
+  // Desa-owned key "prioritas" (exclusive per entity) and simple tag, plus a
+  // kelompok-owned simple tag; the sibling Kelompok B must not see the latter.
+  const tagData = (groupId: number, createdById: number, key: string, color: string, value: string | null = null) =>
+    db.tag.create({ data: { groupId, createdById, key, value, color } });
+  const prioritasTinggi = await tagData(desaMenteng.id, adminDesa.id, "prioritas", "red", "tinggi");
+  await tagData(desaMenteng.id, adminDesa.id, "prioritas", "green", "rendah");
+  const binaan = await tagData(desaMenteng.id, adminDesa.id, "binaan", "indigo");
+  const fokus = await tagData(kelompokA_Menteng.id, userKelompok.id, "fokus", "teal");
+  const taggedMembers = await db.member.findMany({
+    where: { groupId: kelompokA_Menteng.id, deletedAt: null },
+    orderBy: { id: "asc" },
+    take: 3,
+  });
+  for (const [i, member] of taggedMembers.entries()) {
+    const tagIds = [i === 0 ? prioritasTinggi.id : null, i < 2 ? binaan.id : null, fokus.id].filter((id) => id !== null);
+    for (const tagId of tagIds) {
+      await db.memberTag.create({ data: { memberId: member.id, tagId, createdById: adminDesa.id } });
+    }
+  }
+  await db.activityTag.create({ data: { activityId: activityA.id, tagId: prioritasTinggi.id, createdById: adminDesa.id } });
+  await db.activityTag.create({ data: { activityId: activityA.id, tagId: fokus.id, createdById: userKelompok.id } });
+
   await seedSecondOrganization();
 
   console.log(
-    `Seed complete: ${index + 2} members, ${kelompokGroups.length} kelompok groups, 7 activities (1 conflicted, 1 monthly-edge, 1 ended, 1 split, 1 upcoming, 1 soft-deleted), 1 survey with responses, 2 member views, historical attendance over ${historyDatesA.length} weeks. Second organization \"Majelis An-Nur\" (admin_annur): 6 members, 2 activities.`,
+    `Seed complete: ${index + 2} members, ${kelompokGroups.length} kelompok groups, 7 activities (1 conflicted, 1 monthly-edge, 1 ended, 1 split, 1 upcoming, 1 soft-deleted), 1 survey with responses, 2 member views, 4 tags (+1 in the second organization), historical attendance over ${historyDatesA.length} weeks. Second organization \"Majelis An-Nur\" (admin_annur): 6 members, 2 activities.`,
   );
 }
 

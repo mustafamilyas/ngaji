@@ -2,9 +2,9 @@
 
 ## 1. Data model
 
-- [ ] 1.1 Add `Tag`, `MemberTag`, `ActivityTag` to `prisma/schema.prisma` (design D1) with relations on `Group`, `User`, `Member`, `Activity`; run `pnpm prisma migrate dev --name tags` and verify the migration only creates three tables and indexes
-- [ ] 1.2 Add `TAG_COLORS`, `TAG_MAX_PART_LENGTH`, `TAG_MAX_PER_GROUP`, `TAG_MAX_PER_ENTITY`, `MAX_TAG_FILTER_IDS` to `lib/constants.ts` and `TagColor` to `lib/validation/enums.ts`; verify `pnpm tsc --noEmit`
-- [ ] 1.3 Seed: a few tags (simple + key-value, desa- and kelompok-owned, one in the second org) with links; verify `pnpm prisma db seed` runs on a fresh DB
+- [x] 1.1 Add `Tag`, `MemberTag`, `ActivityTag` to `prisma/schema.prisma` (design D1) with relations on `Group`, `User`, `Member`, `Activity`; run `pnpm prisma migrate dev --name tags` and verify the migration only creates three tables and indexes
+- [x] 1.2 Add `TAG_COLORS`, `TAG_MAX_PART_LENGTH`, `TAG_MAX_PER_GROUP`, `TAG_MAX_PER_ENTITY`, `MAX_TAG_FILTER_IDS` to `lib/constants.ts` and `TagColor` to `lib/validation/enums.ts`; verify `pnpm tsc --noEmit`
+- [x] 1.3 Seed: a few tags (simple + key-value, desa- and kelompok-owned, one in the second org) with links; verify `pnpm prisma db seed` runs on a fresh DB
 
 ## 2. Pure logic (tests first)
 

@@ -131,3 +131,11 @@ export const AUDIT_ACTIONS = [
   "member_view.delete",
   "member_view.transfer",
 ] as const;
+
+/** Tag limits (tags spec). Reject, never truncate. */
+export const TAG_MAX_PART_LENGTH = 30;
+export const TAG_MAX_PER_GROUP = 100;
+export const TAG_MAX_PER_ENTITY = 20;
+export const MAX_TAG_FILTER_IDS = 50;
+/** Fixed tag palette; `components/tags/tag-chip.tsx` maps each token to checked-contrast classes. */
+export const TAG_COLORS = ["slate", "red", "orange", "amber", "green", "teal", "blue", "indigo", "purple", "pink"] as const;

@@ -2,6 +2,8 @@
 // type, so these are plain String columns in prisma/schema.prisma; these
 // unions + zod schemas built from them are what actually enforce validity.
 
+import type { TAG_COLORS } from "@/lib/constants";
+
 export const ROLES = ["OWNER", "ADMIN", "USER"] as const;
 export type Role = (typeof ROLES)[number];
 
@@ -58,6 +60,8 @@ export type ViewSource = (typeof VIEW_SOURCES)[number];
 
 export const VIEW_VISIBILITIES = ["GROUP"] as const;
 export type ViewVisibility = (typeof VIEW_VISIBILITIES)[number];
+
+export type TagColor = (typeof TAG_COLORS)[number];
 
 /** IANA zones an organization may use; `Organization.timezone` stays a plain String column. */
 export const TIMEZONES = ["Asia/Jakarta", "Asia/Makassar", "Asia/Jayapura"] as const;

@@ -88,6 +88,7 @@ model Group {
   activities   Activity[]
   surveys      Survey[]
   memberViews  MemberView[]
+  tags         Tag[]
   userRoles    UserGroupRole[]
   extraRoles   UserExtraRole[]
 
@@ -115,6 +116,9 @@ model User {
   ownedMemberViews   MemberView[]     @relation("memberViewOwner")
   createdMemberViews MemberView[]     @relation("memberViewCreatedBy")
   recordedSurveys    SurveyResponse[] @relation("surveyResponseRecordedBy")
+  createdTags        Tag[]            @relation("tagCreatedBy")
+  memberTags         MemberTag[]      @relation("memberTagCreatedBy")
+  activityTags       ActivityTag[]    @relation("activityTagCreatedBy")
   auditLogs          AuditLog[]
 }
 
@@ -172,6 +176,7 @@ model Member {
   createdBy       User             @relation("memberCreatedBy", fields: [createdById], references: [id])
   attendances     Attendance[]
   surveyResponses SurveyResponse[]
+  tags            MemberTag[]
 
   @@index([groupId, status])
   @@index([name])
@@ -203,6 +208,7 @@ model Activity {
   continuesFrom Activity?            @relation("split", fields: [continuesFromId], references: [id])
   continuedBy   Activity[]           @relation("split")
   occurrences   ActivityOccurrence[]
+  tags          ActivityTag[]
 
   @@index([groupId])
 }
@@ -357,6 +363,59 @@ model SurveyAnswer {
 
   @@index([responseId])
   @@index([questionId, optionId])
+}
+
+/// Group-owned tag (DESIGN.md §13). One row = one simple tag (value null) or one value of a key.
+/// A key is the set of rows sharing (groupId, key) with a value; it has no row of its own.
+/// Soft delete: every query needs `deletedAt: null`.
+model Tag {
+  id          Int       @id @default(autoincrement())
+  groupId     Int // owner = creator's group, never from the client
+  key         String // trimmed, lowercased
+  value       String? // null = simple tag
+  color       String // TagColor (TAG_COLORS in lib/constants.ts)
+  createdById Int
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  group      Group         @relation(fields: [groupId], references: [id])
+  createdBy  User          @relation("tagCreatedBy", fields: [createdById], references: [id])
+  members    MemberTag[]
+  activities ActivityTag[]
+
+  @@index([groupId, deletedAt])
+  @@index([key])
+}
+
+/// Tag ↔ member link. Hard-deleted (like Attendance); every attach/detach is audited.
+model MemberTag {
+  memberId    Int
+  tagId       Int
+  createdById Int
+  createdAt   DateTime @default(now())
+
+  member    Member @relation(fields: [memberId], references: [id])
+  tag       Tag    @relation(fields: [tagId], references: [id])
+  createdBy User   @relation("memberTagCreatedBy", fields: [createdById], references: [id])
+
+  @@id([memberId, tagId])
+  @@index([tagId])
+}
+
+/// Tag ↔ activity link. Hard-deleted; every attach/detach is audited.
+model ActivityTag {
+  activityId  Int
+  tagId       Int
+  createdById Int
+  createdAt   DateTime @default(now())
+
+  activity  Activity @relation(fields: [activityId], references: [id])
+  tag       Tag      @relation(fields: [tagId], references: [id])
+  createdBy User     @relation("activityTagCreatedBy", fields: [createdById], references: [id])
+
+  @@id([activityId, tagId])
+  @@index([tagId])
 }
 
 /// Audit trail. Written in the same transaction as its mutation. Append-only (no update/delete).
