@@ -638,8 +638,8 @@ Helper `audit(tx, { action, entity, entityId, groupId, before, after, meta })` d
 | `member_view.delete` | hapus (soft) | `before` = snapshot tampilan |
 | `member_view.transfer` | ambil alih | `meta: { fromOwnerId, toOwnerId }` |
 | `tag.create/update/delete` | kelola tag (§13); ganti nama kunci / hapus kunci = satu entri untuk semua nilainya | `before`/`after` = baris tag (kunci, nilai, warna); `groupId` = grup pemilik |
-| `member.tag`, `member.untag` | pasang / lepas tag anggota (satu atau massal) | `meta: { tagId, memberIds, replacedTagIds }`; `groupId` = grup anggota (satu) atau grup pemilik tag (massal) |
-| `activity.tag`, `activity.untag` | pasang / lepas tag kegiatan | `meta: { tagId, activityId, replacedTagIds }`; `groupId` = grup pemilik tag |
+| `member.tag`, `member.untag` | pasang / lepas tag anggota (satu atau massal) | `meta: { tagId, memberIds, replacedTagIds }` (satu) atau `{ tagId, memberIds, replacedLinks: [{ memberId, tagId }] }` (massal, hanya anggota yang berubah); `groupId` = grup anggota (satu) atau grup pemilik tag (massal) |
+| `activity.tag`, `activity.untag` | pasang / lepas tag kegiatan | `meta: { tagId, activityIds, replacedTagIds }`; `groupId` = grup pemilik tag |
 
 Membuka/mendaftar tampilan dan draf yang belum disimpan (`?d=`) tidak diaudit.
 

@@ -62,11 +62,11 @@ The member detail page, the activity detail page, and each row of the member and
 - **THEN** tag `baru` is created in the ADMIN's group and attached to the entity
 
 ### Requirement: Bulk tagging members
-The member table (`/dashboard/anggota`) SHALL let users select rows on the current page (at most `PAGE_SIZE`) and apply "Tambah tag" or "Hapus tag" with one usable tag. The server SHALL resolve and check every member id; if any id is out of scope or ineligible, the whole request SHALL be rejected and nothing written. Exclusivity SHALL apply per member. The result SHALL report how many members changed.
+The member table (`/dashboard/anggota`) SHALL let users select rows on the current page (at most `PAGE_SIZE`) and apply "Tambah tag" or "Hapus tag" with one usable tag. The server SHALL resolve and check every member id; if any id is out of scope or ineligible, the whole request SHALL be rejected and nothing written. Exclusivity SHALL apply per member. Members for whom the action changes nothing SHALL be skipped, and a member that would exceed `TAG_MAX_PER_ENTITY` SHALL reject the whole request. The result SHALL report how many members changed.
 
 #### Scenario: Bulk add with replacement
 - **WHEN** a user selects 10 members, 3 of which have `prioritas:tinggi`, and adds `prioritas:rendah`
-- **THEN** all 10 have `prioritas:rendah`, none have `prioritas:tinggi`, and one audit entry lists the 10 member ids and the 3 replaced links
+- **THEN** all 10 have `prioritas:rendah`, none have `prioritas:tinggi`, and one audit entry lists the 10 member ids and the 3 replaced links as `{memberId, tagId}` pairs
 
 #### Scenario: One ineligible member rejects the batch
 - **WHEN** a selection includes a member id outside the user's scope

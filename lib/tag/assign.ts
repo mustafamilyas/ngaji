@@ -5,7 +5,7 @@ import { TAG_MAX_PER_ENTITY } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { ValidationError } from "@/lib/errors";
 import { resolveActivity, resolveMember, resolveTag } from "@/lib/resolve";
-import type { ActivityTagInput, MemberTagInput } from "@/lib/validation/tag";
+import type { ActivityTagInput, BulkTagMembersInput, MemberTagInput } from "@/lib/validation/tag";
 import { canTagActivity, canTagMember } from "./access";
 import { tagIdsReplacedBy, type LinkedTag } from "./exclusive";
 
@@ -136,5 +136,59 @@ export async function detachActivityTag(session: SessionUser, input: ActivityTag
       meta: { tagId: tag.id, activityIds: [activity.id], replacedTagIds: [] },
     });
     return { changed: true };
+  });
+}
+
+export type BulkResult = { changed: number };
+
+/**
+ * Adds or removes one tag on up to a page of members. Every id is resolved and checked first, so a
+ * single out-of-scope id (404) or one member over the cap rejects the batch; members for whom the
+ * call would change nothing are skipped. One audit entry lists the members that changed.
+ */
+export async function bulkTagMembers(session: SessionUser, input: BulkTagMembersInput): Promise<BulkResult> {
+  const tag = await resolveTag(session, input.tagId);
+  authorize(session, "tag.use", { groupPath: tag.group.path });
+  const members: Awaited<ReturnType<typeof resolveMember>>[] = [];
+  for (const id of input.memberIds) members.push(await resolveMember(session, id));
+  if (!members.every((member) => canTagMember(session, tag.group.path, member.group.path))) {
+    throw new ValidationError(NOT_APPLICABLE);
+  }
+
+  const actorId = Number(session.id);
+  const adding = input.op === "add";
+  return db.$transaction(async (tx) => {
+    const changedIds: number[] = [];
+    const replacedLinks: { memberId: number; tagId: number }[] = [];
+
+    for (const member of members) {
+      const current = await currentMemberTags(tx, member.id);
+      if (adding) {
+        const plan = planAttach(current, tag);
+        if (!plan.changed) continue;
+        changedIds.push(member.id);
+        for (const tagId of plan.replacedTagIds) replacedLinks.push({ memberId: member.id, tagId });
+      } else if (current.some((t) => t.id === tag.id)) {
+        changedIds.push(member.id);
+      }
+    }
+    if (changedIds.length === 0) return { changed: 0 };
+
+    if (replacedLinks.length > 0) {
+      await tx.memberTag.deleteMany({ where: { OR: replacedLinks } });
+    }
+    if (adding) {
+      await tx.memberTag.createMany({ data: changedIds.map((memberId) => ({ memberId, tagId: tag.id, createdById: actorId })) });
+    } else {
+      await tx.memberTag.deleteMany({ where: { tagId: tag.id, memberId: { in: changedIds } } });
+    }
+    await audit(tx, {
+      actorId,
+      action: adding ? "member.tag" : "member.untag",
+      entity: "Member",
+      groupId: tag.groupId,
+      meta: { tagId: tag.id, memberIds: changedIds, replacedLinks },
+    });
+    return { changed: changedIds.length };
   });
 }

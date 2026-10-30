@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { TAG_COLORS, TAG_MAX_PART_LENGTH } from "@/lib/constants";
+import { PAGE_SIZE, TAG_COLORS, TAG_MAX_PART_LENGTH } from "@/lib/constants";
 import { idSchema } from "./common";
 
 const PART_PATTERN = /^[a-z0-9_-]+(?: [a-z0-9_-]+)*$/;
@@ -87,3 +87,17 @@ export type MemberTagInput = z.infer<typeof memberTagSchema>;
 
 export const activityTagSchema = z.object({ activityId: idSchema, tagId: idSchema });
 export type ActivityTagInput = z.infer<typeof activityTagSchema>;
+
+export const BULK_TAG_OPS = ["add", "remove"] as const;
+
+/** Selection on one page of the member table: 1–`PAGE_SIZE` distinct ids. */
+export const bulkTagMembersSchema = z.object({
+  memberIds: z
+    .array(idSchema)
+    .min(1, "Pilih minimal satu anggota")
+    .max(PAGE_SIZE, `Maksimal ${PAGE_SIZE} anggota sekaligus`)
+    .transform((ids) => [...new Set(ids)]),
+  tagId: idSchema,
+  op: z.enum(BULK_TAG_OPS),
+});
+export type BulkTagMembersInput = z.infer<typeof bulkTagMembersSchema>;

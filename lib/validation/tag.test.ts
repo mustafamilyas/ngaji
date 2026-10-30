@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { TAG_COLORS, TAG_MAX_PART_LENGTH } from "@/lib/constants";
+import { PAGE_SIZE, TAG_COLORS, TAG_MAX_PART_LENGTH } from "@/lib/constants";
 import {
   activityTagSchema,
+  bulkTagMembersSchema,
   createTagSchema,
   deleteTagSchema,
   memberTagSchema,
@@ -122,5 +123,22 @@ describe("memberTagSchema / activityTagSchema", () => {
     expect(activityTagSchema.parse({ activityId: 4, tagId: 5 })).toEqual({ activityId: 4, tagId: 5 });
     expect(memberTagSchema.safeParse({ memberId: 0, tagId: 5 }).success).toBe(false);
     expect(activityTagSchema.safeParse({ activityId: 4 }).success).toBe(false);
+  });
+});
+
+describe("bulkTagMembersSchema", () => {
+  it("coerces ids, de-duplicates them and keeps the order", () => {
+    expect(bulkTagMembersSchema.parse({ memberIds: ["3", 1, 3], tagId: "9", op: "add" })).toEqual({
+      memberIds: [3, 1],
+      tagId: 9,
+      op: "add",
+    });
+  });
+
+  it("rejects an empty selection, more than PAGE_SIZE ids and an unknown op", () => {
+    expect(bulkTagMembersSchema.safeParse({ memberIds: [], tagId: 1, op: "add" }).success).toBe(false);
+    const tooMany = Array.from({ length: PAGE_SIZE + 1 }, (_, i) => i + 1);
+    expect(bulkTagMembersSchema.safeParse({ memberIds: tooMany, tagId: 1, op: "add" }).success).toBe(false);
+    expect(bulkTagMembersSchema.safeParse({ memberIds: [1], tagId: 1, op: "toggle" }).success).toBe(false);
   });
 });

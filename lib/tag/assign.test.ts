@@ -3,7 +3,7 @@ import { TAG_MAX_PER_ENTITY } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 import { buildPageFixture, sessionFor, type FixtureGroup, type PageFixture } from "@/lib/test/fixtures";
-import { attachActivityTag, attachMemberTag, detachActivityTag, detachMemberTag } from "./assign";
+import { attachActivityTag, attachMemberTag, bulkTagMembers, detachActivityTag, detachMemberTag } from "./assign";
 
 // Lets one test make the audit insert throw, to prove the mutation rolls back with it.
 const auditControl = vi.hoisted(() => ({ fail: false }));
@@ -337,6 +337,108 @@ describe("lib/tag/assign", () => {
       auditControl.fail = true;
       await expect(attachActivityTag(leafUser, { activityId: activity.id, tagId: tag.id })).rejects.toThrow("audit failed");
       expect(await activityTagIds(activity.id)).toEqual([]);
+    });
+  });
+
+  describe("bulkTagMembers", () => {
+    const addTo = (memberIds: number[], tagId: number, session = leafUser) =>
+      bulkTagMembers(session, { memberIds, tagId, op: "add" });
+
+    it("adds a tag to every member, reports the count and writes one audit entry on the tag owner's group", async () => {
+      const members = await Promise.all([makeMember(fx.leaf.id), makeMember(fx.leaf.id), makeMember(fx.leaf.id)]);
+      const ids = members.map((m) => m.id);
+      const tag = await make(fx.branch.id, uniqueKey());
+
+      expect(await addTo(ids, tag.id)).toEqual({ changed: 3 });
+
+      for (const id of ids) expect(await memberTagIds(id)).toEqual([tag.id]);
+      const entries = await db.auditLog.findMany({ where: { action: "member.tag", groupId: fx.branch.id, entityId: null } });
+      const entry = entries.find((e) => (e.meta as { tagId: number }).tagId === tag.id);
+      expect(entry?.meta).toEqual({ tagId: tag.id, memberIds: ids, replacedLinks: [] });
+      expect(entry).toMatchObject({ actorId: leafUserId, entity: "Member" });
+    });
+
+    it("replaces another value of the key per member and lists the replaced links", async () => {
+      const key = uniqueKey();
+      const high = await make(fx.leaf.id, key, "tinggi");
+      const low = await make(fx.leaf.id, key, "rendah");
+      const [a, b, c] = await Promise.all([makeMember(fx.leaf.id), makeMember(fx.leaf.id), makeMember(fx.leaf.id)]);
+      await attachMemberTag(leafUser, { memberId: a.id, tagId: high.id });
+      await attachMemberTag(leafUser, { memberId: c.id, tagId: high.id });
+
+      expect(await addTo([a.id, b.id, c.id], low.id)).toEqual({ changed: 3 });
+
+      for (const m of [a, b, c]) expect(await memberTagIds(m.id)).toEqual([low.id]);
+      const entry = (await db.auditLog.findMany({ where: { action: "member.tag", entityId: null }, orderBy: { id: "desc" } }))[0];
+      expect(entry.meta).toEqual({
+        tagId: low.id,
+        memberIds: [a.id, b.id, c.id],
+        replacedLinks: [
+          { memberId: a.id, tagId: high.id },
+          { memberId: c.id, tagId: high.id },
+        ],
+      });
+    });
+
+    it("skips members that already have the tag and writes no audit when nothing changes", async () => {
+      const [a, b] = await Promise.all([makeMember(fx.leaf.id), makeMember(fx.leaf.id)]);
+      const tag = await make(fx.leaf.id, uniqueKey());
+      await attachMemberTag(leafUser, { memberId: a.id, tagId: tag.id });
+
+      expect(await addTo([a.id, b.id], tag.id)).toEqual({ changed: 1 });
+      const before = await db.auditLog.count({ where: { action: "member.tag", entityId: null } });
+      expect(await addTo([a.id, b.id], tag.id)).toEqual({ changed: 0 });
+      expect(await db.auditLog.count({ where: { action: "member.tag", entityId: null } })).toBe(before);
+    });
+
+    it("rejects the whole batch when one id is out of scope, and writes nothing", async () => {
+      const mine = await makeMember(fx.leaf.id);
+      const tag = await make(fx.branch.id, uniqueKey());
+
+      await expect(addTo([mine.id, otherLeafMemberId], tag.id)).rejects.toBeInstanceOf(NotFoundError);
+      expect(await memberTagIds(mine.id)).toEqual([]);
+    });
+
+    it("rejects with 403 a tag the user cannot use, and 404 an invisible tag", async () => {
+      const mine = await makeMember(fx.leaf.id);
+      const below = await make(fx.leaf.id, uniqueKey());
+      await expect(addTo([mine.id], below.id, branchAdmin)).rejects.toBeInstanceOf(ForbiddenError);
+
+      const sibling = await make(fx.otherLeaf.id, uniqueKey());
+      await expect(addTo([mine.id], sibling.id)).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it("rejects the whole batch when any member would exceed TAG_MAX_PER_ENTITY", async () => {
+      const [full, roomy] = await Promise.all([makeMember(fx.leaf.id), makeMember(fx.leaf.id)]);
+      const filler = await Promise.all(Array.from({ length: TAG_MAX_PER_ENTITY }, (_, i) => make(fx.leaf.id, uniqueKey(`bcap${i}`))));
+      await db.memberTag.createMany({ data: filler.map((t) => ({ memberId: full.id, tagId: t.id, createdById: fx.actorId })) });
+      const tag = await make(fx.leaf.id, uniqueKey());
+
+      await expect(addTo([roomy.id, full.id], tag.id)).rejects.toBeInstanceOf(ValidationError);
+      expect(await memberTagIds(roomy.id)).toEqual([]);
+    });
+
+    it("removes the tag from the members that have it and audits member.untag once", async () => {
+      const [a, b, c] = await Promise.all([makeMember(fx.leaf.id), makeMember(fx.leaf.id), makeMember(fx.leaf.id)]);
+      const tag = await make(fx.leaf.id, uniqueKey());
+      await addTo([a.id, c.id], tag.id);
+
+      const result = await bulkTagMembers(leafUser, { memberIds: [a.id, b.id, c.id], tagId: tag.id, op: "remove" });
+
+      expect(result).toEqual({ changed: 2 });
+      for (const m of [a, b, c]) expect(await memberTagIds(m.id)).toEqual([]);
+      const entries = await db.auditLog.findMany({ where: { action: "member.untag", entityId: null } });
+      const entry = entries.find((e) => (e.meta as { tagId: number }).tagId === tag.id);
+      expect(entry?.meta).toEqual({ tagId: tag.id, memberIds: [a.id, c.id], replacedLinks: [] });
+    });
+
+    it("rolls back every link when the audit write fails", async () => {
+      const [a, b] = await Promise.all([makeMember(fx.leaf.id), makeMember(fx.leaf.id)]);
+      const tag = await make(fx.leaf.id, uniqueKey());
+      auditControl.fail = true;
+      await expect(addTo([a.id, b.id], tag.id)).rejects.toThrow("audit failed");
+      expect(await memberTagIds(a.id)).toEqual([]);
+      expect(await memberTagIds(b.id)).toEqual([]);
     });
   });
 });
