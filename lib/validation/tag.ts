@@ -40,6 +40,19 @@ export function parseTagInput(raw: string): ParsedTagInput {
   return { ok: true, key, value };
 }
 
+/** One normalized key or value typed on its own (rename): same rules as the parts of `parseTagInput`, and no ":". */
+function partSchema(label: string) {
+  return z.string().transform((raw, ctx) => {
+    const part = normalizePart(raw);
+    const error = partError(part, label);
+    if (error) {
+      ctx.addIssue({ code: "custom", message: error });
+      return z.NEVER;
+    }
+    return part;
+  });
+}
+
 export const tagColorSchema = z.enum(TAG_COLORS, { message: "Warna tidak valid" });
 
 /** A tag name typed by a user, parsed into `{ key, value }`. */
@@ -62,3 +75,9 @@ export type RecolorTagInput = z.infer<typeof recolorTagSchema>;
 
 export const deleteTagSchema = z.object({ tagId: idSchema });
 export type DeleteTagInput = z.infer<typeof deleteTagSchema>;
+
+export const renameKeySchema = z.object({ tagId: idSchema, newKey: partSchema("Nama") });
+export type RenameKeyInput = z.infer<typeof renameKeySchema>;
+
+export const renameValueSchema = z.object({ tagId: idSchema, newValue: partSchema("Nilai") });
+export type RenameValueInput = z.infer<typeof renameValueSchema>;

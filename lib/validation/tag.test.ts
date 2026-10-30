@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { TAG_COLORS, TAG_MAX_PART_LENGTH } from "@/lib/constants";
-import { createTagSchema, parseTagInput, recolorTagSchema, tagColorSchema } from "./tag";
+import {
+  createTagSchema,
+  deleteTagSchema,
+  parseTagInput,
+  recolorTagSchema,
+  renameKeySchema,
+  renameValueSchema,
+  tagColorSchema,
+} from "./tag";
 
 describe("parseTagInput", () => {
   it("reads a bare word as a simple tag", () => {
@@ -84,5 +92,24 @@ describe("recolorTagSchema", () => {
   it("coerces the id and checks the palette", () => {
     expect(recolorTagSchema.parse({ tagId: "7", color: "teal" })).toEqual({ tagId: 7, color: "teal" });
     expect(recolorTagSchema.safeParse({ tagId: 7, color: "nope" }).success).toBe(false);
+  });
+});
+
+describe("renameKeySchema / renameValueSchema", () => {
+  it("normalizes the new name and coerces the id", () => {
+    expect(renameKeySchema.parse({ tagId: "3", newKey: " Prioritas " })).toEqual({ tagId: 3, newKey: "prioritas" });
+    expect(renameValueSchema.parse({ tagId: 3, newValue: " Mendesak " })).toEqual({ tagId: 3, newValue: "mendesak" });
+  });
+
+  it("rejects empty, over-long and ':' names", () => {
+    expect(renameKeySchema.safeParse({ tagId: 3, newKey: "  " }).success).toBe(false);
+    expect(renameKeySchema.safeParse({ tagId: 3, newKey: "a:b" }).success).toBe(false);
+    expect(renameValueSchema.safeParse({ tagId: 3, newValue: "x".repeat(TAG_MAX_PART_LENGTH + 1) }).success).toBe(false);
+  });
+});
+
+describe("deleteTagSchema", () => {
+  it("coerces the id", () => {
+    expect(deleteTagSchema.parse({ tagId: "9" })).toEqual({ tagId: 9 });
   });
 });
