@@ -201,13 +201,27 @@ export async function splitActivity(session: SessionUser, input: ActivitySplitIn
       data: { activityId: newActivity.id },
     });
 
+    // The continuation keeps the original's labels (links to deleted tags are not carried over).
+    const tagLinks = await tx.activityTag.findMany({
+      where: { activityId: original.id, tag: { deletedAt: null } },
+      select: { tagId: true, createdById: true },
+    });
+    if (tagLinks.length > 0) {
+      await tx.activityTag.createMany({ data: tagLinks.map((link) => ({ ...link, activityId: newActivity.id })) });
+    }
+
     await audit(tx, {
       actorId: Number(session.id),
       action: "activity.split",
       entity: "Activity",
       entityId: original.id,
       groupId: original.groupId,
-      after: { fromActivityId: original.id, toActivityId: newActivity.id, fromDate },
+      after: {
+        fromActivityId: original.id,
+        toActivityId: newActivity.id,
+        fromDate,
+        copiedTagIds: tagLinks.map((link) => link.tagId),
+      },
     });
 
     return newActivity;

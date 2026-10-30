@@ -273,5 +273,63 @@ describe("lib/activity/mutations", () => {
         fromDate: "2026-09-14",
       });
     });
+
+    describe("tag links", () => {
+      const splitFixture = async () => {
+        const session = sessionAt("ADMIN", leaf.id, leaf.path);
+        const { activity } = await createActivity(session, {
+          ...baseActivity({ freq: "WEEKLY", weekdays: [1], interval: 1, startsOn: "2026-01-05" }),
+          groupId: leaf.id,
+        });
+        return { session, activity };
+      };
+      const newTag = (groupId: number, key: string, deletedAt: Date | null = null) =>
+        db.tag.create({ data: { groupId, key, color: "blue", createdById: actorId, deletedAt } });
+      const split = (session: SessionUser, activityId: number) =>
+        splitActivity(session, {
+          activityId,
+          ...baseActivity({ freq: "WEEKLY", weekdays: [1], interval: 1, startsOn: "2026-09-14" }),
+        });
+
+      it("copies the links to non-deleted tags onto the new activity, keeping the original's", async () => {
+        const { session, activity } = await splitFixture();
+        const own = await newTag(leaf.id, "split-own");
+        const inherited = await newTag(root.id, "split-root");
+        const deleted = await newTag(leaf.id, "split-gone", new Date());
+        const otherCreator = await db.user.create({ data: { username: "split-tagger", passwordHash: "x", name: "T" } });
+        await db.activityTag.create({ data: { activityId: activity.id, tagId: own.id, createdById: otherCreator.id } });
+        await db.activityTag.create({ data: { activityId: activity.id, tagId: inherited.id, createdById: actorId } });
+        await db.activityTag.create({ data: { activityId: activity.id, tagId: deleted.id, createdById: actorId } });
+
+        const result = await split(session, activity.id);
+
+        const copied = await db.activityTag.findMany({ where: { activityId: result.activity.id }, orderBy: { tagId: "asc" } });
+        expect(copied.map((l) => l.tagId)).toEqual([own.id, inherited.id].sort((a, b) => a - b));
+        expect(copied.find((l) => l.tagId === own.id)?.createdById).toBe(otherCreator.id);
+        const kept = await db.activityTag.findMany({ where: { activityId: activity.id } });
+        expect(kept).toHaveLength(3);
+
+        const entry = await db.auditLog.findFirst({ where: { action: "activity.split", entityId: activity.id } });
+        expect((entry?.after as { copiedTagIds: number[] }).copiedTagIds.sort((a, b) => a - b)).toEqual(
+          [own.id, inherited.id].sort((a, b) => a - b),
+        );
+      });
+
+      it("copies nothing when the activity has no tags, and nothing on an in-place edit", async () => {
+        const { session, activity } = await splitFixture();
+        const result = await split(session, activity.id);
+        expect(await db.activityTag.count({ where: { activityId: result.activity.id } })).toBe(0);
+
+        const { activity: fresh } = await splitFixture();
+        const tag = await newTag(leaf.id, "split-inplace");
+        await db.activityTag.create({ data: { activityId: fresh.id, tagId: tag.id, createdById: actorId } });
+        const inPlace = await splitActivity(session, {
+          activityId: fresh.id,
+          ...baseActivity({ freq: "WEEKLY", weekdays: [1], interval: 1, startsOn: "2026-01-05" }),
+        });
+        expect(inPlace.splitCreated).toBe(false);
+        expect(await db.activityTag.count({ where: { activityId: fresh.id } })).toBe(1);
+      });
+    });
   });
 });
