@@ -57,6 +57,17 @@ describe("ActivityListPage", () => {
     expect(withTag).toContain("Kajian Uji");
   });
 
+  it("carries the tag filter into the Cetak link", async () => {
+    const fixture = await buildPageFixture("kegiatan-list-tag-cetak");
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "OWNER", fixture.root) });
+    const tag = await db.tag.create({ data: { groupId: fixture.root.id, key: "fokus", color: "blue", createdById: fixture.actorId } });
+
+    const html = renderToStaticMarkup(await ActivityListPage({ searchParams: Promise.resolve({ tag: String(tag.id), q: "uji" }) }));
+    const cetak = html.match(/href="(\/dashboard\/kegiatan\/cetak\?[^"]*)"/)?.[1] ?? "";
+    expect(cetak).toContain(`tag=${tag.id}`);
+    expect(cetak).toContain("q=uji");
+  });
+
   it("redirects to /login when there is no session", async () => {
     mockAuthSession(auth, null);
     await expect(ActivityListPage({ searchParams: Promise.resolve({}) })).rejects.toMatchObject({

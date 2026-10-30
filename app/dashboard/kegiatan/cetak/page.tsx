@@ -10,7 +10,7 @@ import { endTimeOf, groupScheduleByDate } from "@/lib/activity/print";
 import { ACTIVITY_LIST_DATE_RANGE, PRINT_MAX_MONTHS } from "@/lib/constants";
 import { isWithinMonths, today, weekdayOf } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
-import { formatDate, formatDateRange, parseGroupIds, parseSearch, resolveDateRange } from "@/lib/filters";
+import { formatDate, formatDateRange, parseGroupIds, parseSearch, parseTagIds, resolveDateRange } from "@/lib/filters";
 import { getOrganization } from "@/lib/organization";
 import { cn } from "@/lib/utils";
 import { PrintButton } from "./print-button";
@@ -33,6 +33,7 @@ export default async function PrintSchedulePage({
 
   const groupIds = parseGroupIds(params.grup);
   const q = parseSearch(params.q);
+  const tagIds = parseTagIds(params.tag);
   const showCancelled = params.batal !== "0";
   const tooLong = !isWithinMonths(from, to, PRINT_MAX_MONTHS);
 
@@ -40,7 +41,7 @@ export default async function PrintSchedulePage({
   let days: ReturnType<typeof groupScheduleByDate> = [];
   if (!tooLong) {
     try {
-      const { entries, groups } = await listActivityOccurrences(session.user, { from, to, groupIds, search: q });
+      const { entries, groups } = await listActivityOccurrences(session.user, { from, to, groupIds, search: q, tagIds });
       groupsLabel = groups.length === 1 ? groups[0].name : `${groups.length} grup`;
       days = groupScheduleByDate(entries, { showCancelled });
     } catch (error) {
@@ -54,6 +55,7 @@ export default async function PrintSchedulePage({
     const sp = new URLSearchParams();
     if (groupIds) sp.set("grup", groupIds.join(","));
     if (q) sp.set("q", q);
+    if (tagIds) sp.set("tag", tagIds.join(","));
     sp.set("range", range);
     if (range === "custom") {
       sp.set("from", from);

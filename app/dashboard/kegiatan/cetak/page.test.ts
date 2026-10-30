@@ -181,4 +181,29 @@ describe("PrintSchedulePage", () => {
     expect(spy).not.toHaveBeenCalled();
     spy.mockRestore();
   });
+
+  it("applies the tag filter like the list and drops ids the user cannot see", async () => {
+    const fixture = await buildPageFixture("cetak-tag");
+    const { admin, activity } = await weeklyActivity(fixture, "Kajian Bertag");
+    await weeklyActivity(fixture, "Kajian Polos");
+    const tag = await db.tag.create({ data: { groupId: fixture.leaf.id, key: "fokus", color: "blue", createdById: fixture.actorId } });
+    await db.activityTag.create({ data: { activityId: activity.id, tagId: tag.id, createdById: fixture.actorId } });
+    const other = await buildPageFixture("cetak-tag-other");
+    const foreign = await db.tag.create({ data: { groupId: other.root.id, key: "asing", color: "red", createdById: other.actorId } });
+    mockAuthSession(auth, { user: admin });
+
+    const html = renderToStaticMarkup(
+      await PrintSchedulePage({ searchParams: Promise.resolve({ ...RANGE, tag: `${tag.id},${foreign.id}` }) }),
+    );
+    expect((html.match(/Kajian Bertag/g) ?? []).length).toBe(5);
+    expect(html).not.toContain("Kajian Polos");
+    expect(html).toContain(`tag=${tag.id}%2C${foreign.id}`); // the back link keeps the filter
+
+    // Only an invisible id: dropped, so the page renders as if it were absent.
+    const dropped = renderToStaticMarkup(
+      await PrintSchedulePage({ searchParams: Promise.resolve({ ...RANGE, tag: String(foreign.id) }) }),
+    );
+    expect(dropped).toContain("Kajian Bertag");
+    expect(dropped).toContain("Kajian Polos");
+  });
 });

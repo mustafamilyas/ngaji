@@ -89,6 +89,7 @@ export default async function ActivityListPage({
     const sp = new URLSearchParams();
     if (groupIds) sp.set("grup", groupIds.join(","));
     if (q) sp.set("q", q);
+    if (tagIds) sp.set("tag", tagIds.join(","));
     sp.set("range", range);
     if (range === "custom") {
       sp.set("from", from);
