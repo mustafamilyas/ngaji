@@ -36,7 +36,7 @@ pnpm lint && pnpm tsc --noEmit
 - Kegiatan milik grup X berlaku ke seluruh turunan X. **Ubah** kegiatan/occurrence hanya oleh user dengan peran ADMIN+ di `activity.groupId` (grup sendiri, atau `UserExtraRole` ADMIN; DESIGN.md §3.2a — peran tambahan tidak pernah memperluas scope). **Absensi** hanya oleh user di X atau di bawah X, untuk grup daun dalam scope, tanggal ≤ hari ini (kecuali ≥ ADMIN lewat tabel absensi `setMemberAttendance`), tanggal kunci sah menurut `occurrencesFor`.
 - `ActivityOccurrence` dibuat lazy (upsert saat absensi / override). Tidak ada job generator. `date` = tanggal kunci aturan; tanggal efektif = `overrideDate ?? date`.
 - Absen = anggota *expected* (`lib/stats.ts`) tanpa baris `Attendance`. Jangan simpan baris "tidak hadir".
-- Hapus grup hanya jika kosong (tanpa anak, anggota, kegiatan, user yang belum dihapus).
+- Hapus grup hanya jika kosong (tanpa anak, anggota, kegiatan, user, tag yang belum dihapus).
 - Tanggal: kolom `String` (`YYYY-MM-DD`) di DB (SQLite tidak punya tipe DATE native) maupun di seluruh kode — tidak ada konversi Date↔string untuk tanggal murni; `lib/dates.ts` hanya berisi kalkulasi (tambah hari, cari Minggu, dst.) di atas string tersebut. Jam: string `HH:mm`. Zona waktu per organisasi (`session.user.timeZone`, default `Asia/Jakarta`): `today()`/`dateOf()` wajib menerima timezone. Minggu dimulai hari Minggu.
 - Enum domain (`Role`, `Sex`, `MemberStatus`, dll.) adalah kolom `String` di Prisma (SQLite tidak mendukung `enum`); nilai valid ditegakkan oleh TS union + zod di `lib/validation/enums.ts`, bukan oleh DB. `Activity.weekdays` adalah kolom `Json` (SQLite tidak punya scalar list `Int[]`).
 

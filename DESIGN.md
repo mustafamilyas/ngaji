@@ -370,6 +370,58 @@ model SurveyAnswer {
   @@index([questionId, optionId])
 }
 
+/// Tag milik satu grup (§13). Satu baris = satu tag sederhana (value null) atau satu nilai dari sebuah kunci.
+/// Kunci = himpunan baris dengan (groupId, key) yang sama dan value terisi; tidak punya baris sendiri.
+model Tag {
+  id          Int       @id @default(autoincrement())
+  groupId     Int                        // grup pemilik = grup pembuat, tidak pernah dari client
+  key         String                     // trim + huruf kecil
+  value       String?                    // null = tag sederhana
+  color       String                     // TagColor (TAG_COLORS di lib/constants.ts)
+  createdById Int
+  deletedAt   DateTime?                  // soft delete
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  group     Group         @relation(fields: [groupId], references: [id])
+  createdBy User          @relation("tagCreatedBy", fields: [createdById], references: [id])
+  members   MemberTag[]
+  activities ActivityTag[]
+
+  @@index([groupId, deletedAt])
+  @@index([key])
+}
+
+/// Tautan tag ↔ anggota. Dihapus permanen (seperti Attendance), tercatat di audit.
+model MemberTag {
+  memberId    Int
+  tagId       Int
+  createdById Int
+  createdAt   DateTime @default(now())
+
+  member    Member @relation(fields: [memberId], references: [id])
+  tag       Tag    @relation(fields: [tagId], references: [id])
+  createdBy User   @relation("memberTagCreatedBy", fields: [createdById], references: [id])
+
+  @@id([memberId, tagId])
+  @@index([tagId])
+}
+
+/// Tautan tag ↔ kegiatan. Dihapus permanen, tercatat di audit.
+model ActivityTag {
+  activityId  Int
+  tagId       Int
+  createdById Int
+  createdAt   DateTime @default(now())
+
+  activity  Activity @relation(fields: [activityId], references: [id])
+  tag       Tag      @relation(fields: [tagId], references: [id])
+  createdBy User     @relation("activityTagCreatedBy", fields: [createdById], references: [id])
+
+  @@id([activityId, tagId])
+  @@index([tagId])
+}
+
 /// Jejak audit. Ditulis di transaksi yang sama dengan mutasinya. Append-only (tidak ada update/delete).
 model AuditLog {
   id        Int      @id @default(autoincrement())
@@ -396,7 +448,7 @@ model AuditLog {
 
 ### Catatan model
 - **Materialized path** (`path`) dipilih daripada recursive CTE agar query turunan cukup `startsWith` di Prisma. `path` memuat id grup itu sendiri dan diakhiri `/` agar `"1/5/"` tidak cocok dengan `"1/50/"`. Membuat grup = insert lalu update `path` dalam satu transaksi. Pindah grup ke parent lain = tulis ulang path subtree — **tidak ada di MVP**.
-- **Soft delete di mana-mana.** Setiap query `Group`, `Member`, `Activity` **wajib** menambahkan `deletedAt: null`. Buat helper/extension Prisma agar tidak lupa. Hapus grup hanya jika tidak punya anak, anggota, kegiatan, dan user (yang belum dihapus).
+- **Soft delete di mana-mana.** Setiap query `Group`, `Member`, `Activity` **wajib** menambahkan `deletedAt: null`. Buat helper/extension Prisma agar tidak lupa. Hapus grup hanya jika tidak punya anak, anggota, kegiatan, user, dan tag (yang belum dihapus).
 - `Member.deletedAt` ≠ `status = KELUAR`. Hapus = salah input; keluar = peristiwa nyata yang masuk statistik.
 - `PINDAH` tanpa riwayat mutasi: anggota yang pindah grup dibuat ulang sebagai baris baru di grup tujuan (identitas terpisah). Ini disengaja untuk MVP (§9.9); jangan "diperbaiki" tanpa desain riwayat.
 - Absen = anggota yang *expected* (§6) di scope occurrence yang **tidak punya** baris Attendance.
@@ -405,6 +457,7 @@ model AuditLog {
 - `weekdays` pada `Activity` disimpan sebagai kolom `Json` (array angka), karena SQLite tidak mendukung scalar list (`Int[]`) di Prisma. Validasi bentuk & isi array tetap di zod (`lib/validation/activity.ts`).
 - **Survei** (§11): `Survey` soft delete (`deletedAt: null` wajib di setiap query, seperti `Activity`). `SurveyResponse`/`SurveyAnswer` dihapus permanen (seperti `Attendance`), isi yang dihapus ada di audit. Jawaban adalah PII anggota: hanya terbaca lewat query yang terfilter scope dan viewer audit OWNER.
 - **Tampilan anggota** (§12): `MemberView` soft delete (`deletedAt: null` wajib di setiap query). `definition` adalah `Json` (aturan, urutan, pengelompokan, kolom) dan tidak pernah dipercaya mentah: selalu di-parse zod (ketat saat simpan, longgar saat muat).
+- **Tag** (§13): `Tag` soft delete (`deletedAt: null` wajib di setiap query). `MemberTag`/`ActivityTag` adalah tautan, dihapus permanen seperti `Attendance`; setiap pasang/lepas tercatat di audit. Keunikan nama (sepanjang rantai leluhur) dicek di aplikasi di dalam transaksi, bukan oleh indeks.
 - **Multi-organisasi** (§1): tidak ada filter `organizationId` global; scope path sudah memisahkan entitas yang menempel pada grup. Query yang tidak berbasis path (level, pengecekan username, lookup organisasi) wajib dibatasi ke organisasi user; daftar dan hasil pemeriksaannya ada di `openspec/changes/multi-org-and-onboarding/isolation-checklist.md`. Entitas organisasi lain dijawab 404 seperti entitas di luar scope. Last-owner (§3.2) dihitung per organisasi.
 - **`InterestLead`** menyimpan PII calon pengguna (persetujuan dicatat di `consentAt`); PII hanya ada di baris ini, bukan di `AuditLog`. Masa simpan belum ditetapkan.
 - Enum domain (`Role`, `Sex`, `MaritalStatus`, `WorkStatus`, `MemberStatus`, `Freq`, `OccurrenceStatus`, `AttendanceStatus`, `QuestionType`, `ViewSource`, `ViewVisibility`) bukan Prisma `enum` (tidak didukung SQLite) — kolomnya `String`, nilai valid ditegakkan oleh TS union + zod di `lib/validation/enums.ts`, bukan oleh database.
@@ -444,6 +497,9 @@ Seorang user bisa USER/ADMIN di grup atasnya sekaligus ADMIN di grup yang lebih 
 | Buat tampilan anggota di grup user sendiri; "Simpan sebagai baru" | ✅ | ✅ | ✅ |
 | Ubah / hapus (soft) tampilan anggota — hanya **pemiliknya** | ✅ | ✅ | ✅ |
 | Ambil alih tampilan yatim (pemilik nonaktif / pindah grup) di grup user sendiri | ✅ | ✅ | ❌ |
+| Lihat tag (§13): milik leluhur / grup user / dalam scope | ✅ | ✅ | ✅ |
+| Buat / ubah nama / ubah warna / hapus (soft) tag **milik grup user sendiri** | ✅ | ✅ | ❌ |
+| Pasang / lepas tag milik grup user atau leluhurnya pada anggota dalam scope & kegiatan yang terlihat (§13.3) | ✅ | ✅ | ✅ |
 | Buat user USER / ADMIN untuk grup dalam scope | ✅ | ✅ | ❌ |
 | Reset password user lain | ✅ semua dalam scope | ✅ hanya USER **di grup yang sama** | ❌ |
 | Buat user OWNER (grup dalam scope) | ✅ | ❌ | ❌ |
@@ -581,6 +637,9 @@ Helper `audit(tx, { action, entity, entityId, groupId, before, after, meta })` d
 | `member_view.update` | simpan / ubah nama | `before`/`after` = nama + definisi |
 | `member_view.delete` | hapus (soft) | `before` = snapshot tampilan |
 | `member_view.transfer` | ambil alih | `meta: { fromOwnerId, toOwnerId }` |
+| `tag.create/update/delete` | kelola tag (§13); ganti nama kunci / hapus kunci = satu entri untuk semua nilainya | `before`/`after` = baris tag (kunci, nilai, warna); `groupId` = grup pemilik |
+| `member.tag`, `member.untag` | pasang / lepas tag anggota (satu atau massal) | `meta: { tagId, memberIds, replacedTagIds }`; `groupId` = grup anggota (satu) atau grup pemilik tag (massal) |
+| `activity.tag`, `activity.untag` | pasang / lepas tag kegiatan | `meta: { tagId, activityId, replacedTagIds }`; `groupId` = grup pemilik tag |
 
 Membuka/mendaftar tampilan dan draf yang belum disimpan (`?d=`) tidak diaudit.
 
@@ -694,11 +753,11 @@ Semua halaman aplikasi (wajib login) ada di bawah `/dashboard` dan memakai app s
 | `/dashboard/akun/password` | Ganti password sendiri (wajib jika `mustChangePassword`) |
 | `/dashboard` | Dashboard: ringkasan statistik scope + kegiatan 7 hari ke depan |
 | `/dashboard/grup` | Pohon grup dalam scope |
-| `/dashboard/grup/[id]` | Detail (§7.2), tab: anggota (grup daun) **atau** sub-grup, kegiatan, pengguna, pengaturan (ADMIN/OWNER: rename + zona berbahaya hapus) — tiap daftar dipaginasi sendiri (`?subgrup=`, `?anggota=`, `?kegiatan=`, `?pengguna=`, 10/hal); aksi: lihat semua anggota, tambah anggota (daun, `/dashboard/anggota/baru?grup=`) atau tambah sub-grup (dialog) |
-| `/dashboard/anggota` | Tabel (paginasi `?page=`, 50/hal) + cari nama + filter grup (multi, termasuk turunan) / status; kolom bisa dipilih (§7.1); tombol WhatsApp per anggota |
+| `/dashboard/grup/[id]` | Detail (§7.2), tab: anggota (grup daun) **atau** sub-grup, kegiatan, pengguna, tag (`?tab=tag`: tag milik grup ini dikelompokkan per kunci; kelola hanya ADMIN/OWNER grup ini, §13), pengaturan (ADMIN/OWNER: rename + zona berbahaya hapus) — tiap daftar dipaginasi sendiri (`?subgrup=`, `?anggota=`, `?kegiatan=`, `?pengguna=`, 10/hal); aksi: lihat semua anggota, tambah anggota (daun, `/dashboard/anggota/baru?grup=`) atau tambah sub-grup (dialog) |
+| `/dashboard/anggota` | Tabel (paginasi `?page=`, 50/hal) + cari nama + filter grup (multi, termasuk turunan) / status / tag (`?tag=`, salah satu, §13.4); kolom bisa dipilih (§7.1, termasuk "Tag" dengan pemilih tag per baris); pilih baris → "Tambah tag" / "Hapus tag" massal (halaman saat ini saja); tombol WhatsApp per anggota |
 | `/dashboard/anggota/baru`, `/dashboard/anggota/[id]` | Form (`?grup=` memilih grup awal); detail (§7.2) tab profil, kehadiran (paginasi `?riwayat=`, 10/hal, tautan ke occurrence), ubah (form + zona berbahaya hapus soft); tombol WhatsApp |
-| `/dashboard/kegiatan` | Daftar **atau** kalender (toggle; kalender berupa agenda per hari untuk rentang ≤ 7 hari, grid bulan untuk rentang lebih panjang) per rentang tanggal — preset Hari ini/Minggu ini/Bulan ini/pilih tanggal (default Minggu ini) dengan tombol ‹ › per rentang, badge *warisan*, *konflik*, *dipindah*, *batal*; Keterangan occurrence (`overrideNotes` atau catatan kegiatan) tampil sebagai teks polos terpotong di daftar dan kalender; cari nama kegiatan (badge konflik tetap dihitung dari semua kegiatan); filter grup multi-select (dengan pintasan "pilih dengan turunannya") atas union §5.3; daftar dipaginasi 50/hal; semua state (grup, rentang, tampilan, cari) di URL; tombol **Cetak** membuka `/dashboard/kegiatan/cetak` dengan filter yang sama |
-| `/dashboard/kegiatan/cetak` | Jadwal siap cetak untuk filter yang sama dengan daftar (`grup`, `q`, `range`, `anchor`, `from`, `to`), tanpa paginasi; satu tabel untuk seluruh rentang (kolom Tanggal, Jam, Kegiatan, Grup, Lokasi, Keterangan), Tanggal tampil sekali per tanggal efektif (rowspan) dengan garis pemisah, urut jam lalu nama, header tabel diulang tiap halaman cetak, baris tidak terbelah; label *Dipindah*/*Batal* sebagai teks; `batal=0` menyembunyikan yang batal (default tampil); rentang maks. `PRINT_MAX_MONTHS` (3) bulan; navigasi & toolbar disembunyikan saat cetak, A4 hitam-putih; dicetak lewat dialog browser (tanpa PDF server) |
+| `/dashboard/kegiatan` | Daftar **atau** kalender (toggle; kalender berupa agenda per hari untuk rentang ≤ 7 hari, grid bulan untuk rentang lebih panjang) per rentang tanggal — preset Hari ini/Minggu ini/Bulan ini/pilih tanggal (default Minggu ini) dengan tombol ‹ › per rentang, badge *warisan*, *konflik*, *dipindah*, *batal*; Keterangan occurrence (`overrideNotes` atau catatan kegiatan) tampil sebagai teks polos terpotong di daftar dan kalender; cari nama kegiatan (badge konflik tetap dihitung dari semua kegiatan); filter grup multi-select (dengan pintasan "pilih dengan turunannya") atas union §5.3; filter tag (`?tag=`, salah satu, §13.4; badge konflik tetap dari semua kegiatan); chip tag + pemilih tag per baris daftar; daftar dipaginasi 50/hal; semua state (grup, tag, rentang, tampilan, cari) di URL; tombol **Cetak** membuka `/dashboard/kegiatan/cetak` dengan filter yang sama |
+| `/dashboard/kegiatan/cetak` | Jadwal siap cetak untuk filter yang sama dengan daftar (`grup`, `q`, `tag`, `range`, `anchor`, `from`, `to`), tanpa paginasi; satu tabel untuk seluruh rentang (kolom Tanggal, Jam, Kegiatan, Grup, Lokasi, Keterangan), Tanggal tampil sekali per tanggal efektif (rowspan) dengan garis pemisah, urut jam lalu nama, header tabel diulang tiap halaman cetak, baris tidak terbelah; label *Dipindah*/*Batal* sebagai teks; `batal=0` menyembunyikan yang batal (default tampil); rentang maks. `PRINT_MAX_MONTHS` (3) bulan; navigasi & toolbar disembunyikan saat cetak, A4 hitam-putih; dicetak lewat dialog browser (tanpa PDF server) |
 | `/dashboard/kegiatan/baru`, `/dashboard/kegiatan/[id]` | Form template; detail (§7.2) tab absensi per rentang (preset 7/30/90 hari, bulan ini, pilih tanggal; default 30 hari) dengan tabel per-occurrence & per-anggota (10/hal), jadwal 90 hari ke depan (`?jadwal=`, 10/hal; ubah satu tanggal lewat dialog, hanya `canEdit`), pengaturan (hanya `canEdit`: form, geser, zona berbahaya akhiri/hapus); aksi "Isi absensi hari ini" bila ada occurrence hari ini |
 | `/dashboard/kegiatan/[id]/[tanggal]` | Tabel absensi occurrence (nama, status, alasan, aksi Hadir/Izin yang langsung tersimpan; urut nama/status; filter nama/status/grup) — **tidak** dipaginasi (semua anggota perlu terlihat saat mengisi) |
 | `/dashboard/survei` | Daftar survei yang terlihat (milik leluhur atau grup dalam scope): judul, grup pemilik, jumlah respons, badge *warisan*; cari judul + filter grup (survei yang berlaku untuk grup terpilih); `PAGE_SIZE`; "Buat survei" hanya ADMIN+ (§11) |
@@ -793,6 +852,7 @@ Semua halaman aplikasi (wajib login) ada di bawah `/dashboard` dan memakai app s
 | Riwayat pindah grup anggota | Tabel `MemberGroupHistory`; `PINDAH` saat ini membuat baris baru. |
 | Ekspor data / cetak | Perlu keputusan kebijakan PII dulu; audit `export.*`. |
 | Tema gelap | Belum ada: variabel `.dark` dan kelas `dark:` bawaan shadcn ada tetapi tidak ada saklar dan tidak mengikuti `prefers-color-scheme`, jadi tampilan gelap tidak pernah muncul dan belum pernah diperiksa. Tambah nanti sebagai perubahan tersendiri: saklar terang/gelap/sistem, pemeriksaan kontras tiap halaman dan palet Recharts, `pnpm audit:viewport` di kedua tema. Cetak selalu hitam-putih. |
+| Tag pribadi / per-user; tag di tampilan anggota (§12) & statistik; tag massal untuk kegiatan | Tag sudah ada (§13), semuanya milik grup dan terlihat sesuai §13.2. Tag pribadi = kolom `visibility` + `ownerId` di `Tag`; aturan `tag` di registri medan §12.2 memakai `resolveVisibleTags` yang sama. |
 | Multi-organisasi — super-admin platform, user lintas-organisasi, subdomain, logo | Multi-organisasi dasar **sudah ada** (§1). Belum ada: UI super-admin, user di banyak organisasi, subdomain; `Organization.logoUrl` sudah ada tetapi belum diedit/ditampilkan. |
 
 ---
@@ -853,3 +913,31 @@ Daftar anggota tersimpan dengan aturan penyaring, urutan, pengelompokan, dan kol
 - Pemilik: **Simpan** (timpa; definisi dikirim lalu divalidasi ketat) dan **Batalkan** (hapus `?d`). Semua user di grup: **Simpan sebagai baru** (dialog nama, jadi milik user, lalu pindah ke tampilan baru) — selalu tampil, juga di `/dashboard/tampilan/baru`. Pemilik: **Ubah nama** (dialog). Hapus: zona berbahaya, konfirmasi dialog, kembali ke `/dashboard/tampilan`.
 - `/dashboard/tampilan/baru` mulai dari definisi awal: status salah satu dari `AKTIF`, urut nama naik, tanpa pengelompokan, kolom default anggota.
 - Audit: `member_view.create/update/delete/transfer` di transaksi yang sama (§4.5). Teks filter bisa memuat nama (PII), itu sebabnya audit hanya untuk OWNER dalam scope.
+
+## 13. Tag
+
+Label berwarna untuk anggota dan kegiatan, milik grup dan diwariskan ke turunan. Spesifikasi & skenario uji: `openspec/changes/member-activity-tags/`.
+
+### 13.1 Model & nama
+- **Tag sederhana** (`fokus`) atau **nilai kunci** (`prioritas:tinggi`). Satu baris `Tag` per tag sederhana atau per nilai; tiap baris punya warna sendiri dari palet tetap `TAG_COLORS` (bukan hex bebas; chip selalu menampilkan teks agar tetap terbaca tanpa warna dan saat cetak).
+- Kunci & nilai: trim, huruf kecil, 1–`TAG_MAX_PART_LENGTH` karakter, huruf/angka/spasi/`-`/`_`; `a:b` di input dibaca kunci `a`, nilai `b`. Kunci yang punya nilai tidak boleh sekaligus jadi tag sederhana di grup yang sama.
+- Kunci unik **di sepanjang rantai leluhur**: grup G tidak boleh membuat kunci yang sudah ada (belum dihapus) di G atau leluhurnya. Nilai sebuah kunci hanya ditambah oleh grup pemilik kunci. Cabang bersaudara boleh memakai nama sama. Jika leluhur kemudian membuat nama yang sudah dipakai turunan, keduanya tetap ada dan pemilih tag menampilkan grup pemiliknya.
+- Maks. `TAG_MAX_PER_GROUP` tag per grup, `TAG_MAX_PER_ENTITY` tag per anggota/kegiatan.
+
+### 13.2 Terlihat, dipakai, dikelola
+- **Terlihat** (`canViewTag`): grup pemilik ∈ `ancestors(G) ∪ scope(U)`, aturan yang sama dengan `canViewActivity` (§3.3). Untuk anggota ini sama dengan "siapa pun yang melihat anggota melihat tag-nya". Tag cabang lain / organisasi lain / terhapus → 404.
+- **Dipakai** (`canUseTag`, pasang/lepas): grup pemilik ∈ `ancestors(G) ∪ {G}`, semua peran. Tag turunan terlihat tetapi tidak bisa dipakai (403).
+- **Dikelola** (buat, ubah nama kunci/nilai, ubah warna, hapus soft): hanya ADMIN/OWNER yang peran **utamanya** di grup pemilik. Peran tambahan (§3.2a) tidak memberi hak ini. Hapus kunci = hapus semua nilainya; tautan ke tag terhapus tidak tampil dan tidak ikut filter.
+
+### 13.3 Memasang tag
+- **Anggota**: belum dihapus, dalam scope user, dan di subtree grup pemilik tag. Semua status anggota boleh.
+- **Kegiatan**: belum dihapus, terlihat oleh user (§3.3), dan grup kegiatan ada di rantai leluhur atau subtree grup pemilik tag. **Tidak** perlu hak ubah kegiatan, sehingga kelompok bisa memberi tag pada kegiatan warisan; tautan itu hanya terlihat sesuai §13.2 (cabang bersaudara tidak melihatnya).
+- **Nilai kunci eksklusif** per (grup pemilik, kunci) per entitas: memasang `prioritas:rendah` melepas `prioritas:tinggi` di transaksi yang sama (juga massal). Tag sederhana tidak eksklusif. Memasang tag yang sudah terpasang tidak mengubah apa pun dan tidak diaudit.
+- **Pemilih tag** (popover + cari `kunci:nilai`) di detail anggota, detail kegiatan, dan baris tabel anggota/kegiatan; ADMIN/OWNER bisa "Buat tag" langsung (di grupnya sendiri) lalu memasangnya.
+- **Massal**: tabel anggota, pilih baris di halaman saat ini (maks. `PAGE_SIZE`), satu tag; satu id yang tidak sah menolak seluruh permintaan; satu entri audit.
+- "Geser ini & seterusnya" (§5.5) menyalin semua tautan tag ke kegiatan baru. `PINDAH` tidak menyalin apa pun (baris baru dibuat manual).
+
+### 13.4 Filter
+- `?tag=` (id dipisah koma, maks. `MAX_TAG_FILTER_IDS`) di `/dashboard/anggota`, `/dashboard/kegiatan` (daftar & kalender), dan `/dashboard/kegiatan/cetak`. Cocok bila entitas punya **salah satu** tag terpilih; di-AND dengan filter lain dan tidak pernah memperluas scope.
+- Id di-resolve di server; id rusak, terhapus, organisasi lain, atau tidak terlihat **dibuang** tanpa galat (seperti filter grup kegiatan).
+
