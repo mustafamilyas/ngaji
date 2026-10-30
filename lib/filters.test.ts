@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { MAX_TAG_FILTER_IDS } from "@/lib/constants";
 import {
   formatDate,
   formatDateRange,
   parseGroupIds,
   parsePage,
   parseSearch,
+  parseTagIds,
   resolveDateRange,
   shiftDateRange,
   type DateRangeConfig,
@@ -38,6 +40,25 @@ describe("parseGroupIds", () => {
     expect(parseGroupIds(undefined)).toBeUndefined();
     expect(parseGroupIds("")).toBeUndefined();
     expect(parseGroupIds("x,y")).toBeUndefined();
+  });
+});
+
+describe("parseTagIds", () => {
+  it("parses a comma-separated list of positive integer ids, de-duplicated, first param only", () => {
+    expect(parseTagIds("3,5,3")).toEqual([3, 5]);
+    expect(parseTagIds(["4,2", "9"])).toEqual([4, 2]);
+    expect(parseTagIds("1,abc,-2,0,2.5,7")).toEqual([1, 7]);
+  });
+
+  it("keeps at most MAX_TAG_FILTER_IDS ids", () => {
+    const raw = Array.from({ length: MAX_TAG_FILTER_IDS + 30 }, (_, i) => i + 1).join(",");
+    expect(parseTagIds(raw)).toHaveLength(MAX_TAG_FILTER_IDS);
+  });
+
+  it("returns undefined when nothing usable is given", () => {
+    expect(parseTagIds(undefined)).toBeUndefined();
+    expect(parseTagIds("")).toBeUndefined();
+    expect(parseTagIds("x,y")).toBeUndefined();
   });
 });
 

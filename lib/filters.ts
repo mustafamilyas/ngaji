@@ -1,11 +1,11 @@
 /**
  * Parsers for the shared list filter URL contract (`components/filters/*`):
- * `q` (name search), `grup` (comma-separated group ids), `range` / `anchor`
+ * `q` (name search), `grup` / `tag` (comma-separated group / tag ids), `range` / `anchor`
  * / `from` / `to` (date range), `page`. Everything from the URL is untrusted:
  * these only normalize shape — group ids must still be resolved and
- * scope-checked server-side by the caller.
+ * scope-checked server-side by the caller (tag ids via `resolveVisibleTags`).
  */
-import { MAX_GROUP_FILTER_IDS } from "@/lib/constants";
+import { MAX_GROUP_FILTER_IDS, MAX_TAG_FILTER_IDS } from "@/lib/constants";
 import { addDays, addMonthsOnDay, daysBetween, isDateString, monthStartOf, rangeForMode } from "@/lib/dates";
 
 type Param = string | string[] | undefined;
@@ -16,15 +16,23 @@ function first(param: Param): string | undefined {
   return Array.isArray(param) ? param[0] : param;
 }
 
-export function parseGroupIds(param: Param): number[] | undefined {
+function parseIdList(param: Param, max: number): number[] | undefined {
   const raw = first(param);
   if (!raw) return undefined;
   const ids = raw
     .split(",")
     .map((part) => Number(part))
     .filter((n) => Number.isInteger(n) && n > 0);
-  const unique = [...new Set(ids)].slice(0, MAX_GROUP_FILTER_IDS);
+  const unique = [...new Set(ids)].slice(0, max);
   return unique.length > 0 ? unique : undefined;
+}
+
+export function parseGroupIds(param: Param): number[] | undefined {
+  return parseIdList(param, MAX_GROUP_FILTER_IDS);
+}
+
+export function parseTagIds(param: Param): number[] | undefined {
+  return parseIdList(param, MAX_TAG_FILTER_IDS);
 }
 
 export function parseSearch(param: Param): string | undefined {
