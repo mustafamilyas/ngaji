@@ -658,3 +658,69 @@ describe("authorize member_view.*", () => {
     });
   });
 });
+
+describe("authorize — tag.manage / tag.use", () => {
+  // Owner group is kelompok K (id 4, path KELOMPOK) under desa (id 3) under daerah (id 2).
+  const ownerOfK = session("OWNER", 4, KELOMPOK);
+  const adminOfK = session("ADMIN", 4, KELOMPOK);
+  const userOfK = session("USER", 4, KELOMPOK);
+  const adminOfDesa = session("ADMIN", 3, DESA);
+  const adminOfK2 = session("ADMIN", 8, "1/2/3/8/");
+
+  describe("tag.manage", () => {
+    it("ADMIN and OWNER of the owner group can manage", () => {
+      expect(() => authorize(adminOfK, "tag.manage", { groupId: 4 })).not.toThrow();
+      expect(() => authorize(ownerOfK, "tag.manage", { groupId: 4 })).not.toThrow();
+    });
+
+    it("USER of the owner group is forbidden", () => {
+      expect(() => authorize(userOfK, "tag.manage", { groupId: 4 })).toThrow(ForbiddenError);
+    });
+
+    it("ADMIN of an ancestor is forbidden on a descendant's tag", () => {
+      expect(() => authorize(adminOfDesa, "tag.manage", { groupId: 4 })).toThrow(ForbiddenError);
+    });
+
+    it("ADMIN of a descendant is forbidden on an ancestor's tag", () => {
+      expect(() => authorize(adminOfK, "tag.manage", { groupId: 3 })).toThrow(ForbiddenError);
+    });
+
+    it("ADMIN of a sibling group is forbidden", () => {
+      expect(() => authorize(adminOfK2, "tag.manage", { groupId: 4 })).toThrow(ForbiddenError);
+    });
+
+    it("an extra ADMIN role at the owner group does not grant management", () => {
+      const withExtra: SessionUser = { ...adminOfDesa, extraRoles: [{ groupId: 4, role: "ADMIN" }] };
+      expect(() => authorize(withExtra, "tag.manage", { groupId: 4 })).toThrow(ForbiddenError);
+    });
+
+    it("a USER with an extra ADMIN role at the owner group is still forbidden", () => {
+      const userWithExtra: SessionUser = { ...session("USER", 3, DESA), extraRoles: [{ groupId: 4, role: "ADMIN" }] };
+      expect(() => authorize(userWithExtra, "tag.manage", { groupId: 4 })).toThrow(ForbiddenError);
+    });
+  });
+
+  describe("tag.use", () => {
+    it.each(["OWNER", "ADMIN", "USER"] as const)("%s can use a tag owned by their own group", (role) => {
+      expect(() => authorize(session(role, 4, KELOMPOK), "tag.use", { groupPath: KELOMPOK })).not.toThrow();
+    });
+
+    it.each(["OWNER", "ADMIN", "USER"] as const)("%s can use a tag owned by an ancestor", (role) => {
+      expect(() => authorize(session(role, 4, KELOMPOK), "tag.use", { groupPath: DESA })).not.toThrow();
+      expect(() => authorize(session(role, 4, KELOMPOK), "tag.use", { groupPath: ROOT })).not.toThrow();
+    });
+
+    it("ADMIN of an ancestor is forbidden on a descendant's tag", () => {
+      expect(() => authorize(adminOfDesa, "tag.use", { groupPath: KELOMPOK })).toThrow(ForbiddenError);
+    });
+
+    it("a sibling's tag is forbidden", () => {
+      expect(() => authorize(adminOfK2, "tag.use", { groupPath: KELOMPOK })).toThrow(ForbiddenError);
+    });
+
+    it("an extra ADMIN role does not widen what can be used", () => {
+      const withExtra: SessionUser = { ...adminOfDesa, extraRoles: [{ groupId: 4, role: "ADMIN" }] };
+      expect(() => authorize(withExtra, "tag.use", { groupPath: KELOMPOK })).toThrow(ForbiddenError);
+    });
+  });
+});

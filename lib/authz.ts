@@ -1,5 +1,6 @@
 import { ForbiddenError, NotFoundError } from "./errors";
 import { isAncestorOf, isInScope } from "./scope";
+import { canUseTag } from "./tag/access";
 import type { SessionUser } from "./auth/session-user";
 import type { Role } from "./validation/enums";
 
@@ -39,7 +40,9 @@ export type Action =
   | "member_view.create"
   | "member_view.update"
   | "member_view.delete"
-  | "member_view.transfer";
+  | "member_view.transfer"
+  | "tag.manage"
+  | "tag.use";
 
 type ScopeTarget = { groupPath: string };
 type ActivityGroupTarget = { groupId: number };
@@ -205,6 +208,8 @@ export function authorize(
   action: "member_view.view" | "member_view.update" | "member_view.delete" | "member_view.transfer",
   target: MemberViewTarget,
 ): void;
+export function authorize(session: SessionUser, action: "tag.manage", target: ActivityGroupTarget): void;
+export function authorize(session: SessionUser, action: "tag.use", target: ScopeTarget): void;
 export function authorize(session: SessionUser, action: "level.rename" | "organization.update"): void;
 export function authorize(session: SessionUser, action: "audit.view"): void;
 export function authorize(session: SessionUser, action: Action, target?: unknown): void {
@@ -351,6 +356,20 @@ export function authorize(session: SessionUser, action: Action, target?: unknown
         const orphaned = !view.ownerIsActive || view.ownerGroupId !== view.groupId;
         if (!orphaned) throw new ForbiddenError();
       }
+      return;
+    }
+
+    case "tag.manage": {
+      // Primary role only: extra ADMIN roles never grant tag management (DESIGN.md §13.2).
+      const { groupId } = target as ActivityGroupTarget;
+      if (!atLeast(session.role, "ADMIN") || groupId !== session.groupId) throw new ForbiddenError();
+      return;
+    }
+
+    case "tag.use": {
+      // Existence/visibility (404) is settled earlier by `resolveTag`; here a visible tag is usable or 403.
+      const { groupPath } = target as ScopeTarget;
+      if (!canUseTag(session, groupPath)) throw new ForbiddenError();
       return;
     }
 

@@ -8,10 +8,10 @@
 
 ## 2. Pure logic (tests first)
 
-- [ ] 2.1 `lib/validation/tag.ts`: zod schemas + `parseTagInput("a:b")` normalization (trim, lowercase, charset, length, single `:`); verify with `lib/validation/tag.test.ts` covering the naming scenarios in specs/tags
-- [ ] 2.2 `lib/tag/access.ts`: `canViewTag`, `canUseTag`, `canTagMember`, `canTagActivity`, `visibleTagWhere` (design D3); verify with tests for ancestor/descendant/sibling/other-org cases
-- [ ] 2.3 `lib/tag/exclusive.ts`: given current links and a new tag, compute links to remove (same owner + key, value tags only); verify tests for replace, no-op, simple tags, same key from sibling owners
-- [ ] 2.4 Extend `authorize()` with `tag.manage` and `tag.use` (primary role only for manage; extra roles ignored); verify `lib/authz.test.ts` incl. 403 cases for USER, ancestor ADMIN, descendant ADMIN
+- [x] 2.1 `lib/validation/tag.ts`: zod schemas + `parseTagInput("a:b")` normalization (trim, lowercase, charset, length, single `:`); verify with `lib/validation/tag.test.ts` covering the naming scenarios in specs/tags
+- [x] 2.2 `lib/tag/access.ts`: `canViewTag`, `canUseTag`, `canTagMember`, `canTagActivity`, `visibleTagWhere` (design D3); verify with tests for ancestor/descendant/sibling/other-org cases
+- [x] 2.3 `lib/tag/exclusive.ts`: given current links and a new tag, compute links to remove (same owner + key, value tags only); verify tests for replace, no-op, simple tags, same key from sibling owners
+- [x] 2.4 Extend `authorize()` with `tag.manage` and `tag.use` (primary role only for manage; extra roles ignored); verify `lib/authz.test.ts` incl. 403 cases for USER, ancestor ADMIN, descendant ADMIN
 
 ## 3. Server: tags and links
 
