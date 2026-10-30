@@ -81,3 +81,9 @@ export type RenameKeyInput = z.infer<typeof renameKeySchema>;
 
 export const renameValueSchema = z.object({ tagId: idSchema, newValue: partSchema("Nilai") });
 export type RenameValueInput = z.infer<typeof renameValueSchema>;
+
+export const memberTagSchema = z.object({ memberId: idSchema, tagId: idSchema });
+export type MemberTagInput = z.infer<typeof memberTagSchema>;
+
+export const activityTagSchema = z.object({ activityId: idSchema, tagId: idSchema });
+export type ActivityTagInput = z.infer<typeof activityTagSchema>;

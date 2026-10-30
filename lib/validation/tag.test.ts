@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { TAG_COLORS, TAG_MAX_PART_LENGTH } from "@/lib/constants";
 import {
+  activityTagSchema,
   createTagSchema,
   deleteTagSchema,
+  memberTagSchema,
   parseTagInput,
   recolorTagSchema,
   renameKeySchema,
@@ -111,5 +113,14 @@ describe("renameKeySchema / renameValueSchema", () => {
 describe("deleteTagSchema", () => {
   it("coerces the id", () => {
     expect(deleteTagSchema.parse({ tagId: "9" })).toEqual({ tagId: 9 });
+  });
+});
+
+describe("memberTagSchema / activityTagSchema", () => {
+  it("coerces ids and rejects non-positive ones", () => {
+    expect(memberTagSchema.parse({ memberId: "4", tagId: "5" })).toEqual({ memberId: 4, tagId: 5 });
+    expect(activityTagSchema.parse({ activityId: 4, tagId: 5 })).toEqual({ activityId: 4, tagId: 5 });
+    expect(memberTagSchema.safeParse({ memberId: 0, tagId: 5 }).success).toBe(false);
+    expect(activityTagSchema.safeParse({ activityId: 4 }).success).toBe(false);
   });
 });

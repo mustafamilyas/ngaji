@@ -17,7 +17,7 @@
 
 - [x] 3.1 `resolveTag` / `resolveVisibleTags` in `lib/resolve.ts` (404 when not visible/deleted/other org; list variant drops); verify `lib/resolve.test.ts`
 - [x] 3.2 `lib/tag/mutations.ts`: create, rename (key rename = updateMany; separate `renameTagKey` / `renameTagValue`), recolor, soft delete (`deleteTag` one row, `deleteTagKey` = all values) with ancestor-chain uniqueness, simple-vs-key conflict, `TAG_MAX_PER_GROUP`, audit `tag.*`; verify `mutations.test.ts` for every scenario in specs/tags
-- [ ] 3.3 `attachMemberTag` / `detachMemberTag` / `attachActivityTag` / `detachActivityTag` with exclusivity in-transaction, `TAG_MAX_PER_ENTITY`, idempotent attach (no audit), audit `member.tag/untag`, `activity.tag/untag`; verify tests for specs/tag-assignment scenarios
+- [x] 3.3 `attachMemberTag` / `detachMemberTag` / `attachActivityTag` / `detachActivityTag` with exclusivity in-transaction, `TAG_MAX_PER_ENTITY`, idempotent attach (no audit), audit `member.tag/untag`, `activity.tag/untag`; verify tests for specs/tag-assignment scenarios
 - [ ] 3.4 `bulkTagMembers(session, { memberIds, tagId, op })`: resolve all ids, reject whole batch on any failure, one audit entry with `replacedTagIds`; verify tests (bulk replace, one out-of-scope id rejects all, cap `PAGE_SIZE`)
 - [ ] 3.5 `splitActivity` copies tag links to the new activity in the same transaction; verify existing split test extended
 - [ ] 3.6 Group delete emptiness check includes non-deleted owned tags; verify `lib/group/mutations.test.ts`
@@ -64,3 +64,4 @@
 ## 8. Additional tasks (failures and findings during implementation)
 
 <!-- Add one line per failure/finding: `- [ ] 8.N <what failed> (found in task X.Y); verify <how>` -->
+- [x] 8.1 Spec scenarios "member outside the tag group's subtree" and "activity in an unrelated branch" cannot reach the fit check through the public API: a usable tag (owner is ancestor-or-self of the user) plus an in-scope member or visible activity already implies the fit, so they surface as 404 (sibling) instead. The check stays as defense in depth in `lib/tag/assign.ts`; revisit if `canTagMember`/`canTagActivity` get callers outside this flow (found in 3.3); verify by `lib/tag/assign.test.ts` sibling 404 cases
