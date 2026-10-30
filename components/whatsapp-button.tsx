@@ -13,7 +13,7 @@ export function WhatsAppButton({
   compact = false,
   className,
 }: {
-  phone: string;
+  phone: string | null | undefined;
   /** Recipient's name, for the accessible label. */
   name: string;
   /** Icon-only, for table cells. */

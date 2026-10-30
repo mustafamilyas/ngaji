@@ -145,7 +145,7 @@ export function MemberForm(props: MemberFormProps) {
         <textarea id="address" className={textareaClass} autoComplete="off" {...register("address")} />
       </Field>
 
-      <Field label="No. HP" htmlFor="phone" error={errors.phone?.message}>
+      <Field label="No. HP (opsional)" htmlFor="phone" error={errors.phone?.message}>
         <input id="phone" type="tel" inputMode="tel" autoComplete="off" className={inputClass} {...register("phone")} />
       </Field>
 

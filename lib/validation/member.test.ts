@@ -50,6 +50,14 @@ describe("createMemberSchema", () => {
     expect(first.success && second.success).toBe(true);
   });
 
+  it("treats a blank or missing phone as absent", () => {
+    for (const phone of ["", "   ", undefined]) {
+      const result = createMemberSchema.safeParse(base({ phone }));
+      expect(result.success, String(phone)).toBe(true);
+      if (result.success) expect(result.data.phone).toBeUndefined();
+    }
+  });
+
   it("rejects an invalid sex value", () => {
     const result = createMemberSchema.safeParse(base({ sex: "X" }));
     expect(result.success).toBe(false);

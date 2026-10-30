@@ -122,7 +122,7 @@ export function QuickRegisterDialog({
               <input id="qr-birthDate" type="date" className={inputClass} {...register("birthDate")} />
             </Field>
           </div>
-          <Field label="No. HP" htmlFor="qr-phone" error={errors.phone?.message}>
+          <Field label="No. HP (opsional)" htmlFor="qr-phone" error={errors.phone?.message}>
             <input id="qr-phone" type="tel" inputMode="tel" className={inputClass} {...register("phone")} />
           </Field>
           <Field label="Alamat" htmlFor="qr-address" error={errors.address?.message}>

@@ -156,7 +156,7 @@ model Member {
   birthDate     String // YYYY-MM-DD
   sex           String // Sex
   address       String
-  phone         String // NOT unique (one phone can serve a whole family)
+  phone         String? // optional; NOT unique (one phone can serve a whole family)
   maritalStatus String // MaritalStatus
   workStatus    String // WorkStatus
   email         String?

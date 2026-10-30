@@ -32,7 +32,7 @@ async function fillValid(user: ReturnType<typeof userEvent.setup>, dialog: HTMLE
   await user.type(d.getByLabelText("Nama"), "Siti");
   await user.type(d.getByLabelText("Tempat lahir"), "Bandung");
   await user.type(d.getByLabelText("Tanggal lahir"), "2000-12-28");
-  await user.type(d.getByLabelText("No. HP"), "081234567890");
+  await user.type(d.getByLabelText("No. HP (opsional)"), "081234567890");
   await user.type(d.getByLabelText("Alamat"), "Jl. Uji 1");
 }
 
@@ -66,7 +66,7 @@ describe("QuickRegisterDialog", () => {
 
     const alerts = (await within(dialog).findAllByRole("alert")).map((a) => a.textContent);
     expect(alerts).toEqual(
-      expect.arrayContaining(["Nama wajib diisi", "Tempat lahir wajib diisi", "Alamat wajib diisi", "Nomor HP wajib diisi"]),
+      expect.arrayContaining(["Nama wajib diisi", "Tempat lahir wajib diisi", "Alamat wajib diisi"]),
     );
     expect(create).not.toHaveBeenCalled();
   });

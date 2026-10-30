@@ -75,7 +75,7 @@ export default async function MemberDetailPage({
     birthDate: member.birthDate,
     sex: member.sex as MemberFormValues["sex"],
     address: member.address,
-    phone: member.phone,
+    phone: member.phone ?? "",
     maritalStatus: member.maritalStatus as MemberFormValues["maritalStatus"],
     workStatus: member.workStatus as MemberFormValues["workStatus"],
     email: member.email ?? undefined,
@@ -106,7 +106,7 @@ export default async function MemberDetailPage({
                 </span>
               ))}
             </MetaItem>
-            <MetaItem icon={Phone}>{member.phone}</MetaItem>
+            {member.phone && <MetaItem icon={Phone}>{member.phone}</MetaItem>}
             <MetaItem icon={CalendarDays}>Masuk {formatDate(member.joinedAt)}</MetaItem>
           </>
         }
@@ -118,7 +118,7 @@ export default async function MemberDetailPage({
                 Ubah data
               </Link>
             )}
-            <WhatsAppButton phone={member.phone} name={member.name} />
+            <WhatsAppButton phone={member.phone ?? ""} name={member.name} />
           </>
         }
       />
@@ -146,7 +146,7 @@ export default async function MemberDetailPage({
                 </Detail>
                 <Detail label="Status nikah">{formatEnumLabel(member.maritalStatus)}</Detail>
                 <Detail label="Pekerjaan">{formatEnumLabel(member.workStatus)}</Detail>
-                <Detail label="No. HP">{member.phone}</Detail>
+                <Detail label="No. HP">{member.phone ?? <span className="text-muted-foreground">—</span>}</Detail>
                 <Detail label="Email">{member.email ?? <span className="text-muted-foreground">—</span>}</Detail>
                 <Detail label="Alamat" wide>
                   {member.address}

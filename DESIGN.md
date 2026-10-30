@@ -167,7 +167,7 @@ model Member {
   birthDate     String                       // YYYY-MM-DD
   sex           String                       // Sex (lib/validation/enums.ts)
   address       String
-  phone         String                       // TIDAK unique (satu HP bisa dipakai sekeluarga)
+  phone         String?                      // opsional; TIDAK unique (satu HP bisa dipakai sekeluarga)
   maritalStatus String                       // MaritalStatus
   workStatus    String                       // WorkStatus
   email         String?
@@ -721,7 +721,7 @@ Semua halaman aplikasi (wajib login) ada di bawah `/dashboard` dan memakai app s
 - **Tata letak daftar**: header halaman (§7.2) + aksi utama, kartu angka ringkas (anggota, kegiatan), lalu kartu tabel: jumlah hasil di kiri, filter di kanan, tabel, pager di bawah. Tiap baris punya menu ⋮ berisi tautan (lihat, ubah, absensi); hapus tidak ada di menu, tetap di zona berbahaya halaman detail.
 - **Urutan kolom** (`lib/sort.ts`): `?sort=<kolom>&dir=asc|desc`, divalidasi terhadap daftar kolom per halaman (nilai lain → urutan default, tidak pernah diteruskan mentah ke query); urutan default tidak ditulis ke URL; mengganti urutan kembali ke halaman 1; filter mempertahankan urutan. Klik kolom aktif membalik arah, kolom lain mulai naik (waktu audit mulai turun). Selalu ada pemecah seri (nama/id) agar paginasi stabil. Kolom yang bisa diurutkan: anggota — nama + kolom opsional yang **sedang tampil** kecuali WhatsApp, No. HP, alamat, email (mengurutkan kolom tersembunyi membocorkan nilainya); pengguna — nama, username, peran, grup, status; kegiatan (daftar, diurutkan di memori) — tanggal (default), kegiatan, grup, lokasi; audit — waktu (default terbaru), aksi, aktor, entitas.
 - **Kolom tabel anggota** (`lib/member/columns.ts`): Nama selalu tampil; default WhatsApp, Grup, Jenis kelamin, Tanggal lahir (+umur), Status; opsional No. HP, Tempat lahir, Alamat, Status nikah, Pekerjaan, Email, Tanggal masuk. Pilihan disimpan di cookie httpOnly `anggota_kolom` (preferensi UI, tidak diaudit) dan divalidasi ulang tiap request. Hanya kolom terpilih yang dirender di server, jadi PII kolom tersembunyi tidak dikirim ke browser.
-- **WhatsApp**: link `https://wa.me/<nomor>` (tab baru). `Member.phone` teks bebas dinormalisasi (`lib/member/whatsapp.ts`): `0…`, `62…`, `+62…`, `8…` → `62…`; nomor negara lain harus diawali `+`. Nomor yang tidak valid tidak menghasilkan tombol.
+- **WhatsApp**: link `https://wa.me/<nomor>` (tab baru). `Member.phone` teks bebas dinormalisasi (`lib/member/whatsapp.ts`): `0…`, `62…`, `+62…`, `8…` → `62…`; nomor negara lain harus diawali `+`. Nomor yang tidak valid atau kosong (No. HP opsional) tidak menghasilkan tombol.
 
 ### 7.2 Konvensi tata letak halaman
 

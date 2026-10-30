@@ -10,7 +10,12 @@ const memberFieldsSchema = z.object({
   birthDate: dateSchema("Tanggal lahir tidak valid"),
   sex: z.enum(SEXES),
   address: z.string().trim().min(1, "Alamat wajib diisi").max(500),
-  phone: z.string().trim().min(1, "Nomor HP wajib diisi").max(30),
+  phone: z
+    .string()
+    .trim()
+    .max(30)
+    .transform((value) => (value ? value : undefined))
+    .optional(),
   maritalStatus: z.enum(MARITAL_STATUSES),
   workStatus: z.enum(WORK_STATUSES),
   email: z
