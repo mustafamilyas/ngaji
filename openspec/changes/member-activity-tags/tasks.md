@@ -33,7 +33,7 @@
 
 ## 5. UI
 
-- [ ] 5.1 `components/tags/tag-chip.tsx` with palette classes and print styles; verify `*.test.tsx` renders text + color class
+- [x] 5.1 `components/tags/tag-chip.tsx` with palette classes and print styles; verify `*.test.tsx` renders text + color class
 - [ ] 5.2 `components/tags/tag-picker.tsx` (combobox, `key:value` search, owner labels, "Buat tag" for ADMIN+, optimistic attach/detach); verify jsdom test: USER has no create option, ADMIN create-and-attach calls the action
   - [ ] 5.2a Mobile/tablet: picker opens as a bottom sheet (or full-width popover) at phone width; options and "Buat tag" row ≥ 44px, search input 16px (no iOS zoom), list scrolls inside the viewport above the on-screen keyboard; verify at 375px and 768px in `pnpm dev:scratch`
 - [ ] 5.3 Member detail and activity detail: chips + picker in header area; verify by `pnpm dev:scratch` and attaching/removing a tag on each
