@@ -51,7 +51,7 @@
 
 - [x] 6.1 DESIGN.md already updated in this change (§2, §3.2, §4.5, §7, §10, §13); re-check it matches the final implementation (checked schema, constants, authz, audit meta/groupId, split copy, filters, pages; three drifts fixed in §13.3, see 8.17)
 - [x] 6.2 `pnpm lint && pnpm tsc --noEmit && pnpm test` pass (lint and tsc clean; 205 files, 1945 tests passed; no failures to log)
-- [ ] 6.3 `pnpm audit:viewport` passes (picker, bulk bar, filter at phone/tablet widths) and `pnpm audit:print` passes with a tag filter
+- [x] 6.3 `pnpm audit:viewport` passes (picker, bulk bar, filter at phone/tablet widths) and `pnpm audit:print` passes with a tag filter (`audit:print` gained a `week-tag` scenario that filters by the seeded `prioritas:tinggi` and fails if the filter does not narrow the rows: 6 rows → 1 row, 1 page; `audit:viewport --roles owner,admin,user --landscape` found no defects on 121 page runs plus the 8 tag flows; the pages it skips are not tag-related)
 
 ## 7. Mobile and tablet excellence
 

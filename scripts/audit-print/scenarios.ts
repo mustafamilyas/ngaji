@@ -11,6 +11,8 @@ export type Scenario = {
   range: (today: string) => Range;
   /** Most pages the print may take; null = only report the number (a known, accepted cost). */
   maxPages: number | null;
+  /** Seeded tag to filter by (`?tag=`); the print must then show fewer rows than the same range unfiltered. */
+  tag?: { key: string; value: string | null };
   /** Changes the scratch database before this scenario is printed. */
   prepare?: (db: Database.Database) => void;
 };
@@ -19,6 +21,8 @@ export type Result = {
   name: string;
   description: string;
   rows: number;
+  /** Rows of the same range without the tag filter; only for tag scenarios. */
+  unfilteredRows?: number;
   pages: number;
   maxPages: number | null;
   file: string;
@@ -42,6 +46,13 @@ export const SCENARIOS: Scenario[] = [
     description: "a typical week from today",
     range: (today) => ({ from: today, to: addDays(today, 6) }),
     maxPages: 1,
+  },
+  {
+    name: "week-tag",
+    description: "the same week filtered by the seeded tag prioritas:tinggi",
+    range: (today) => ({ from: today, to: addDays(today, 6) }),
+    maxPages: 1,
+    tag: { key: "prioritas", value: "tinggi" },
   },
   {
     name: "two-months",
@@ -70,6 +81,9 @@ export const SCENARIOS: Scenario[] = [
 export function evaluate(result: Result): string | null {
   if (result.rows === 0) return `${result.name}: no occurrences in the range, nothing was measured`;
   if (result.pages === 0) return `${result.name}: no pages were printed`;
+  if (result.unfilteredRows !== undefined && result.rows >= result.unfilteredRows) {
+    return `${result.name}: the tag filter did not narrow the schedule (${result.rows} of ${result.unfilteredRows} rows)`;
+  }
   if (result.maxPages !== null && result.pages > result.maxPages) {
     return `${result.name}: ${result.pages} pages, at most ${result.maxPages} allowed`;
   }

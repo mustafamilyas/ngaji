@@ -66,16 +66,33 @@ async function main(): Promise<number> {
         db.close();
       }
       const { from, to } = scenario.range(now);
-      const status = await cdp.navigate(`${env.baseUrl}/dashboard/kegiatan/cetak?range=custom&from=${from}&to=${to}`);
-      if (status >= 400) throw new Error(`${scenario.name}: the print page answered HTTP ${status}`);
-      await sleep(800);
-      const rows = await cdp.evaluate<number>("document.querySelectorAll('tbody tr').length");
+      const base = `${env.baseUrl}/dashboard/kegiatan/cetak?range=custom&from=${from}&to=${to}`;
+      const countRows = async (url: string) => {
+        const status = await cdp.navigate(url);
+        if (status >= 400) throw new Error(`${scenario.name}: the print page answered HTTP ${status}`);
+        await sleep(800);
+        return cdp.evaluate<number>("document.querySelectorAll('tbody tr').length");
+      };
+
+      let unfilteredRows: number | undefined;
+      let url = base;
+      if (scenario.tag) {
+        const db = new Database(join(env.dir, "scratch.db"), { readonly: true });
+        const row = db
+          .prepare("SELECT id FROM Tag WHERE key = ? AND value IS ? AND deletedAt IS NULL ORDER BY id LIMIT 1")
+          .get(scenario.tag.key, scenario.tag.value) as { id: number } | undefined;
+        db.close();
+        if (!row) throw new Error(`${scenario.name}: the seed has no tag ${scenario.tag.key}:${scenario.tag.value}`);
+        unfilteredRows = await countRows(base);
+        url = `${base}&tag=${row.id}`;
+      }
+      const rows = await countRows(url);
 
       const pdf = await printToPdf(cdp);
       const file = join(out, `${scenario.name}.pdf`);
       writeFileSync(file, pdf);
       const pages = countPages(pdf);
-      results.push({ name: scenario.name, description: scenario.description, rows, pages, maxPages: scenario.maxPages, file });
+      results.push({ name: scenario.name, description: scenario.description, rows, unfilteredRows, pages, maxPages: scenario.maxPages, file });
 
       if (png) {
         for (let page = 1; page <= pages; page++) {

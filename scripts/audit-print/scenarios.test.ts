@@ -12,17 +12,23 @@ const result = (over: Partial<Result> = {}): Result => ({
 });
 
 describe("SCENARIOS", () => {
-  it("covers a typical week, two months and max-length text", () => {
-    expect(SCENARIOS.map((s) => s.name)).toEqual(["week", "two-months", "long-text"]);
+  it("covers a typical week, the same week filtered by a tag, two months and max-length text", () => {
+    expect(SCENARIOS.map((s) => s.name)).toEqual(["week", "week-tag", "two-months", "long-text"]);
   });
 
-  it("holds a page budget for the first two and only reports the third", () => {
+  it("holds a page budget for all but the max-length text, which is only reported", () => {
     const budgets = Object.fromEntries(SCENARIOS.map((s) => [s.name, s.maxPages]));
-    expect(budgets).toEqual({ week: 1, "two-months": 3, "long-text": null });
+    expect(budgets).toEqual({ week: 1, "week-tag": 1, "two-months": 3, "long-text": null });
+  });
+
+  it("filters the tag scenario by a seeded tag over the same range as the plain week", () => {
+    const [week, weekTag] = SCENARIOS;
+    expect(weekTag.tag).toEqual({ key: "prioritas", value: "tinggi" });
+    expect(weekTag.range("2026-10-27")).toEqual(week.range("2026-10-27"));
   });
 
   it("builds a range of the right length from the organization's today", () => {
-    const [week, months] = SCENARIOS.map((s) => s.range("2026-10-27"));
+    const [week, , months] = SCENARIOS.map((s) => s.range("2026-10-27"));
     expect(week).toEqual({ from: "2026-10-27", to: "2026-11-02" });
     expect(months).toEqual({ from: "2026-09-01", to: "2026-10-31" });
   });
@@ -43,6 +49,11 @@ describe("evaluate", () => {
 
   it("is a defect when the range had no occurrences, because nothing was measured", () => {
     expect(evaluate(result({ rows: 0, pages: 1 }))).toMatch(/no occurrences/i);
+  });
+
+  it("is a defect when a tag filter did not narrow the schedule", () => {
+    expect(evaluate(result({ name: "week-tag", rows: 6, unfilteredRows: 6 }))).toMatch(/tag filter.*6 of 6/i);
+    expect(evaluate(result({ name: "week-tag", rows: 2, unfilteredRows: 6 }))).toBeNull();
   });
 
   it("never fails a report-only scenario that printed something", () => {
