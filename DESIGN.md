@@ -933,8 +933,8 @@ Label berwarna untuk anggota dan kegiatan, milik grup dan diwariskan ke turunan.
 - **Anggota**: belum dihapus, dalam scope user, dan di subtree grup pemilik tag. Semua status anggota boleh.
 - **Kegiatan**: belum dihapus, terlihat oleh user (§3.3), dan grup kegiatan ada di rantai leluhur atau subtree grup pemilik tag. **Tidak** perlu hak ubah kegiatan, sehingga kelompok bisa memberi tag pada kegiatan warisan; tautan itu hanya terlihat sesuai §13.2 (cabang bersaudara tidak melihatnya).
 - **Nilai kunci eksklusif** per (grup pemilik, kunci) per entitas: memasang `prioritas:rendah` melepas `prioritas:tinggi` di transaksi yang sama (juga massal). Tag sederhana tidak eksklusif. Memasang tag yang sudah terpasang tidak mengubah apa pun dan tidak diaudit.
-- **Pemilih tag** (popover + cari `kunci:nilai`) di detail anggota, detail kegiatan, dan baris tabel anggota/kegiatan; ADMIN/OWNER bisa "Buat tag" langsung (di grupnya sendiri) lalu memasangnya.
-- **Massal**: tabel anggota, pilih baris di halaman saat ini (maks. `PAGE_SIZE`), satu tag; satu id yang tidak sah menolak seluruh permintaan; satu entri audit.
+- **Pemilih tag** (cari `kunci:nilai`; popover dari `xl`, bottom sheet di bawahnya; kolom cari fokus otomatis kecuali dibuka dengan sentuhan) di detail anggota, detail kegiatan, dan baris tabel anggota/kegiatan; ADMIN/OWNER bisa "Buat tag" langsung (di grupnya sendiri) lalu memasangnya. Tombol lepas (×) hanya pada tag yang bisa dipakai user; tag turunan yang terlihat tampil sebagai chip baca-saja.
+- **Massal**: tabel anggota, pilih baris di halaman saat ini (maks. `PAGE_SIZE`), satu tag; satu id yang tidak sah menolak seluruh permintaan; satu entri audit. Bilah massal hanya muncul bila user punya minimal satu tag yang bisa dipakai (yang belum punya membuat tag pertama dari baris atau halaman detail).
 - "Geser ini & seterusnya" (§5.5) menyalin semua tautan tag ke kegiatan baru. `PINDAH` tidak menyalin apa pun (baris baru dibuat manual).
 
 ### 13.4 Filter

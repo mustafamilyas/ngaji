@@ -49,7 +49,7 @@
 
 ## 6. Docs and verification
 
-- [ ] 6.1 DESIGN.md already updated in this change (§2, §3.2, §4.5, §7, §10, §13); re-check it matches the final implementation
+- [x] 6.1 DESIGN.md already updated in this change (§2, §3.2, §4.5, §7, §10, §13); re-check it matches the final implementation (checked schema, constants, authz, audit meta/groupId, split copy, filters, pages; three drifts fixed in §13.3, see 8.17)
 - [ ] 6.2 `pnpm lint && pnpm tsc --noEmit && pnpm test` pass
 - [ ] 6.3 `pnpm audit:viewport` passes (picker, bulk bar, filter at phone/tablet widths) and `pnpm audit:print` passes with a tag filter
 
@@ -79,4 +79,5 @@
 - [ ] 8.13 Clearing the selection on a page/filter/sort change is covered by a test (provider `key` = the page's member ids) but was not seen in the browser, since the seed has fewer than `PAGE_SIZE` members (found in 5.5); verify by hand with 51+ members during 7.2
 - [x] 8.14 The existing group filter popover is not touch-sized: its search field is `h-8 text-sm` and its rows about 32px, next to the new tag filter whose controls are 44px/16px (noticed in 5.6 while reading `components/filters/group-filter.tsx`; not measured in the browser); bring it to the primitives' touch sizes below `xl`; verify by measuring the popover at 375px and by `pnpm audit:viewport`
 - [x] 8.15 Menu items of the shared `DropdownMenuItem`/`DropdownMenuLinkItem` are about 30px tall with 14px text, below the 44px/16px touch rule (found in 5.7a, browser pass at 375px); the new tag menus size their own items (`min-h-11 text-base xl:min-h-0 xl:text-sm`); verify by `tag-manage.test.tsx` and measuring the menu at 375px
+- [x] 8.17 DESIGN.md §13.3 had drifted from the code: it said the picker is a popover (it is a bottom sheet below `xl`, search not auto-focused on touch, 8.3), omitted that × shows only on usable tags (8.5) and that the bulk bar needs a usable tag (8.12) (found in 6.1); §13.3 updated, specs did not mention these so need no change; verify by reading §13.3
 - [x] 8.16 The shared dropdown primitive itself is still not touch-sized, so `RowActions` kebab menus in every table (members, activities, groups, users) have 30px items on phones (found in 5.7a, see 8.15); give `itemClass` in `components/ui/dropdown-menu.tsx` the same touch sizes and re-run `pnpm audit:viewport`; verify by measuring a table row menu at 375px
