@@ -139,6 +139,20 @@ export class Cdp {
     return this.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
   }
 
+  /** A real left click (move, press, release) at viewport coordinates. */
+  async clickAt(x: number, y: number) {
+    await this.send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
+    await this.send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 });
+    await this.send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 });
+  }
+
+  /** Presses and releases a named key (only Escape is needed so far). */
+  async pressKey(key: "Escape") {
+    const params = { key, code: key, windowsVirtualKeyCode: 27 };
+    await this.send("Input.dispatchKeyEvent", { type: "keyDown", ...params });
+    await this.send("Input.dispatchKeyEvent", { type: "keyUp", ...params });
+  }
+
   /** Navigates and resolves with the document's HTTP status once the page has loaded. */
   async navigate(url: string): Promise<number> {
     this.documentStatus = 0;

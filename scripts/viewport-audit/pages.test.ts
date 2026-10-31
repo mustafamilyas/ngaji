@@ -25,6 +25,7 @@ describe("buildPageList", () => {
     expect(paths).toContain("/dashboard/kegiatan/7?tab=jadwal");
     expect(paths).toContain("/dashboard/kegiatan/7?tab=pengaturan");
     expect(paths).toContain("/dashboard/grup/3?tab=subgrup");
+    expect(paths).toContain("/dashboard/grup/3?tab=tag");
     expect(paths).toContain("/dashboard/statistik?tab=partisipasi");
     expect(paths).toContain("/dashboard/survei/1/isi");
   });

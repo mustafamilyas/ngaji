@@ -24,7 +24,7 @@ export type Measurement = {
   charts: { container: number; svg: number }[];
 };
 
-export type FindingKind = "overflow" | "target-size" | "text-size" | "chart-width";
+export type FindingKind = "overflow" | "target-size" | "text-size" | "chart-width" | "flow";
 
 export type Finding = { kind: FindingKind; page: string; viewport: string; detail: string };
 export type SkippedPage = { page: string; reason: string };

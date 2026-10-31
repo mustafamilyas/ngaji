@@ -15,17 +15,20 @@
  *   pnpm audit:viewport --keep-server         leave the scratch server and database running
  *
  * Exit code 1 when any defect is found. Needs Google Chrome (or CHROME_PATH) and Node 22+.
- * Dialogs, popovers and open dropdowns are not covered: they need a click first.
+ * Open popovers, sheets and dialogs are covered by the click-through flows in viewport-audit/scenarios.ts
+ * (run at 375x812, 768x1024 and 812x375; each flow signs in as its own seeded role).
  */
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseArgs } from "./viewport-audit/args";
+import { parseArgs, ROLES } from "./viewport-audit/args";
 import { Cdp, sleep } from "./viewport-audit/cdp";
 import { startScratchEnv } from "./viewport-audit/env";
 import { login } from "./viewport-audit/login";
 import { evaluate, formatReport, type Finding, type Measurement, type SkippedPage } from "./viewport-audit/findings";
 import { buildPageList, viewportsFor, type Viewport } from "./viewport-audit/pages";
+import { runScenario } from "./viewport-audit/scenario-runner";
+import { buildScenarios, SCENARIO_VIEWPORTS } from "./viewport-audit/scenarios";
 
 const SETTLE_AFTER_LOAD_MS = 800;
 const SETTLE_AFTER_RESIZE_MS = 600;
@@ -48,7 +51,9 @@ async function main(): Promise<number> {
   const skipped: SkippedPage[] = [];
   let controlsMeasured = 0;
   let pagesMeasured = 0;
+  let flowsRun = 0;
   const pages = buildPageList(env.ids).filter((page) => !options.only || page.path.includes(options.only));
+  const scenarios = buildScenarios(env.ids).filter((s) => !options.only || s.path.includes(options.only) || s.name.includes(options.only));
 
   const audit = async (path: string, role: string) => {
     const where = options.roles.length > 1 ? `${path} [${role}]` : path;
@@ -83,6 +88,18 @@ async function main(): Promise<number> {
       await login(cdp, env.baseUrl, role);
       for (const page of pages.filter((p) => !p.anonymous)) await audit(page.path, role);
     }
+    for (const role of ROLES) {
+      const flows = scenarios.filter((s) => s.role === role);
+      if (flows.length === 0) continue;
+      await login(cdp, env.baseUrl, role);
+      for (const flow of flows) {
+        process.stderr.write(`  flow: ${flow.name} [${role}]\n`);
+        const result = await runScenario(cdp, env.baseUrl, flow, SCENARIO_VIEWPORTS, collector);
+        findings.push(...result.findings);
+        controlsMeasured += result.measured;
+        flowsRun++;
+      }
+    }
   } finally {
     // Each step on its own: a failed cleanup must not leave the dev server running.
     await cdp.close().catch(() => {});
@@ -98,7 +115,7 @@ async function main(): Promise<number> {
   writeFileSync(reportPath, JSON.stringify({ findings, skipped }, null, 2));
   console.log(formatReport(findings, skipped));
   // A run that measured nothing must not look like a pass.
-  console.error(`\nMeasured ${controlsMeasured} controls on ${pagesMeasured} page(s) (x ${viewports.length} sizes).`);
+  console.error(`\nMeasured ${controlsMeasured} controls on ${pagesMeasured} page(s) (x ${viewports.length} sizes), ${flowsRun} click-through flow(s).`);
   if (controlsMeasured === 0) {
     console.error("Nothing was measured: the audit is not working.");
     return 2;

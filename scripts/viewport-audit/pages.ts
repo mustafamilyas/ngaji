@@ -58,7 +58,7 @@ export function buildPageList(ids: SeedIds): AuditPage[] {
   }
   for (const groupId of [ids.branchGroupId, ids.leafGroupId]) {
     if (groupId === null) continue;
-    for (const tab of ["subgrup", "anggota", "kegiatan", "pengguna", "pengaturan"]) {
+    for (const tab of ["subgrup", "anggota", "kegiatan", "pengguna", "tag", "pengaturan"]) {
       paths.push(`/dashboard/grup/${groupId}?tab=${tab}`);
     }
   }
