@@ -6,7 +6,7 @@ import { today as todayIn } from "@/lib/dates";
 import type { MemberColumnKey } from "@/lib/member/columns";
 import { clampPage } from "@/lib/pagination";
 import { visibleTagLinks } from "@/lib/tag/include";
-import { resolveDefinitionGroupsLenient, resolveDefinitionTagsLenient } from "@/lib/resolve";
+import { resolveDefinitionGroupsLenient, resolveDefinitionSummariesLenient, resolveDefinitionTagsLenient } from "@/lib/resolve";
 import type { Definition } from "@/lib/validation/member-view";
 import { buildOrderBy, buildWhere, type QueryContext } from "./query";
 
@@ -63,8 +63,9 @@ export async function prepareView(
 ): Promise<PreparedView> {
   const groupsResolved = await resolveDefinitionGroupsLenient(session, definition);
   const tagsResolved = await resolveDefinitionTagsLenient(session, groupsResolved.definition);
-  const resolved = tagsResolved.definition;
-  const dropped = groupsResolved.dropped || tagsResolved.dropped;
+  const summariesResolved = await resolveDefinitionSummariesLenient(session, tagsResolved.definition);
+  const resolved = summariesResolved.definition;
+  const dropped = groupsResolved.dropped || tagsResolved.dropped || summariesResolved.dropped;
 
   const groupIds = new Set<number>();
   // Every tag id left after the lenient pass is one the viewer may see.

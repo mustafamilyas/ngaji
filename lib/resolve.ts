@@ -269,3 +269,46 @@ export async function resolveDefinitionTagsLenient(session: SessionUser, definit
   }
   return { definition: { ...definition, filter: { ...definition.filter, groups } }, dropped };
 }
+
+type TagSummary = { dimension: { kind: "tag" | "tagKey"; tagId: number } };
+const isTagSummary = (summary: { dimension: { kind: string } }): summary is TagSummary =>
+  summary.dimension.kind === "tag" || summary.dimension.kind === "tagKey";
+
+/**
+ * Ids of summaries whose tag the viewer can use: visible and live, a simple tag
+ * for a "tag" summary and a key–value tag (the key's anchor) for a "tagKey"
+ * one. A deleted anchor value is unusable even if the key has other values.
+ */
+async function usableSummaryTagIds(session: SessionUser, definition: Definition) {
+  const tagSummaries = (definition.summaries ?? []).filter(isTagSummary);
+  const visible = await resolveVisibleTags(session, tagSummaries.map((s) => s.dimension.tagId));
+  const valueOf = new Map(visible.map((tag) => [tag.id, tag.value]));
+  return (summary: TagSummary) => {
+    const value = valueOf.get(summary.dimension.tagId);
+    if (value === undefined) return false;
+    return summary.dimension.kind === "tag" ? value === null : value !== null;
+  };
+}
+
+/**
+ * Save-time check: every tag a summary refers to must be usable (see above),
+ * else the whole save is rejected with one generic message.
+ */
+export async function resolveDefinitionSummariesStrict(session: SessionUser, definition: Definition) {
+  const usable = await usableSummaryTagIds(session, definition);
+  if ((definition.summaries ?? []).some((s) => isTagSummary(s) && !usable(s))) {
+    throw new ValidationError("Tag tidak valid");
+  }
+}
+
+/**
+ * Load-time check: summaries on an unusable tag are dropped (the rest keep
+ * their order); `dropped` drives the "Beberapa aturan diabaikan" notice.
+ * Returns a new definition; the input is not mutated.
+ */
+export async function resolveDefinitionSummariesLenient(session: SessionUser, definition: Definition) {
+  if (!definition.summaries) return { definition, dropped: false };
+  const usable = await usableSummaryTagIds(session, definition);
+  const summaries = definition.summaries.filter((s) => !isTagSummary(s) || usable(s));
+  return { definition: { ...definition, summaries }, dropped: summaries.length !== definition.summaries.length };
+}

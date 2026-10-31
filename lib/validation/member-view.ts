@@ -4,6 +4,7 @@ import {
   VIEW_MAX_GROUP_IDS,
   VIEW_MAX_RULES_PER_GROUP,
   VIEW_MAX_RULE_GROUPS,
+  VIEW_MAX_SUMMARIES,
   VIEW_MAX_TEXT_VALUE_LENGTH,
   VIEW_MAX_WITHIN_DAYS,
   MAX_NAME_LENGTH,
@@ -12,7 +13,7 @@ import {
 import { isDateString } from "@/lib/dates";
 import { VIEW_SOURCES, VIEW_VISIBILITIES } from "@/lib/validation/enums";
 import { MEMBER_VIEW_FIELDS, RULE_FIELD_KEYS, SORT_FIELD_KEYS, operatorsFor, type FieldKey, type Operator } from "@/lib/member-view/fields";
-import { ageBucketsDimensionSchema, groupLevelDimensionSchema, propertyDimensionSchema } from "@/lib/validation/summary";
+import { ageBucketsDimensionSchema, groupLevelDimensionSchema, propertyDimensionSchema, summarySchema, type Summary } from "@/lib/validation/summary";
 import { DEFAULT_MEMBER_COLUMNS, MEMBER_COLUMNS, isMemberColumnKey, type MemberColumnKey } from "@/lib/member/columns";
 
 /**
@@ -144,6 +145,8 @@ export const definitionSchema = z
     sort: sortSchema,
     groupBy: groupBySchema.optional(),
     columns: columnsSchema,
+    /** "Ringkasan" cards in order; absent = none (old stored definitions have no such key). */
+    summaries: z.array(summarySchema).max(VIEW_MAX_SUMMARIES).optional(),
   })
   .strict();
 export type Definition = z.infer<typeof definitionSchema>;
@@ -173,7 +176,8 @@ export type DefinitionWarning =
   | "limit_exceeded"
   | "sort_invalid"
   | "group_by_invalid"
-  | "columns_invalid";
+  | "columns_invalid"
+  | "summaries_invalid";
 
 export type LenientResult = { definition: Definition; warnings: DefinitionWarning[] };
 
@@ -243,6 +247,21 @@ export function parseDefinitionLenient(input: unknown): LenientResult {
       const known = input.columns.filter((c): c is MemberColumnKey => typeof c === "string" && isMemberColumnKey(c));
       if (known.length !== input.columns.length) warn("columns_invalid");
       definition.columns = columnsSchema.parse([...new Set(known)]);
+    }
+  }
+
+  if (input.summaries !== undefined) {
+    if (!Array.isArray(input.summaries)) {
+      warn("summaries_invalid");
+    } else {
+      const summaries: Summary[] = [];
+      for (const raw of input.summaries) {
+        const summary = summarySchema.safeParse(raw);
+        if (!summary.success) warn("summaries_invalid");
+        else if (summaries.length >= VIEW_MAX_SUMMARIES) warn("limit_exceeded");
+        else summaries.push(summary.data);
+      }
+      if (summaries.length > 0) definition.summaries = summaries;
     }
   }
 

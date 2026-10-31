@@ -24,7 +24,7 @@ Pure helpers (tested first): bucket list + labels for a dimension, `bucketOf(mem
 *Alternative:* reuse `groupBySchema` directly — rejected because group-by has no tag kinds and the two should evolve separately; the age-bucket and group-level sub-schemas are shared.
 
 ### D2. Tag keys referenced by an anchor tag ID
-`tagKey` stores the ID of any value row of the key; the server resolves it to `(groupId, key)` and loads the key's current visible values. Renaming the key or adding values keeps the summary working; deleting the anchor value while the key survives re-anchors on the next save (load resolves by the anchor row's `groupId`+`key` even if that row is deleted, provided another value of the key is alive).
+`tagKey` stores the ID of any value row of the key; the server resolves it to `(groupId, key)` and loads the key's current visible values. Renaming the key or adding values keeps the summary working. The anchor must be a live, visible key–value tag; a `tag` (simple) summary must point at a live, visible simple tag. If the anchor value is deleted the summary is unusable even when the key has other values: it is rejected on save and dropped on load with the usual notice (decided in slice 4.1: `lib/db.ts` hides deleted tags from every read, and bypassing it for re-anchoring was not worth it).
 *Alternative:* store `{groupId, key}` — breaks on key rename and puts a client-supplied group ID in the definition.
 
 ### D3. Counting

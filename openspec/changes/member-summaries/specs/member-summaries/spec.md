@@ -65,6 +65,10 @@ A summary SHALL never count members outside the viewer's scope or deleted member
 - **WHEN** the value `prioritas:sedang` is soft-deleted while 2 members still have a link to it
 - **THEN** no "sedang" bucket is shown and those 2 members are counted in "Tanpa nilai"
 
+#### Scenario: Anchor value deleted while the key survives
+- **WHEN** a saved tag-key summary was anchored on the value `prioritas:tinggi`, that value is soft-deleted and `prioritas:rendah` is still alive
+- **THEN** the view opens without that card and the notice is shown; the owner re-adds the summary to re-anchor it
+
 #### Scenario: Key deleted after saving
 - **WHEN** the key used by a saved summary is soft-deleted
 - **THEN** the view opens without that card and the notice is shown

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_TAG_FILTER_IDS, VIEW_MAX_AGE_BUCKETS, VIEW_MAX_RULES_PER_GROUP, VIEW_MAX_RULE_GROUPS } from "@/lib/constants";
+import { MAX_TAG_FILTER_IDS, VIEW_MAX_AGE_BUCKETS, VIEW_MAX_SUMMARIES, VIEW_MAX_RULES_PER_GROUP, VIEW_MAX_RULE_GROUPS } from "@/lib/constants";
 import { DEFAULT_MEMBER_COLUMNS } from "@/lib/member/columns";
 import { definitionSchema, emptyDefinition, newViewDefinition, parseDefinitionLenient, ruleSchema, viewNameSchema } from "./member-view";
 
@@ -243,5 +243,53 @@ describe("viewNameSchema", () => {
     expect(viewNameSchema.parse("  Remaja Aktif ")).toBe("Remaja Aktif");
     expect(viewNameSchema.safeParse("  ").success).toBe(false);
     expect(viewNameSchema.safeParse("x".repeat(201)).success).toBe(false);
+  });
+});
+
+describe("Definition summaries", () => {
+  const sex = { dimension: { kind: "property", field: "sex" } };
+  const byTag = { dimension: { kind: "tagKey", tagId: 7 } };
+
+  it("accepts a definition without summaries, so old stored views still parse", () => {
+    expect(definitionSchema.safeParse(emptyDefinition()).success).toBe(true);
+    expect(parseDefinitionLenient({ version: 1 }).definition.summaries).toBeUndefined();
+  });
+
+  it("accepts up to VIEW_MAX_SUMMARIES summaries and rejects more", () => {
+    const many = (n: number) => ({ ...emptyDefinition(), summaries: Array.from({ length: n }, () => sex) });
+    expect(definitionSchema.safeParse(many(VIEW_MAX_SUMMARIES)).success).toBe(true);
+    expect(definitionSchema.safeParse(many(VIEW_MAX_SUMMARIES + 1)).success).toBe(false);
+  });
+
+  it("rejects an unknown dimension kind and extra keys", () => {
+    expect(definitionSchema.safeParse({ ...emptyDefinition(), summaries: [{ dimension: { kind: "bogus" } }] }).success).toBe(false);
+    expect(definitionSchema.safeParse({ ...emptyDefinition(), summaries: [{ ...sex, extra: 1 }] }).success).toBe(false);
+  });
+
+  it("keeps valid summaries in order when parsing leniently", () => {
+    const result = parseDefinitionLenient({ ...emptyDefinition(), summaries: [byTag, sex] });
+    expect(result.definition.summaries).toEqual([byTag, sex]);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("drops invalid summaries one by one and warns", () => {
+    const result = parseDefinitionLenient({
+      ...emptyDefinition(),
+      summaries: [sex, { dimension: { kind: "property", field: "email" } }, "nope", byTag],
+    });
+    expect(result.definition.summaries).toEqual([sex, byTag]);
+    expect(result.warnings).toEqual(["summaries_invalid"]);
+  });
+
+  it("warns when summaries is not a list", () => {
+    const result = parseDefinitionLenient({ ...emptyDefinition(), summaries: "sex" });
+    expect(result.definition.summaries).toBeUndefined();
+    expect(result.warnings).toEqual(["summaries_invalid"]);
+  });
+
+  it("keeps the first VIEW_MAX_SUMMARIES summaries and warns when there are more", () => {
+    const result = parseDefinitionLenient({ ...emptyDefinition(), summaries: Array.from({ length: VIEW_MAX_SUMMARIES + 2 }, () => sex) });
+    expect(result.definition.summaries).toHaveLength(VIEW_MAX_SUMMARIES);
+    expect(result.warnings).toEqual(["limit_exceeded"]);
   });
 });

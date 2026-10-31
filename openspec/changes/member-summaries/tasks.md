@@ -23,7 +23,7 @@
 
 ## 4. Summaries in member views
 
-- [ ] 4.1 Add `summaries` to `definitionSchema` and lenient parsing (drop invalid entries with a warning); resolve tag anchors per design D2; tests for old definitions without `summaries`, too many summaries, invisible tag; verify `pnpm test lib/validation lib/member-view`
+- [x] 4.1 Add `summaries` to `definitionSchema` and lenient parsing (drop invalid entries with a warning); resolve tag anchors per design D2; tests for old definitions without `summaries`, too many summaries, invisible tag; verify `pnpm test lib/validation lib/member-view`
 - [ ] 4.2 `lib/member-view/summaries.ts`: compute every summary over `prepareView`'s population, paginating bucket tables beyond `SUMMARY_MAX_BARS`; tests for scope, org level above viewer rejected, independence from page/grouping; verify `pnpm test lib/member-view`
 - [ ] 4.3 "Ringkasan" cards (Recharts bar + numbers + paginated table, `?ringkasan<i>=`) in `view-page.tsx`, and the summary editor in the "Tampilan" menu (add/remove/reorder/dimension, age bucket editor reused); component tests + `pnpm audit:viewport` clean
 - [ ] 4.3a Mobile/tablet check of summary cards and editor: charts resize at 375/768px (no overflow, labels readable, numbers also shown as text), bucket tables scroll or stack without breaking the page, reorder/remove controls have ≥ 44px targets and work by touch (no hover/drag-only), editor usable with the on-screen keyboard open
@@ -58,3 +58,8 @@
 
 - [ ] 9.1 Update DESIGN.md §6 (breakdown, DB counting), §7 (Statistik, Absensi tab, tampilan pages), §10 (deferred items from the proposal), §12 (summaries, tag rule), §13 (tag counting); verify the sections match the specs
 - [ ] 9.2 Run `pnpm lint && pnpm tsc --noEmit && pnpm test && pnpm audit:viewport` and confirm all pass
+
+## 10. Additional tasks found while implementing
+
+- [ ] 10.1 Flaky test: `components/tags/tag-picker.test.tsx` "leaves the search field unfocused when the sheet is opened by touch" failed in two full `pnpm test` runs after slice 4.1 (passes alone and passed in the full run before it); it asserts "not focused" immediately after the dialog appears, so late focus under load breaks it. Make it wait for a settled state (or assert after a tick) and re-run the full suite to confirm
+- [ ] 10.2 Org level above the viewer is not rejected on save yet (spec "Org level above viewer rejected"); decide in 4.2/4.4 where this check lives (summary compute returns invalid, save rejects)

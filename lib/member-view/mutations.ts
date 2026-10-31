@@ -4,7 +4,7 @@ import { authorize } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { ValidationError } from "@/lib/errors";
 import type { Prisma } from "@/lib/generated/prisma/client";
-import { resolveDefinitionGroupsStrict, resolveDefinitionTagsStrict, resolveMemberView } from "@/lib/resolve";
+import { resolveDefinitionGroupsStrict, resolveDefinitionSummariesStrict, resolveDefinitionTagsStrict, resolveMemberView } from "@/lib/resolve";
 import type { CreateMemberViewInput, Definition, MemberViewIdInput, UpdateMemberViewInput } from "@/lib/validation/member-view";
 
 /** A validated definition is plain JSON; `Rule.value` is typed `unknown`, which Prisma's Json input rejects. */
@@ -29,6 +29,7 @@ export async function createMemberView(session: SessionUser, input: CreateMember
   authorize(session, "member_view.create", { groupId });
   await resolveDefinitionGroupsStrict(session, input.definition);
   await resolveDefinitionTagsStrict(session, input.definition);
+  await resolveDefinitionSummariesStrict(session, input.definition);
   await assertNameAvailable(groupId, input.name);
 
   const actorId = Number(session.id);
@@ -62,6 +63,7 @@ export async function updateMemberView(session: SessionUser, input: UpdateMember
   if (input.definition) {
     await resolveDefinitionGroupsStrict(session, input.definition);
     await resolveDefinitionTagsStrict(session, input.definition);
+    await resolveDefinitionSummariesStrict(session, input.definition);
   }
   if (input.name !== undefined) await assertNameAvailable(view.groupId, input.name, view.id);
 
