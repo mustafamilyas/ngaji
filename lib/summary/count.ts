@@ -1,7 +1,7 @@
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { db } from "@/lib/db";
 import type { Dimension } from "@/lib/validation/summary";
-import { bucketWheres, type BucketWhere } from "./dimensions";
+import { bucketWheres, dimensionBuckets, type BucketWhere, type TagValue } from "./dimensions";
 
 /**
  * DB-side counting shared by view grouping (`lib/member-view/sections.ts`) and
@@ -81,4 +81,43 @@ export async function countByGroupLevel(
       count: countByAncestor.get(g.id)!,
       where: { group: { path: { startsWith: g.path } } },
     }));
+}
+
+/**
+ * Tag-key buckets: one `memberTag.groupBy` over the key's visible values, and
+ * "Tanpa nilai" = population − sum (a member holds at most one value of a key,
+ * DESIGN.md §13.3). Links to values not in `values` (deleted or invisible)
+ * therefore fold into "Tanpa nilai". The caller resolves `values` against the
+ * viewer's visible tags; zero counts are kept.
+ */
+export async function countByTagKey(where: MemberWhere, values: readonly TagValue[]): Promise<CountedBucket[]> {
+  const ids = values.map((v) => v.id);
+  const [total, rows] = await Promise.all([
+    db.member.count({ where }),
+    ids.length === 0
+      ? Promise.resolve([])
+      : db.memberTag.groupBy({ by: ["tagId"], where: { tagId: { in: ids }, member: where }, _count: { _all: true } }),
+  ]);
+  const counts = new Map(rows.map((row) => [row.tagId, row._count._all]));
+  const withValue = [...counts.values()].reduce((sum, n) => sum + n, 0);
+
+  return dimensionBuckets({ kind: "tagKey", tagId: 0 }, values).map((b) =>
+    b.key === "t:none"
+      ? { ...b, count: total - withValue, where: { tags: { none: { tagId: { in: ids } } } } }
+      : { ...b, count: counts.get(Number(b.key.slice(2))) ?? 0, where: { tags: { some: { tagId: Number(b.key.slice(2)) } } } },
+  );
+}
+
+/** Simple tag: "Punya" is one `count`, "Tidak punya" is the rest, so the two always add up. */
+export async function countByTag(
+  where: MemberWhere,
+  dimension: Extract<Dimension, { kind: "tag" }>,
+  today: string,
+): Promise<CountedBucket[]> {
+  const [yes, no] = bucketWheres(dimension, today);
+  const [total, have] = await Promise.all([
+    db.member.count({ where }),
+    db.member.count({ where: { AND: [where, yes.where] } }),
+  ]);
+  return [{ ...yes, count: have }, { ...no, count: total - have }];
 }
