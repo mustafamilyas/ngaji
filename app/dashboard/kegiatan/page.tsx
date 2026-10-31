@@ -22,6 +22,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Pagination } from "@/components/pagination";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { FilterBar, SearchFilter } from "@/components/filters/filter-bar";
+import { TagFilter } from "@/components/filters/tag-filter";
 import { GroupFilter } from "@/components/filters/group-filter";
 import { SortSelect } from "@/components/filters/sort-select";
 import { ActivityCalendar } from "./activity-calendar";
@@ -36,7 +37,7 @@ import { ACTIVITY_CALENDAR_DATE_RANGE, ACTIVITY_LIST_DATE_RANGE, PAGE_SIZE } fro
 import { db } from "@/lib/db";
 import { today, weekdayOf } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
-import { canPickTags, loadTagOptions } from "@/lib/tag/entity";
+import { canPickTags, loadTagOptions, visibleTagIds } from "@/lib/tag/entity";
 import { formatDate, formatDateRange, parseGroupIds, parsePage, parseSearch, parseTagIds, resolveDateRange } from "@/lib/filters";
 import { pageHref, paginate } from "@/lib/pagination";
 import { parseSort, sortHref, sortPreserve } from "@/lib/sort";
@@ -214,6 +215,9 @@ export default async function ActivityListPage({
               withDescendantsAction
               hint="Menampilkan kegiatan yang berlaku untuk grup terpilih, termasuk dari grup induknya."
             />
+            {(tagOptions.visible.length > 0 || tagIds) && (
+              <TagFilter tags={tagOptions.visible} selected={visibleTagIds(tagOptions.visible, tagIds)} />
+            )}
             <DateRangeFilter range={dateRange} {...rangeConfig} today={now} />
             {view === "list" && (
               <SortSelect

@@ -14,10 +14,19 @@ export type TagOptionsData = {
 /** Whether a picker is worth showing: a usable tag to choose, or the right to create one. */
 export const canPickTags = ({ options, canCreate }: TagOptionsData) => options.length > 0 || canCreate;
 
-/** What every picker on a page shares (list pages load it once and hand it to a `TagOptionsProvider`). */
-export async function loadTagOptions(session: SessionUser): Promise<TagOptionsData> {
-  const { usable } = await listTags(session);
-  return { options: usable, canCreate: session.role === "ADMIN" || session.role === "OWNER" };
+/** Tag options plus every tag the user may see, which is what a list page's tag filter offers. */
+export type TagListData = TagOptionsData & { visible: TagOwnerGroup[] };
+
+/** What every picker and filter on a page shares (list pages load it once and hand it on). */
+export async function loadTagOptions(session: SessionUser): Promise<TagListData> {
+  const { usable, visible } = await listTags(session);
+  return { options: usable, visible, canCreate: session.role === "ADMIN" || session.role === "OWNER" };
+}
+
+/** The ids from the URL that are tags the user can see: what the filter control shows as selected. */
+export function visibleTagIds(visible: TagOwnerGroup[], requested: readonly number[] | undefined): number[] {
+  const seen = new Set(visible.flatMap((group) => group.tags.map((tag) => tag.id)));
+  return (requested ?? []).filter((id) => seen.has(id));
 }
 
 export type EntityTagsData = TagOptionsData & {

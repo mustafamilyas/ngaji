@@ -41,8 +41,8 @@
   - [x] 5.4a Mobile/tablet: the Tag column does not break the member table at phone width (chips wrap or truncate with "+N", no horizontal page scroll beyond the table's own scroll container); tap targets ≥ 44px
 - [x] 5.5 Member table bulk selection + action bar "Tambah tag" / "Hapus tag", cleared on page change; verify jsdom test and manual check on phone width
   - [x] 5.5a Mobile/tablet: checkboxes have a ≥ 44px hit area; the action bar is sticky at the bottom, respects safe-area inset, does not cover the pager or the last row; selection count readable at 375px
-- [ ] 5.6 Tag filter in `components/filters/filter-bar` for anggota and kegiatan (multi-select chips grouped by owner); verify URL updates and page resets to 1
-  - [ ] 5.6a Mobile/tablet: tag filter fits the filter bar at phone width (collapses into a sheet/popover, selected chips wrap), usable one-handed; verify at 375px and 768px
+- [x] 5.6 Tag filter in `components/filters/filter-bar` for anggota and kegiatan (multi-select chips grouped by owner); verify URL updates and page resets to 1
+  - [x] 5.6a Mobile/tablet: tag filter fits the filter bar at phone width (collapses into a sheet/popover, selected chips wrap), usable one-handed; verify at 375px and 768px
 - [ ] 5.7 Group detail `?tab=tag`: list owned tags grouped by key; create / rename key / recolor / delete dialog for ADMIN+ of that group only; verify tab hidden controls for USER and ancestor ADMIN
   - [ ] 5.7a Mobile/tablet: dialogs fit 375px without clipping (scroll inside, buttons reachable), color swatches ≥ 44px tap targets with a visible selected state, tab bar still scrolls with the new "Tag" tab
 - [ ] 5.8 Audit viewer labels for `tag.*`, `member.tag/untag`, `activity.tag/untag`; verify audit page test
@@ -77,3 +77,4 @@
 - [ ] 8.11 On a phone (375px) the bulk bar is 121px tall (about 15% of the screen): "Tambah tag" wraps onto a second line with "Hapus tag" and "Batal", and it covers the select-all row while scrolling (found in 5.5a, browser pass); make it one compact row (e.g. icon-only "Batal") or collapse the actions, keeping 44px targets; verify by measuring the bar at 375px
 - [x] 8.12 Bulk selection appears only when the user has at least one usable tag, not "use or create" as first agreed: an ADMIN with zero tags would get a bar whose chooser is empty (found in 5.5); they create the first tag from a row or the detail page; revisit if that is too hidden
 - [ ] 8.13 Clearing the selection on a page/filter/sort change is covered by a test (provider `key` = the page's member ids) but was not seen in the browser, since the seed has fewer than `PAGE_SIZE` members (found in 5.5); verify by hand with 51+ members during 7.2
+- [ ] 8.14 The existing group filter popover is not touch-sized: its search field is `h-8 text-sm` and its rows about 32px, next to the new tag filter whose controls are 44px/16px (noticed in 5.6 while reading `components/filters/group-filter.tsx`; not measured in the browser); bring it to the primitives' touch sizes below `xl`; verify by measuring the popover at 375px and by `pnpm audit:viewport`

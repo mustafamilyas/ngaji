@@ -101,6 +101,30 @@ describe("MembersPage", () => {
     expect(html).toContain("Anggota Uji");
   });
 
+  describe("tag filter control (task 5.6)", () => {
+    it("offers the visible tags, shows the selection in the trigger, and drops ids the user cannot see", async () => {
+      const fixture = await buildPageFixture("members-tag-filter-ui");
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "USER", fixture.leaf) });
+      const mine = await db.tag.create({ data: { groupId: fixture.root.id, key: "filter-ui-satu", color: "blue", createdById: fixture.actorId } });
+      const other = await buildPageFixture("members-tag-filter-ui-other");
+      const foreign = await db.tag.create({ data: { groupId: other.root.id, key: "filter-ui-asing", color: "red", createdById: other.actorId } });
+
+      const html = renderToStaticMarkup(await MembersPage({ searchParams: Promise.resolve({ tag: `${mine.id},${foreign.id}` }) }));
+      expect(html).toContain('data-slot="tag-filter"');
+      expect(html).toContain("filter-ui-satu");
+      expect(html).not.toContain("filter-ui-asing");
+      expect(html).toContain(`value="${mine.id}"`);
+    });
+
+    it("hides the tag filter when the user sees no tag at all", async () => {
+      const fixture = await buildPageFixture("members-tag-filter-none");
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "USER", fixture.leaf) });
+
+      const html = renderToStaticMarkup(await MembersPage({ searchParams: Promise.resolve({}) }));
+      expect(html).not.toContain('data-slot="tag-filter"');
+    });
+  });
+
   it("filters by the tag param, dropping ids the user cannot see", async () => {
     const fixture = await buildPageFixture("anggota-list-tag");
     const session = sessionFor(fixture.actorId, "OWNER", fixture.root);

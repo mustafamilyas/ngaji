@@ -7,6 +7,7 @@ import { ColumnToggle } from "@/components/column-toggle";
 import { StatTile, StatTiles, TableCard } from "@/components/data-table";
 import { FilterBar, SearchFilter, SelectFilter } from "@/components/filters/filter-bar";
 import { GroupFilter } from "@/components/filters/group-filter";
+import { TagFilter } from "@/components/filters/tag-filter";
 import { SortSelect } from "@/components/filters/sort-select";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
@@ -26,7 +27,7 @@ import { MEMBER_STATUSES, type MemberStatus } from "@/lib/validation/enums";
 import { setMemberColumnsAction } from "./actions";
 import { BulkTagBar } from "@/components/tags/bulk-tag-bar";
 import { MemberTagProviders } from "@/components/tags/member-tag-providers";
-import { canPickTags, loadTagOptions } from "@/lib/tag/entity";
+import { canPickTags, loadTagOptions, visibleTagIds } from "@/lib/tag/entity";
 import { MembersTable } from "./members-table";
 
 function isMemberStatus(value: string): value is MemberStatus {
@@ -130,6 +131,9 @@ export default async function MembersPage({
             >
               <SearchFilter value={q} placeholder="Cari nama anggota…" />
               <GroupFilter groups={groups} selected={groupIds ?? []} hint="Termasuk semua grup di bawahnya." />
+              {(tagOptions.visible.length > 0 || tagIds) && (
+                <TagFilter tags={tagOptions.visible} selected={visibleTagIds(tagOptions.visible, tagIds)} />
+              )}
               <SelectFilter
                 name="status"
                 value={status}
