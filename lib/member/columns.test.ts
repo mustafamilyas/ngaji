@@ -20,10 +20,17 @@ describe("parseMemberColumns", () => {
 });
 
 describe("tag column (task 5.4)", () => {
-  it("is a default column placed right after status", () => {
-    const keys = MEMBER_COLUMNS.map((c) => c.key);
-    expect(keys.indexOf("tag")).toBe(keys.indexOf("status") + 1);
-    expect(DEFAULT_MEMBER_COLUMNS).toContain("tag");
+  it("is a default column placed first after the always-shown name, so a tablet sees it without scrolling (task 8.26)", () => {
+    expect(MEMBER_COLUMNS[0].key).toBe("tag");
+    expect(DEFAULT_MEMBER_COLUMNS[0]).toBe("tag");
+  });
+
+  it("keeps the order of the other default columns", () => {
+    expect(DEFAULT_MEMBER_COLUMNS).toEqual(["tag", "whatsapp", "grup", "jenisKelamin", "tanggalLahir", "status"]);
+  });
+
+  it("puts a saved choice in the new order, so an old cookie needs no migration", () => {
+    expect(parseMemberColumns("whatsapp,grup,status,tag")).toEqual(["tag", "whatsapp", "grup", "status"]);
   });
 
   it("can be hidden by choosing the other columns", () => {

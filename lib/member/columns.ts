@@ -5,12 +5,13 @@
  * hidden PII is never sent to the browser.
  */
 export const MEMBER_COLUMNS = [
+  // First after the name: on a tablet the table scrolls sideways, and the tags must not be the part cut off.
+  { key: "tag", label: "Tag", defaultVisible: true },
   { key: "whatsapp", label: "WhatsApp", defaultVisible: true },
   { key: "grup", label: "Grup", defaultVisible: true },
   { key: "jenisKelamin", label: "Jenis kelamin", defaultVisible: true },
   { key: "tanggalLahir", label: "Tanggal lahir", defaultVisible: true },
   { key: "status", label: "Status", defaultVisible: true },
-  { key: "tag", label: "Tag", defaultVisible: true },
   { key: "hp", label: "No. HP", defaultVisible: false },
   { key: "tempatLahir", label: "Tempat lahir", defaultVisible: false },
   { key: "alamat", label: "Alamat", defaultVisible: false },
