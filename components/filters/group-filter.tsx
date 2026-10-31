@@ -179,17 +179,17 @@ export function GroupFilter({
               aria-label={isOpen ? `Tutup ${group.name}` : `Buka ${group.name}`}
               onClick={() => toggleExpanded(group.id)}
               disabled={Boolean(visible)}
-              className="inline-flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground disabled:opacity-40"
+              className="inline-flex size-11 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground disabled:opacity-40 xl:size-6"
             >
               {isOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
             </button>
           ) : (
-            <span className="size-6 shrink-0" />
+            <span className="size-11 shrink-0 xl:size-6" />
           )}
           <button
             type="button"
             onClick={() => toggle(group.id)}
-            className="flex min-w-0 flex-1 items-center gap-2 py-1.5 text-left text-sm"
+            className="flex min-h-11 min-w-0 flex-1 items-center gap-2 py-1.5 text-left text-base xl:min-h-0 xl:text-sm"
           >
             <span
               aria-hidden
@@ -209,7 +209,7 @@ export function GroupFilter({
               title="Pilih dengan turunannya"
               aria-label={`Pilih ${group.name} dengan turunannya`}
               onClick={() => selectWithDescendants(group)}
-              className="inline-flex size-7 shrink-0 items-center justify-center rounded text-muted-foreground opacity-60 group-hover/row:opacity-100 hover:bg-background hover:text-foreground focus-visible:opacity-100"
+              className="inline-flex size-11 shrink-0 items-center justify-center rounded text-muted-foreground opacity-60 group-hover/row:opacity-100 hover:bg-background hover:text-foreground focus-visible:opacity-100 xl:size-7"
             >
               <ListTree className="size-4" />
             </button>
@@ -260,7 +260,7 @@ export function GroupFilter({
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Cari grup…"
                 aria-label="Cari grup"
-                className="h-8 w-full rounded-md border border-input bg-background pr-2 pl-8 text-sm outline-none focus-visible:border-ring"
+                className="h-11 w-full rounded-md border border-input bg-background pr-2 pl-8 text-base outline-none focus-visible:border-ring xl:h-8 xl:text-sm"
               />
             </div>
             {hint && <p className="mt-1.5 px-0.5 text-xs text-muted-foreground">{hint}</p>}
@@ -277,7 +277,7 @@ export function GroupFilter({
                 type="button"
                 onClick={() => setDraft([])}
                 disabled={draft.length === 0}
-                className="h-8 rounded-md px-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                className="h-11 rounded-md px-3 text-base text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50 xl:h-8 xl:px-2 xl:text-sm"
               >
                 Kosongkan
               </button>
@@ -286,7 +286,7 @@ export function GroupFilter({
                 <button
                   type="button"
                   onClick={() => apply(draft)}
-                  className="h-8 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/80"
+                  className="h-11 rounded-md bg-primary px-4 text-base font-medium text-primary-foreground hover:bg-primary/80 xl:h-8 xl:px-3 xl:text-sm"
                 >
                   Terapkan
                 </button>
