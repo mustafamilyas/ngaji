@@ -2,14 +2,14 @@ import { occurrencesFor, type ActivityTemplate, type OccurrenceRow } from "@/lib
 import { toActivityTemplate } from "@/lib/activity/template";
 import type { SessionUser } from "@/lib/auth/session-user";
 import { AGE_BRACKETS } from "@/lib/constants";
-import { ageInYears, today } from "@/lib/dates";
+import { today } from "@/lib/dates";
+import type { Prisma } from "@/lib/generated/prisma/client";
 import { db } from "@/lib/db";
+import { countByAgeBuckets, countByProperty, countByTag, countByTagKey } from "@/lib/summary/count";
+import { resolveVisibleTag } from "@/lib/summary/tags";
 import { resolveGroup } from "@/lib/resolve";
 import { ancestorPathsOf, isInScope } from "@/lib/scope";
 import {
-  MARITAL_STATUSES,
-  SEXES,
-  WORK_STATUSES,
   type MaritalStatus,
   type MemberStatus,
   type OccurrenceStatus,
@@ -78,43 +78,85 @@ export type MemberStatistics = {
   byWorkStatus: Record<WorkStatus, number>;
   byAgeBracket: Record<string, number>;
   byDirectSubGroup: { groupId: number; groupName: string; count: number }[];
+  byTag: TagBreakdown | null;
 };
 
-/** DESIGN.md §6 "Anggota": AKTIF, non-deleted members in scope, broken down several ways. */
-export async function memberStatistics(session: SessionUser, groupId?: number): Promise<MemberStatistics> {
+/** The optional "Per tag" breakdown of Statistik → Anggota: buckets follow the summary dimension rules. */
+export type TagBreakdown = {
+  tagId: number;
+  /** The tag's key (shared by all values of a key–value tag). */
+  label: string;
+  kind: "tag" | "tagKey";
+  buckets: { key: string; label: string; count: number }[];
+};
+
+/**
+ * DESIGN.md §6 "Anggota": AKTIF, non-deleted members in scope, broken down
+ * several ways. Everything is counted by the database (`lib/summary/count.ts`);
+ * no member rows are loaded. `options.tagId` adds `byTag` when it names a tag
+ * the viewer can see; anything else is ignored.
+ */
+export async function memberStatistics(
+  session: SessionUser,
+  groupId?: number,
+  options: { tagId?: number } = {},
+): Promise<MemberStatistics> {
   const scope = await resolveScopeGroup(session, groupId);
-  const members = await db.member.findMany({
-    where: { status: "AKTIF", group: { path: { startsWith: scope.path } } },
-  });
-
-  const bySex = Object.fromEntries(SEXES.map((s) => [s, 0])) as Record<Sex, number>;
-  const byMaritalStatus = Object.fromEntries(MARITAL_STATUSES.map((s) => [s, 0])) as Record<
-    MaritalStatus,
-    number
-  >;
-  const byWorkStatus = Object.fromEntries(WORK_STATUSES.map((s) => [s, 0])) as Record<WorkStatus, number>;
-  const byAgeBracket = Object.fromEntries(AGE_BRACKETS.map((b) => [b.label, 0])) as Record<string, number>;
-
+  const where = { status: "AKTIF", deletedAt: null, group: { path: { startsWith: scope.path } } };
   const asOf = today(session.timeZone);
-  for (const member of members) {
-    bySex[member.sex as Sex]++;
-    byMaritalStatus[member.maritalStatus as MaritalStatus]++;
-    byWorkStatus[member.workStatus as WorkStatus]++;
-    const age = ageInYears(member.birthDate, asOf);
-    const bracket = AGE_BRACKETS.find((b) => age >= b.min && (b.max === null || age <= b.max));
-    if (bracket) byAgeBracket[bracket.label]++;
-  }
 
-  const children = await db.group.findMany({ where: { parentId: scope.id }, orderBy: { name: "asc" } });
+  const property = (field: "sex" | "maritalStatus" | "workStatus") =>
+    countByProperty(where, { kind: "property", field }, asOf).then(
+      (buckets) => Object.fromEntries(buckets.map((b) => [b.key.slice(2), b.count])),
+    );
+  const ageBuckets = countByAgeBuckets(
+    where,
+    { kind: "ageBuckets", buckets: AGE_BRACKETS.map(({ label, min, max }) => ({ label, min, max })) },
+    asOf,
+  );
+  const children = db.group.findMany({ where: { parentId: scope.id }, orderBy: { name: "asc" } });
+
+  const [total, bySex, byMaritalStatus, byWorkStatus, ages, kids, byTag] = await Promise.all([
+    db.member.count({ where }),
+    property("sex") as Promise<Record<Sex, number>>,
+    property("maritalStatus") as Promise<Record<MaritalStatus, number>>,
+    property("workStatus") as Promise<Record<WorkStatus, number>>,
+    ageBuckets,
+    children,
+    tagBreakdown(session, where, options.tagId, asOf),
+  ]);
+
+  const byAgeBracket = Object.fromEntries(ages.filter((b) => b.key !== "a:other").map((b) => [b.label, b.count]));
   const byDirectSubGroup = await Promise.all(
-    children.map(async (child) => ({
+    kids.map(async (child) => ({
       groupId: child.id,
       groupName: child.name,
       count: await db.member.count({ where: { status: "AKTIF", group: { path: { startsWith: child.path } } } }),
     })),
   );
 
-  return { total: members.length, bySex, byMaritalStatus, byWorkStatus, byAgeBracket, byDirectSubGroup };
+  return { total, bySex, byMaritalStatus, byWorkStatus, byAgeBracket, byDirectSubGroup, byTag };
+}
+
+async function tagBreakdown(
+  session: SessionUser,
+  where: Prisma.MemberWhereInput,
+  tagId: number | undefined,
+  asOf: string,
+): Promise<TagBreakdown | null> {
+  if (tagId === undefined) return null;
+  const tag = await resolveVisibleTag(session, tagId);
+  if (!tag) return null;
+  const buckets =
+    tag.kind === "tag"
+      ? await countByTag(where, { kind: "tag", tagId: tag.tagId }, asOf)
+      : await countByTagKey(where, tag.values);
+  return {
+    tagId: tag.tagId,
+    label: tag.label,
+    kind: tag.kind,
+    buckets: buckets.map(({ key, label, count }) => ({ key, label, count })),
+  };
 }
 
 export type OccurrenceStat = {

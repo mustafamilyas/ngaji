@@ -4,6 +4,7 @@ import { overrideOccurrence } from "@/lib/activity/occurrence-mutations";
 import { saveAttendance } from "@/lib/attendance/save";
 import type { SessionUser } from "@/lib/auth/session-user";
 import { db } from "@/lib/db";
+import { buildPageFixture, sessionFor, type PageFixture } from "@/lib/test/fixtures";
 import { addDays, today } from "@/lib/dates";
 import { activityStatistics, memberStatistics, participationStatistics } from "./stats";
 import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
@@ -81,6 +82,116 @@ describe("lib/stats DB-backed statistics", () => {
 
       const stats = await memberStatistics(session, leaf.id);
       expect(stats.byAgeBracket.lansia).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe("memberStatistics breakdowns", () => {
+    let fx: PageFixture;
+    let viewer: SessionUser;
+    let siblingTagId: number;
+    let ownKeyTagId: number;
+    let ownSimpleTagId: number;
+
+    async function add(groupId: number, name: string, overrides: Record<string, unknown> = {}) {
+      return db.member.create({
+        data: {
+          groupId, name, birthPlace: "Jakarta", birthDate: "2000-01-01", sex: "L", address: "-", phone: "0800000000",
+          maritalStatus: "BELUM_MENIKAH", workStatus: "BEKERJA", joinedAt: "2020-01-01", createdById: fx.actorId,
+          ...overrides,
+        },
+      });
+    }
+    const tag = (groupId: number, key: string, value: string | null, extra: Record<string, unknown> = {}) =>
+      db.tag.create({ data: { groupId, key, value, color: "slate", createdById: fx.actorId, ...extra } });
+    const link = (memberId: number, tagId: number) =>
+      db.memberTag.create({ data: { memberId, tagId, createdById: fx.actorId } });
+
+    beforeAll(async () => {
+      fx = await buildPageFixture("stats-member-breakdowns");
+      viewer = sessionFor(fx.actorId, "ADMIN", fx.branch);
+
+      // In the branch scope: fixture member (L, AKTIF, leaf) + the members below.
+      const perempuan = await add(fx.leaf.id, "Perempuan", { sex: "P", maritalStatus: "MENIKAH" });
+      const tinggi = await tag(fx.branch.id, "prioritas", "tinggi");
+      const rendah = await tag(fx.branch.id, "prioritas", "rendah");
+      const simple = await tag(fx.branch.id, "relawan", null);
+      ownKeyTagId = tinggi.id;
+      ownSimpleTagId = simple.id;
+      await link(perempuan.id, tinggi.id);
+      await link(fx.memberId, rendah.id);
+      await link(perempuan.id, simple.id);
+
+      const other = await add(fx.otherLeaf.id, "Kelompok Lain", { workStatus: "PELAJAR_SMP" });
+      await link(other.id, tinggi.id);
+      await add(fx.leaf.id, "Pindah", { status: "PINDAH", exitedAt: "2025-01-01" });
+      await add(fx.leaf.id, "Terhapus", { deletedAt: new Date() });
+
+      // Outside the branch, and a tag the branch cannot see.
+      const sibling = await tag(fx.otherLeaf.id, "rahasia", "x");
+      siblingTagId = sibling.id;
+      await link(other.id, sibling.id);
+    });
+
+    it("counts only AKTIF, non-deleted members in scope and every breakdown adds up to the total", async () => {
+      const stats = await memberStatistics(viewer, fx.branch.id);
+      expect(stats.total).toBe(3);
+      const sum = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0);
+      expect(sum(stats.bySex)).toBe(3);
+      expect(sum(stats.byMaritalStatus)).toBe(3);
+      expect(sum(stats.byWorkStatus)).toBe(3);
+      expect(sum(stats.byAgeBracket)).toBe(3);
+      expect(stats.bySex).toMatchObject({ L: 2, P: 1 });
+      expect(stats.byWorkStatus.PELAJAR_SMP).toBe(1);
+    });
+
+    it("keeps zero-count enum keys and age bracket labels", async () => {
+      const stats = await memberStatistics(viewer, fx.branch.id);
+      expect(Object.keys(stats.byAgeBracket)).toEqual(["balita", "anak", "remaja", "dewasa", "lansia"]);
+      expect(stats.byMaritalStatus.CERAI_HIDUP).toBe(0);
+    });
+
+    it("lists every direct sub-group with its AKTIF count, empty ones included", async () => {
+      const stats = await memberStatistics(viewer, fx.branch.id);
+      expect(stats.byDirectSubGroup.map((g) => [g.groupName, g.count])).toEqual([
+        ["Leaf", 2],
+        ["Other Leaf", 1],
+      ]);
+    });
+
+    it("has no tag breakdown unless a tag is asked for", async () => {
+      expect((await memberStatistics(viewer, fx.branch.id)).byTag).toBeNull();
+    });
+
+    it("breaks down by a tag key, counting members without a value as Tanpa nilai", async () => {
+      const stats = await memberStatistics(viewer, fx.branch.id, { tagId: ownKeyTagId });
+      expect(stats.byTag?.label).toBe("prioritas");
+      expect(stats.byTag?.buckets.map((b) => [b.label, b.count])).toEqual([
+        ["rendah", 1],
+        ["tinggi", 2],
+        ["Tanpa nilai", 0],
+      ]);
+    });
+
+    it("breaks down by a simple tag into Punya / Tidak punya", async () => {
+      const stats = await memberStatistics(viewer, fx.branch.id, { tagId: ownSimpleTagId });
+      expect(stats.byTag?.buckets.map((b) => [b.label, b.count])).toEqual([
+        ["Punya", 1],
+        ["Tidak punya", 2],
+      ]);
+    });
+
+    it("ignores a tag the viewer cannot see", async () => {
+      // A kelompok user cannot see a tag owned by the sibling kelompok.
+      const leafViewer = sessionFor(fx.actorId, "ADMIN", fx.leaf);
+      const stats = await memberStatistics(leafViewer, fx.leaf.id, { tagId: siblingTagId });
+      expect(stats.byTag).toBeNull();
+      expect(stats.total).toBe(2);
+    });
+
+    it("ignores an unknown or soft-deleted tag", async () => {
+      expect((await memberStatistics(viewer, fx.branch.id, { tagId: 999999 })).byTag).toBeNull();
+      const gone = await tag(fx.branch.id, "gone", null, { deletedAt: new Date() });
+      expect((await memberStatistics(viewer, fx.branch.id, { tagId: gone.id })).byTag).toBeNull();
     });
   });
 

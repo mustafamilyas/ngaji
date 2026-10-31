@@ -19,7 +19,7 @@
 
 - [x] 3.1 Extract property / age-bucket / group-level counting from `lib/member-view/sections.ts` into `lib/summary/count.ts`; existing `sections.test.ts` still passes unchanged
 - [x] 3.2 Add tag-key and simple-tag counting (`memberTag.groupBy`, totals − sum) with query tests: bucket sums equal total, deleted value folds into "Tanpa nilai", out-of-scope members never counted; verify `pnpm test lib/summary`
-- [ ] 3.3 Rewrite `memberStatistics` on the shared counters (no `findMany` of all members) and add the optional tag breakdown; `lib/stats.queries.test.ts` updated and passing
+- [x] 3.3 Rewrite `memberStatistics` on the shared counters (no `findMany` of all members) and add the optional tag breakdown; `lib/stats.queries.test.ts` updated and passing
 
 ## 4. Summaries in member views
 
