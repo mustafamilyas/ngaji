@@ -9,6 +9,12 @@ import { useMediaQuery, XL_QUERY } from "@/lib/use-media-query";
  * Where tag choosers open: a popover anchored to the trigger from `xl`, a bottom sheet below it (touch sizes).
  * `trigger` is a single button element; below `xl` it only needs to open the sheet, so it is given the click.
  */
+/**
+ * Focus the first field (the search box) when opened with a mouse or keyboard, but not by touch: on a phone the
+ * on-screen keyboard would open over the list before anything has been seen. Same rule as the group filter.
+ */
+const focusUnlessTouch = (openType: string) => openType !== "touch";
+
 export function TagOverlay({
   open,
   onOpenChange,
@@ -30,7 +36,9 @@ export function TagOverlay({
     return (
       <Popover open={open} onOpenChange={onOpenChange}>
         <PopoverTrigger render={trigger} />
-        <PopoverContent className="w-80 p-0">{children}</PopoverContent>
+        <PopoverContent className="w-80 p-0" initialFocus={focusUnlessTouch}>
+          {children}
+        </PopoverContent>
       </Popover>
     );
   }
@@ -38,7 +46,7 @@ export function TagOverlay({
     <>
       {cloneElement(trigger, { onClick: () => onOpenChange(true) })}
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="gap-0 rounded-t-xl">
+        <SheetContent side="bottom" className="gap-0 rounded-t-xl" initialFocus={focusUnlessTouch}>
           <SheetHeader>
             <SheetTitle>{title}</SheetTitle>
             <SheetDescription className="sr-only">{description}</SheetDescription>

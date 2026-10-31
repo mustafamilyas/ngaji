@@ -120,6 +120,30 @@ describe("TagPicker (task 5.2)", () => {
     expect(screen.queryByRole("button", { name: "Hapus tag binaan-desa-bawah" })).not.toBeInTheDocument();
   });
 
+  describe("focus on open (task 8.3)", () => {
+    it("puts the cursor in the search field when the popover is opened with the mouse", async () => {
+      setup();
+      await openPicker();
+      await waitFor(() => expect(screen.getByRole("combobox")).toHaveFocus());
+    });
+
+    it("puts the cursor in the search field when the sheet is opened with the mouse", async () => {
+      stubBrowser(false);
+      setup();
+      await openPicker();
+      await waitFor(() => expect(screen.getByRole("combobox")).toHaveFocus());
+    });
+
+    it("leaves the search field unfocused when the sheet is opened by touch, so the keyboard does not cover the list", async () => {
+      stubBrowser(false);
+      setup();
+      const user = userEvent.setup();
+      await user.pointer({ keys: "[TouchA]", target: screen.getByRole("button", { name: "Atur tag" }) });
+      expect(await screen.findByRole("dialog", { name: "Atur tag" })).toBeInTheDocument();
+      expect(screen.getByRole("combobox")).not.toHaveFocus();
+    });
+  });
+
   describe("empty state (task 8.2)", () => {
     it("tells a user who cannot create tags that there is nothing to choose yet", async () => {
       setup({ options: [], canCreate: false });
