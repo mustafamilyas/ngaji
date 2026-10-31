@@ -1,10 +1,7 @@
 import { z } from "zod";
 import {
   VIEW_MAX_AGE,
-  VIEW_MAX_AGE_BUCKETS,
-  VIEW_MAX_BUCKET_LABEL_LENGTH,
   VIEW_MAX_GROUP_IDS,
-  VIEW_MAX_GROUP_LEVEL,
   VIEW_MAX_RULES_PER_GROUP,
   VIEW_MAX_RULE_GROUPS,
   VIEW_MAX_TEXT_VALUE_LENGTH,
@@ -13,7 +10,8 @@ import {
 } from "@/lib/constants";
 import { isDateString } from "@/lib/dates";
 import { VIEW_SOURCES, VIEW_VISIBILITIES } from "@/lib/validation/enums";
-import { MEMBER_VIEW_FIELDS, GROUPABLE_FIELDS, RULE_FIELD_KEYS, SORT_FIELD_KEYS, operatorsFor, type FieldKey, type Operator } from "@/lib/member-view/fields";
+import { MEMBER_VIEW_FIELDS, RULE_FIELD_KEYS, SORT_FIELD_KEYS, operatorsFor, type FieldKey, type Operator } from "@/lib/member-view/fields";
+import { ageBucketsDimensionSchema, groupLevelDimensionSchema, propertyDimensionSchema } from "@/lib/validation/summary";
 import { DEFAULT_MEMBER_COLUMNS, MEMBER_COLUMNS, isMemberColumnKey, type MemberColumnKey } from "@/lib/member/columns";
 
 /**
@@ -121,32 +119,7 @@ export const sortSchema = z
   .strict();
 export type ViewSort = z.infer<typeof sortSchema>;
 
-const ageBucketSchema = z
-  .object({
-    label: z.string().trim().min(1).max(VIEW_MAX_BUCKET_LABEL_LENGTH),
-    min: z.number().int().min(0).max(VIEW_MAX_AGE),
-    max: z.number().int().min(0).max(VIEW_MAX_AGE).nullable(),
-  })
-  .strict()
-  .refine((b) => b.max === null || b.max >= b.min, { message: "Batas usia tidak valid" });
-
-export const groupBySchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("property"), field: z.enum(GROUPABLE_FIELDS as [(typeof GROUPABLE_FIELDS)[number], ...(typeof GROUPABLE_FIELDS)[number][]]) }).strict(),
-  z.object({ kind: z.literal("groupLevel"), depth: z.number().int().min(0).max(VIEW_MAX_GROUP_LEVEL) }).strict(),
-  z
-    .object({ kind: z.literal("ageBuckets"), buckets: z.array(ageBucketSchema).min(1).max(VIEW_MAX_AGE_BUCKETS) })
-    .strict()
-    .superRefine((value, ctx) => {
-      const sorted = [...value.buckets].sort((a, b) => a.min - b.min);
-      for (let i = 1; i < sorted.length; i++) {
-        const prevMax = sorted[i - 1].max;
-        if (prevMax === null || sorted[i].min <= prevMax) {
-          ctx.addIssue({ code: "custom", message: "Rentang usia saling tumpang tindih", path: ["buckets"] });
-          return;
-        }
-      }
-    }),
-]);
+export const groupBySchema = z.discriminatedUnion("kind", [propertyDimensionSchema, groupLevelDimensionSchema, ageBucketsDimensionSchema]);
 export type GroupBy = z.infer<typeof groupBySchema>;
 
 /** Known column keys, unique, normalized to table order. */

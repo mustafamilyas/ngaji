@@ -5,7 +5,9 @@ import {
   formatDateRange,
   parseGroupIds,
   parsePage,
+  parseBreakdown,
   parseSearch,
+  parseTagId,
   parseTagIds,
   resolveDateRange,
   shiftDateRange,
@@ -211,5 +213,38 @@ describe("formatDateRange", () => {
     expect(formatDateRange("2026-10-01", undefined)).toBe("sejak 1 Okt 2026");
     expect(formatDateRange(undefined, "2026-10-01")).toBe("s.d. 1 Okt 2026");
     expect(formatDateRange(undefined, undefined)).toBe("Semua waktu");
+  });
+});
+
+describe("parseTagId", () => {
+  it("parses one positive integer id", () => {
+    expect(parseTagId("12")).toBe(12);
+    expect(parseTagId(["4", "9"])).toBe(4);
+  });
+
+  it("ignores anything that is not exactly one positive integer", () => {
+    for (const raw of [undefined, "", "0", "-3", "1.5", "abc", "3,5", " 7", "7x", "1e2"]) {
+      expect(parseTagId(raw), String(raw)).toBeUndefined();
+    }
+  });
+});
+
+describe("parseBreakdown", () => {
+  it("accepts the fixed dimensions", () => {
+    expect(parseBreakdown("sex")).toEqual({ kind: "sex" });
+    expect(parseBreakdown("age")).toEqual({ kind: "age" });
+    expect(parseBreakdown("marital")).toEqual({ kind: "marital" });
+    expect(parseBreakdown("work")).toEqual({ kind: "work" });
+  });
+
+  it("accepts tag:<id> for a tag key or simple tag", () => {
+    expect(parseBreakdown("tag:7")).toEqual({ kind: "tag", tagId: 7 });
+    expect(parseBreakdown(["tag:3", "sex"])).toEqual({ kind: "tag", tagId: 3 });
+  });
+
+  it("ignores values outside the allow-list", () => {
+    for (const raw of [undefined, "", "status", "SEX", "phone", "tag", "tag:", "tag:0", "tag:-1", "tag:1.5", "tag:abc", "tag:1,2", "tag:7:8", "constructor", "__proto__"]) {
+      expect(parseBreakdown(raw), String(raw)).toBeUndefined();
+    }
   });
 });

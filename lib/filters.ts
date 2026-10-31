@@ -35,6 +35,29 @@ export function parseTagIds(param: Param): number[] | undefined {
   return parseIdList(param, MAX_TAG_FILTER_IDS);
 }
 
+/** `?tag=` holding exactly one tag id (Statistik → Anggota "Per tag"); anything else is ignored. */
+export function parseTagId(param: Param): number | undefined {
+  const raw = first(param);
+  return raw && /^[1-9]\d*$/.test(raw) ? Number(raw) : undefined;
+}
+
+/** What `?rincian=` may hold: a fixed member dimension or `tag:<tagId>`. Resolved to a full dimension (and tag visibility checked) by the caller. */
+export type BreakdownChoice = { kind: "sex" | "age" | "marital" | "work" } | { kind: "tag"; tagId: number };
+
+const FIXED_BREAKDOWNS = ["sex", "age", "marital", "work"] as const;
+
+export function parseBreakdown(param: Param): BreakdownChoice | undefined {
+  const raw = first(param);
+  if (!raw) return undefined;
+  const fixed = FIXED_BREAKDOWNS.find((kind) => kind === raw);
+  if (fixed) return { kind: fixed };
+  if (raw.startsWith("tag:")) {
+    const tagId = parseTagId(raw.slice(4));
+    return tagId === undefined ? undefined : { kind: "tag", tagId };
+  }
+  return undefined;
+}
+
 export function parseSearch(param: Param): string | undefined {
   const value = first(param)?.trim();
   return value ? value.slice(0, MAX_SEARCH_LENGTH) : undefined;

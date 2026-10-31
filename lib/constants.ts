@@ -77,6 +77,10 @@ export const VIEW_EXPANDED_SECTIONS = 5;
 export const VIEW_GROUP_OPTIONS_LIMIT = 500;
 /** Max length (characters) of the base64url `?d=` URL draft. */
 export const VIEW_MAX_DRAFT_LENGTH = 4000;
+/** Most summaries ("Ringkasan") one member view may hold. */
+export const VIEW_MAX_SUMMARIES = 6;
+/** Buckets drawn in a summary chart; a summary with more buckets also gets a paginated table. */
+export const SUMMARY_MAX_BARS = 12;
 
 /** bcrypt work factor for password hashing (DESIGN.md §4.1). */
 export const BCRYPT_COST = 12;
