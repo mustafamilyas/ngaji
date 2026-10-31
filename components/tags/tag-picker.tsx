@@ -100,11 +100,19 @@ export function TagPicker({
     setSearch("");
   }
 
+  // No usable tag at all is a different message from a search without a match.
+  const emptyText =
+    options.length > 0 || search.trim() !== ""
+      ? "Tidak ditemukan."
+      : canCreate
+        ? "Belum ada tag. Ketik nama untuk membuat tag."
+        : "Belum ada tag yang bisa dipakai.";
+
   const panel = (
     <Command filter={filterTags} className="max-h-[70dvh] xl:max-h-80">
       <CommandInput value={search} onValueChange={setSearch} placeholder="Cari atau buat tag (kunci:nilai)" aria-label="Cari tag" />
       <CommandList className="pb-[env(safe-area-inset-bottom)]">
-        <CommandEmpty>Tidak ditemukan.</CommandEmpty>
+        <CommandEmpty>{emptyText}</CommandEmpty>
         {options.map(({ group, tags: groupTags }) => (
           <CommandGroup key={group.id} heading={group.isOwn ? "Grup sendiri" : group.name}>
             {groupTags.map((tag) => (

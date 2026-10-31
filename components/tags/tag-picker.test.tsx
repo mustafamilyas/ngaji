@@ -120,6 +120,28 @@ describe("TagPicker (task 5.2)", () => {
     expect(screen.queryByRole("button", { name: "Hapus tag binaan-desa-bawah" })).not.toBeInTheDocument();
   });
 
+  describe("empty state (task 8.2)", () => {
+    it("tells a user who cannot create tags that there is nothing to choose yet", async () => {
+      setup({ options: [], canCreate: false });
+      await openPicker();
+      expect(screen.getByText("Belum ada tag yang bisa dipakai.")).toBeInTheDocument();
+    });
+
+    it("tells an admin to type a name to create the first tag", async () => {
+      setup({ options: [], canCreate: true });
+      await openPicker();
+      expect(screen.getByText("Belum ada tag. Ketik nama untuk membuat tag.")).toBeInTheDocument();
+    });
+
+    it("keeps 'Tidak ditemukan.' for a search that matches nothing among existing tags", async () => {
+      setup({ canCreate: false });
+      const user = await openPicker();
+      await user.type(screen.getByRole("combobox"), "zzz");
+      expect(screen.getByText("Tidak ditemukan.")).toBeInTheDocument();
+      expect(screen.queryByText(/Belum ada tag/)).not.toBeInTheDocument();
+    });
+  });
+
   it("rolls the chip back and shows the server's message when the action fails", async () => {
     actions.attachTagAction.mockResolvedValue({ ok: false, error: "Satu data maksimal memiliki 20 tag" });
     setup();
