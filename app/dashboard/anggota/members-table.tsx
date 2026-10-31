@@ -4,11 +4,14 @@ import { SortableTh, tableClass, tdClass, thClass, theadRowClass, trClass } from
 import { MemberStatusBadge } from "@/components/member-status-badge";
 import { RowActions } from "@/components/row-actions";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { RowTags } from "@/components/tags/row-tags";
+import { TagOptionsProvider } from "@/components/tags/tag-options-context";
 import { WhatsAppButton } from "@/components/whatsapp-button";
 import { ageInYears } from "@/lib/dates";
 import { formatDate } from "@/lib/filters";
 import { MEMBER_COLUMNS, type MemberColumnKey } from "@/lib/member/columns";
 import { formatEnumLabel, SEX_LABELS } from "@/lib/member/labels";
+import { canPickTags, type TagOptionsData } from "@/lib/tag/entity";
 import { MEMBER_SORT_KEYS, type listMembers, type MemberSortKey } from "@/lib/member/queries";
 import type { SortState } from "@/lib/sort";
 import { cn, initials } from "@/lib/utils";
@@ -20,7 +23,7 @@ function isMemberSortKey(key: string): key is MemberSortKey {
   return (MEMBER_SORT_KEYS as string[]).includes(key);
 }
 
-function cell(member: MemberRow, key: MemberColumnKey, asOf: string): React.ReactNode {
+function cell(member: MemberRow, key: MemberColumnKey, asOf: string, canPick: boolean): React.ReactNode {
   switch (key) {
     case "grup":
       return member.group.parent ? (
@@ -42,6 +45,15 @@ function cell(member: MemberRow, key: MemberColumnKey, asOf: string): React.Reac
       );
     case "status":
       return <MemberStatusBadge status={member.status} />;
+    case "tag":
+      return (
+        <RowTags
+          target={{ kind: "member", id: member.id }}
+          attached={member.tags.map((link) => link.tag)}
+          canPick={canPick}
+          label={member.name}
+        />
+      );
     case "whatsapp":
       return <WhatsAppButton phone={member.phone} name={member.name} compact />;
     case "hp":
@@ -80,6 +92,7 @@ export function MembersTable({
   sort,
   sortHrefFor,
   today: asOf,
+  tagOptions,
 }: {
   members: MemberRow[];
   columns: MemberColumnKey[];
@@ -87,11 +100,14 @@ export function MembersTable({
   sortHrefFor: (key: MemberSortKey) => string;
   /** The viewer's organization "today" (`YYYY-MM-DD`), used for ages. */
   today: string;
+  /** Shared options for the row pickers; `null` when the Tag column is hidden. */
+  tagOptions: TagOptionsData | null;
 }) {
   const visible = MEMBER_COLUMNS.filter((c) => columns.includes(c.key));
+  const canPick = tagOptions !== null && canPickTags(tagOptions);
 
   // `relative` keeps the absolutely positioned sr-only header labels inside the scroller; without it they widen the whole page.
-  return (
+  const table = (
     <div className="relative overflow-x-auto">
       <table className={cn(tableClass, "block md:table")}>
         <thead className="hidden md:table-header-group">
@@ -153,12 +169,13 @@ export function MembersTable({
                     "flex items-center justify-between gap-3 px-0 py-0 text-sm whitespace-normal md:table-cell md:px-4 md:py-2.5 md:whitespace-nowrap",
                     column.key === "whatsapp" ? "col-start-2 row-start-1" : "col-span-3",
                     column.key === "whatsapp" && "md:py-1 md:text-center",
+                    column.key === "tag" && "md:min-w-72 md:whitespace-normal",
                   )}
                 >
                   {column.key !== "whatsapp" && (
                     <span className="shrink-0 text-xs text-muted-foreground md:hidden">{column.label}</span>
                   )}
-                  <span className="min-w-0 text-right md:[text-align:inherit]">{cell(member, column.key, asOf)}</span>
+                  <span className="min-w-0 text-right md:[text-align:inherit]">{cell(member, column.key, asOf, canPick)}</span>
                 </td>
               ))}
               <td className="col-start-3 row-start-1 p-0 text-right md:px-2 md:py-1">
@@ -177,5 +194,13 @@ export function MembersTable({
         </tbody>
       </table>
     </div>
+  );
+
+  return canPick && tagOptions ? (
+    <TagOptionsProvider options={tagOptions.options} canCreate={tagOptions.canCreate}>
+      {table}
+    </TagOptionsProvider>
+  ) : (
+    table
   );
 }

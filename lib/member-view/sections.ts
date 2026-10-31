@@ -8,7 +8,7 @@ import type { Definition, GroupBy } from "@/lib/validation/member-view";
 import { MEMBER_VIEW_FIELDS } from "./fields";
 import { ageRange } from "./age";
 import { buildOrderBy } from "./query";
-import { memberSelectFor, prepareView, type PreparedView } from "./results";
+import { prepareView, type PreparedView } from "./results";
 
 type MemberWhere = Prisma.MemberWhereInput;
 
@@ -146,7 +146,7 @@ function findSectionMembers(prepared: PreparedView, section: ComputedSection, of
     orderBy: buildOrderBy(prepared.definition.sort),
     skip: offset,
     take: VIEW_SECTION_PAGE_SIZE,
-    select: memberSelectFor(prepared.definition.columns),
+    select: prepared.select,
   });
 }
 

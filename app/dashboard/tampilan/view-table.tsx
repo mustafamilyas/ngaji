@@ -2,10 +2,12 @@ import Link from "next/link";
 import { tableClass, tdClass, thClass, theadRowClass, trClass } from "@/components/data-table";
 import { MemberStatusBadge } from "@/components/member-status-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { RowTags } from "@/components/tags/row-tags";
 import { WhatsAppButton } from "@/components/whatsapp-button";
 import { ageInYears } from "@/lib/dates";
 import { formatDate } from "@/lib/filters";
 import { MEMBER_COLUMNS, type MemberColumnKey } from "@/lib/member/columns";
+import type { TagSummary } from "@/lib/tag/include";
 import { formatEnumLabel, SEX_LABELS } from "@/lib/member/labels";
 import { cn, initials } from "@/lib/utils";
 import type { Sex } from "@/lib/validation/enums";
@@ -28,6 +30,7 @@ export type ViewMemberRow = {
   workStatus?: string;
   email?: string | null;
   joinedAt?: string;
+  tags?: { tag: TagSummary }[];
 };
 
 function cell(member: ViewMemberRow, key: MemberColumnKey, asOf: string): React.ReactNode {
@@ -53,6 +56,9 @@ function cell(member: ViewMemberRow, key: MemberColumnKey, asOf: string): React.
       ) : null;
     case "status":
       return member.status ? <MemberStatusBadge status={member.status as never} /> : null;
+    case "tag":
+      // Views are read-only lists: chips without a picker.
+      return <RowTags target={{ kind: "member", id: member.id }} attached={(member.tags ?? []).map((link) => link.tag)} canPick={false} label={member.name} />;
     case "whatsapp":
       return <WhatsAppButton phone={member.phone ?? ""} name={member.name} compact />;
     case "hp":
@@ -133,6 +139,7 @@ export function ViewMembersTable({
                   className={cn(
                     tdClass,
                     "flex items-center justify-between gap-3 px-0 py-0 text-sm whitespace-normal md:table-cell md:px-4 md:py-2.5 md:whitespace-nowrap",
+                    column.key === "tag" && "md:min-w-72 md:whitespace-normal",
                     column.key === "whatsapp" ? "col-start-2 row-start-1 md:py-1 md:text-center" : "col-span-2",
                   )}
                 >

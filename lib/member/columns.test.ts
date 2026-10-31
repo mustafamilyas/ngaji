@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_MEMBER_COLUMNS, parseMemberColumns, serializeMemberColumns } from "./columns";
+import { DEFAULT_MEMBER_COLUMNS, MEMBER_COLUMNS, parseMemberColumns, serializeMemberColumns } from "./columns";
 
 describe("parseMemberColumns", () => {
   it("uses the defaults when nothing has been chosen yet", () => {
@@ -16,6 +16,18 @@ describe("parseMemberColumns", () => {
 
   it("falls back to the defaults for a value with no known column", () => {
     expect(parseMemberColumns("bogus,,")).toEqual(DEFAULT_MEMBER_COLUMNS);
+  });
+});
+
+describe("tag column (task 5.4)", () => {
+  it("is a default column placed right after status", () => {
+    const keys = MEMBER_COLUMNS.map((c) => c.key);
+    expect(keys.indexOf("tag")).toBe(keys.indexOf("status") + 1);
+    expect(DEFAULT_MEMBER_COLUMNS).toContain("tag");
+  });
+
+  it("can be hidden by choosing the other columns", () => {
+    expect(parseMemberColumns("grup,status")).not.toContain("tag");
   });
 });
 

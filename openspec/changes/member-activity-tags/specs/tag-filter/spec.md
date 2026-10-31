@@ -34,6 +34,12 @@ With one or more tags selected, an entity SHALL match if it has a link to **any*
 ### Requirement: Tag chips in lists
 Members and activities in the member table, the activity list, and the detail pages SHALL show their visible tags as chips. The member table SHALL show tags as a default column ("Tag") that can be hidden like other optional columns.
 
+Saved member views (`/dashboard/tampilan`) SHALL offer the same "Tag" column, as a default column of new views, rendering the viewer's visible tags as read-only chips (no picker). Views already saved keep their stored columns. Tag rules in view filters are not part of this change.
+
 #### Scenario: Hidden tag column
 - **WHEN** a user hides the "Tag" column
 - **THEN** the member table renders without tag chips and the tag filter still works
+
+#### Scenario: Tag column in a member view
+- **WHEN** a member view includes the "Tag" column
+- **THEN** each row shows only the tags the viewer may see, as read-only chips, and a view without the column loads no tag data

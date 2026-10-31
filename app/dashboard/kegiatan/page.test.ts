@@ -57,6 +57,28 @@ describe("ActivityListPage", () => {
     expect(withTag).toContain("Kajian Uji");
   });
 
+  it("shows each row's visible tags with a compact picker (task 5.4)", async () => {
+    const fixture = await buildPageFixture("kegiatan-list-tag-row");
+    const usable = await db.tag.create({ data: { groupId: fixture.root.id, key: "fokus-baris", color: "blue", createdById: fixture.actorId } });
+    await db.activityTag.create({ data: { activityId: fixture.activityId, tagId: usable.id, createdById: fixture.actorId } });
+
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "USER", fixture.leaf) });
+    const withPicker = renderToStaticMarkup(await ActivityListPage({ searchParams: Promise.resolve({}) }));
+    expect(withPicker).toContain("fokus-baris");
+    expect(withPicker).toContain("Atur tag Kajian Uji");
+  });
+
+  it("shows chips only when the user can neither use nor create any tag (task 5.4)", async () => {
+    const fixture = await buildPageFixture("kegiatan-list-tag-row-ro");
+    const below = await db.tag.create({ data: { groupId: fixture.leaf.id, key: "binaan-baris", color: "blue", createdById: fixture.actorId } });
+    await db.activityTag.create({ data: { activityId: fixture.activityId, tagId: below.id, createdById: fixture.actorId } });
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "USER", fixture.branch) });
+
+    const readOnly = renderToStaticMarkup(await ActivityListPage({ searchParams: Promise.resolve({}) }));
+    expect(readOnly).toContain("binaan-baris");
+    expect(readOnly).not.toContain("Atur tag");
+  });
+
   it("carries the tag filter into the Cetak link", async () => {
     const fixture = await buildPageFixture("kegiatan-list-tag-cetak");
     mockAuthSession(auth, { user: sessionFor(fixture.actorId, "OWNER", fixture.root) });

@@ -19,6 +19,7 @@ import { useMediaQuery, XL_QUERY } from "@/lib/use-media-query";
 import { parseTagInput } from "@/lib/validation/tag";
 import type { TagTarget } from "@/lib/validation/tag";
 import { TagChip } from "./tag-chip";
+import { useTagOptions } from "./tag-options-context";
 
 const labelOf = (tag: Pick<TagSummary, "key" | "value">) => (tag.value === null ? tag.key : `${tag.key}:${tag.value}`);
 
@@ -45,16 +46,25 @@ function filterTags(_value: string, search: string, keywords?: string[]): number
 export function TagPicker({
   target,
   attached,
-  options,
-  canCreate,
+  options: optionsProp,
+  canCreate: canCreateProp,
+  compact = false,
+  label,
 }: {
   target: TagTarget;
   attached: TagSummary[];
-  /** Usable tags grouped by owner (`listTags(...).usable`). */
-  options: TagOwnerGroup[];
-  /** ADMIN or OWNER: typing a new name offers "Buat tag" in the user's own group. */
-  canCreate: boolean;
+  /** Usable tags grouped by owner (`listTags(...).usable`); defaults to the page's `TagOptionsProvider`. */
+  options?: TagOwnerGroup[];
+  /** ADMIN or OWNER: typing a new name offers "Buat tag" in the user's own group; defaults to the provider. */
+  canCreate?: boolean;
+  /** For table rows: chips are read-only and a small "+" opens the picker, where a tag is removed by choosing it again. */
+  compact?: boolean;
+  /** Names the entity for screen readers on a compact trigger ("Atur tag Ahmad Fauzi"). */
+  label?: string;
 }) {
+  const provided = useTagOptions();
+  const options = optionsProp ?? provided?.options ?? [];
+  const canCreate = canCreateProp ?? provided?.canCreate ?? false;
   const wide = useMediaQuery(XL_QUERY);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -120,8 +130,13 @@ export function TagPicker({
     </Command>
   );
 
-  const trigger = (
-    <Button type="button" variant="outline" aria-label="Atur tag" aria-haspopup="dialog" aria-expanded={open} onClick={wide ? undefined : () => setOpen(true)}>
+  const triggerLabel = compact && label ? `Atur tag ${label}` : "Atur tag";
+  const trigger = compact ? (
+    <Button type="button" variant="ghost" size="icon-sm" aria-label={triggerLabel} aria-haspopup="dialog" aria-expanded={open} onClick={wide ? undefined : () => setOpen(true)}>
+      <PlusIcon aria-hidden />
+    </Button>
+  ) : (
+    <Button type="button" variant="outline" aria-label={triggerLabel} aria-haspopup="dialog" aria-expanded={open} onClick={wide ? undefined : () => setOpen(true)}>
       <PlusIcon aria-hidden />
       Tag
     </Button>
@@ -133,7 +148,7 @@ export function TagPicker({
         {tags.map((tag) => (
           <li key={tag.id} className="inline-flex max-w-full items-center">
             <TagChip tag={tag} />
-            {usableIds.has(tag.id) && (
+            {!compact && usableIds.has(tag.id) && (
               <Button type="button" variant="ghost" size="icon-sm" aria-label={`Hapus tag ${labelOf(tag)}`} onClick={() => run({ type: "detach", tagId: tag.id }, () => detachTagAction({ ...target, tagId: tag.id }))}>
                 <XIcon aria-hidden />
               </Button>

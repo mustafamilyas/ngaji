@@ -27,6 +27,43 @@ describe("MembersPage", () => {
     expect(html).toContain("Anggota Uji");
   });
 
+  describe("tag column (task 5.4)", () => {
+    it("shows each member's visible tags with a compact picker for a user who can use tags", async () => {
+      const fixture = await buildPageFixture("anggota-list-tag-column");
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "USER", fixture.leaf) });
+      const tag = await db.tag.create({ data: { groupId: fixture.root.id, key: "fokus-kolom", color: "blue", createdById: fixture.actorId } });
+      await db.memberTag.create({ data: { memberId: fixture.memberId, tagId: tag.id, createdById: fixture.actorId } });
+
+      const html = renderToStaticMarkup(await MembersPage({ searchParams: Promise.resolve({}) }));
+      expect(html).toContain("fokus-kolom");
+      expect(html).toContain("Atur tag Anggota Uji");
+    });
+
+    it("shows chips without a picker when the user can neither use nor create tags", async () => {
+      const fixture = await buildPageFixture("anggota-list-tag-column-ro");
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "USER", fixture.branch) });
+      const tag = await db.tag.create({ data: { groupId: fixture.leaf.id, key: "binaan-kolom", color: "blue", createdById: fixture.actorId } });
+      await db.memberTag.create({ data: { memberId: fixture.memberId, tagId: tag.id, createdById: fixture.actorId } });
+
+      const html = renderToStaticMarkup(await MembersPage({ searchParams: Promise.resolve({}) }));
+      expect(html).toContain("binaan-kolom");
+      expect(html).not.toContain("Atur tag");
+    });
+
+    it("renders no tag data when the column is hidden", async () => {
+      const fixture = await buildPageFixture("anggota-list-tag-column-hidden");
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "OWNER", fixture.root) });
+      const tag = await db.tag.create({ data: { groupId: fixture.root.id, key: "tersembunyi", color: "blue", createdById: fixture.actorId } });
+      await db.memberTag.create({ data: { memberId: fixture.memberId, tagId: tag.id, createdById: fixture.actorId } });
+      cookieValue.current = "grup,status";
+
+      const html = renderToStaticMarkup(await MembersPage({ searchParams: Promise.resolve({}) }));
+      expect(html).toContain("Anggota Uji");
+      expect(html).not.toContain("tersembunyi");
+      cookieValue.current = undefined;
+    });
+  });
+
   it("renders with search/status/page filters applied without crashing", async () => {
     const fixture = await buildPageFixture("anggota-list-filters");
     const session = sessionFor(fixture.actorId, "OWNER", fixture.root);

@@ -25,6 +25,8 @@ import { FilterBar, SearchFilter } from "@/components/filters/filter-bar";
 import { GroupFilter } from "@/components/filters/group-filter";
 import { SortSelect } from "@/components/filters/sort-select";
 import { ActivityCalendar } from "./activity-calendar";
+import { RowTags } from "@/components/tags/row-tags";
+import { TagOptionsProvider } from "@/components/tags/tag-options-context";
 import { OccurrenceNotes } from "./occurrence-notes";
 import { WEEKDAY_LABELS } from "@/lib/activity/labels";
 import { listActivityOccurrences } from "@/lib/activity/list";
@@ -34,6 +36,7 @@ import { ACTIVITY_CALENDAR_DATE_RANGE, ACTIVITY_LIST_DATE_RANGE, PAGE_SIZE } fro
 import { db } from "@/lib/db";
 import { today, weekdayOf } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
+import { canPickTags, loadTagOptions } from "@/lib/tag/entity";
 import { formatDate, formatDateRange, parseGroupIds, parsePage, parseSearch, parseTagIds, resolveDateRange } from "@/lib/filters";
 import { pageHref, paginate } from "@/lib/pagination";
 import { parseSort, sortHref, sortPreserve } from "@/lib/sort";
@@ -67,7 +70,7 @@ export default async function ActivityListPage({
   const tagIds = parseTagIds(params.tag);
   const page = parsePage(params.page);
 
-  const [{ entries, groups }, visibleGroups] = await Promise.all([
+  const [{ entries, groups }, visibleGroups, tagOptions] = await Promise.all([
     (async () => {
       try {
         return await listActivityOccurrences(session.user, { from, to, groupIds, search: q, tagIds });
@@ -81,7 +84,9 @@ export default async function ActivityListPage({
       orderBy: [{ depth: "asc" }, { name: "asc" }],
       select: { id: true, parentId: true, name: true, path: true },
     }),
+    loadTagOptions(session.user),
   ]);
+  const canPick = canPickTags(tagOptions);
 
   const sort = parseSort(params, ACTIVITY_SORT_KEYS, DEFAULT_ACTIVITY_SORT);
 
@@ -235,6 +240,7 @@ export default async function ActivityListPage({
             <ActivityCalendar entries={entries} from={from} to={to} today={now} dayHref={dayHref} />
           </div>
         ) : entries.length > 0 ? (
+          <TagOptionsProvider options={tagOptions.options} canCreate={tagOptions.canCreate}>
           <div className="overflow-x-auto">
             {/* Below md the same table markup is laid out as stacked rows (no sideways scrolling); sort headers are table-only. */}
             <table className={cn(tableClass, "block md:table")}>
@@ -282,6 +288,14 @@ export default async function ActivityListPage({
                           )}
                         </span>
                         <OccurrenceNotes notes={entry.effectiveNotes} />
+                        <div className="mt-1 empty:hidden">
+                          <RowTags
+                            target={{ kind: "activity", id: entry.activityId }}
+                            attached={entry.tags}
+                            canPick={canPick}
+                            label={entry.activityName}
+                          />
+                        </div>
                       </td>
                       <td className={cn(tdClass, stackedCell, "col-start-1 text-xs text-muted-foreground md:text-sm md:text-foreground")}>
                         {entry.groupName}
@@ -313,6 +327,7 @@ export default async function ActivityListPage({
               </tbody>
             </table>
           </div>
+          </TagOptionsProvider>
         ) : (
           <p className="px-4 py-10 text-center text-sm text-muted-foreground">
             {q ? "Tidak ada kegiatan yang cocok." : "Tidak ada kegiatan pada rentang ini."}

@@ -204,6 +204,24 @@ describe("listViewMembers", () => {
     });
   });
 
+  describe("tag column (task 5.4)", () => {
+    it("loads only the tags the viewer may see, and only when the Tag column is chosen", async () => {
+      const visible = await db.tag.create({ data: { groupId: fx.root.id, key: "view-visible", color: "blue", createdById: fx.actorId } });
+      const foreign = await db.tag.create({ data: { groupId: fx.otherLeaf.id, key: "view-foreign", color: "red", createdById: fx.actorId } });
+      const deleted = await db.tag.create({ data: { groupId: fx.root.id, key: "view-deleted", color: "red", createdById: fx.actorId, deletedAt: new Date() } });
+      for (const tag of [visible, foreign, deleted]) {
+        await db.memberTag.create({ data: { memberId: fx.memberId, tagId: tag.id, createdById: fx.actorId } });
+      }
+
+      const withColumn = await listViewMembers(leafSession, { ...emptyDefinition(), columns: ["tag"] }, { today: TODAY });
+      const row = withColumn.members.find((m) => m.id === fx.memberId) as unknown as { tags: { tag: { key: string } }[] };
+      expect(row.tags.map((link) => link.tag.key)).toEqual(["view-visible"]);
+
+      const without = await listViewMembers(leafSession, { ...emptyDefinition(), columns: ["jenisKelamin"] }, { today: TODAY });
+      expect(without.members[0]).not.toHaveProperty("tags");
+    });
+  });
+
   describe("pagination", () => {
     it("pages PAGE_SIZE rows with the total, and clamps a stale page", async () => {
       await db.member.createMany({

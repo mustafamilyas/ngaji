@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { today as todayIn } from "@/lib/dates";
 import type { MemberColumnKey } from "@/lib/member/columns";
 import { clampPage } from "@/lib/pagination";
+import { visibleTagLinks } from "@/lib/tag/include";
 import { resolveDefinitionGroupsLenient } from "@/lib/resolve";
 import type { Definition } from "@/lib/validation/member-view";
 import { buildOrderBy, buildWhere, type QueryContext } from "./query";
@@ -27,10 +28,14 @@ const COLUMN_SELECT = {
   pekerjaan: { workStatus: true },
   email: { email: true },
   tanggalMasuk: { joinedAt: true },
-} satisfies Record<MemberColumnKey, Prisma.MemberSelect>;
+} satisfies Record<Exclude<MemberColumnKey, "tag">, Prisma.MemberSelect>;
 
-export function memberSelectFor(columns: readonly MemberColumnKey[]) {
-  return Object.assign({ id: true, name: true }, ...columns.map((key) => COLUMN_SELECT[key])) as Prisma.MemberSelect;
+/** The tag column depends on who is looking (only visible tags), so it is the one select built from the session. */
+export function memberSelectFor(columns: readonly MemberColumnKey[], session: Pick<SessionUser, "groupPath">) {
+  return Object.assign(
+    { id: true, name: true },
+    ...columns.map((key) => (key === "tag" ? { tags: visibleTagLinks(session) } : COLUMN_SELECT[key])),
+  ) as Prisma.MemberSelect;
 }
 
 export type PreparedView = {
@@ -41,6 +46,8 @@ export type PreparedView = {
   today: string;
   /** Some rules were dropped (group deleted or out of scope); drives the "diabaikan" notice. */
   dropped: boolean;
+  /** Fields of the chosen columns only, for every `member` query of this view. */
+  select: Prisma.MemberSelect;
 };
 
 /**
@@ -68,7 +75,7 @@ export async function prepareView(
   const where: Prisma.MemberWhereInput = {
     AND: [{ deletedAt: null, group: { path: { startsWith: session.groupPath } } }, buildWhere(resolved, ctx)],
   };
-  return { definition: resolved, where, today, dropped };
+  return { definition: resolved, where, today, dropped, select: memberSelectFor(resolved.columns, session) };
 }
 
 /** Scope-filtered, paginated, ungrouped result list for a view definition. */
@@ -86,7 +93,7 @@ export async function listViewMembers(
     orderBy: buildOrderBy(prepared.definition.sort),
     skip: (page - 1) * PAGE_SIZE,
     take: PAGE_SIZE,
-    select: memberSelectFor(prepared.definition.columns),
+    select: prepared.select,
   });
 
   return { members, total, page, pageSize: PAGE_SIZE, dropped: prepared.dropped };

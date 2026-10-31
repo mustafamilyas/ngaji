@@ -11,6 +11,7 @@ const actions = vi.hoisted(() => ({
 vi.mock("@/app/dashboard/tag/actions", () => actions);
 
 import { TagPicker } from "./tag-picker";
+import { TagOptionsProvider } from "./tag-options-context";
 
 const tag = (id: number, groupId: number, key: string, value: string | null = null, color = "blue") => ({
   id,
@@ -188,5 +189,43 @@ describe("TagPicker (task 5.2)", () => {
     expect(input.className).toContain("text-base");
     await user.type(input, "baru");
     expect(screen.getByRole("option", { name: /Buat tag/ }).className).toContain("min-h-11");
+  });
+
+  describe("in a table row (task 5.4)", () => {
+    it("keeps chips read-only and opens the picker from a labelled '+' trigger", async () => {
+      setup({ attached: [tag(1, 3, "fokus")], compact: true, label: "Ahmad Fauzi" });
+      expect(screen.getByText("fokus")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Hapus tag/ })).not.toBeInTheDocument();
+
+      await userEvent.setup().click(screen.getByRole("button", { name: "Atur tag Ahmad Fauzi" }));
+      expect(screen.getByRole("option", { name: /prioritas:tinggi/ })).toBeInTheDocument();
+    });
+
+    it("removes a tag by choosing it again in the list", async () => {
+      setup({ attached: [tag(1, 3, "fokus")], compact: true, label: "Ahmad Fauzi" });
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("button", { name: "Atur tag Ahmad Fauzi" }));
+      await user.click(screen.getByRole("option", { name: /fokus/ }));
+      expect(actions.detachTagAction).toHaveBeenCalledWith({ kind: "member", id: 10, tagId: 1 });
+    });
+
+    it("gives the trigger a 44px touch target below xl", () => {
+      setup({ compact: true, label: "Ahmad Fauzi" });
+      const trigger = screen.getByRole("button", { name: "Atur tag Ahmad Fauzi" });
+      expect(trigger.className).toMatch(/size-11|h-11/);
+    });
+
+    it("reads options and create right from the page's provider when it gets no props for them", async () => {
+      render(
+        <TagOptionsProvider options={options} canCreate>
+          <TagPicker target={target} attached={[]} compact label="Ahmad Fauzi" />
+        </TagOptionsProvider>,
+      );
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("button", { name: "Atur tag Ahmad Fauzi" }));
+      expect(screen.getByRole("option", { name: /binaan/ })).toBeInTheDocument();
+      await user.type(screen.getByRole("combobox"), "baru");
+      expect(screen.getByRole("option", { name: /Buat tag/ })).toBeInTheDocument();
+    });
   });
 });

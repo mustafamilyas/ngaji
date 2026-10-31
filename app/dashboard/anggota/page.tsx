@@ -24,6 +24,7 @@ import { pageHref } from "@/lib/pagination";
 import { parseSort, sortHref } from "@/lib/sort";
 import { MEMBER_STATUSES, type MemberStatus } from "@/lib/validation/enums";
 import { setMemberColumnsAction } from "./actions";
+import { loadTagOptions } from "@/lib/tag/entity";
 import { MembersTable } from "./members-table";
 
 function isMemberStatus(value: string): value is MemberStatus {
@@ -50,7 +51,7 @@ export default async function MembersPage({
   const sort = parseSort(params, sortable, DEFAULT_MEMBER_SORT);
 
   const scope = { group: { path: { startsWith: session.user.groupPath } } };
-  const [{ members, total, page: currentPage, pageSize }, groups, scopeTotal, activeTotal, joinedThisMonth] =
+  const [{ members, total, page: currentPage, pageSize }, groups, scopeTotal, activeTotal, joinedThisMonth, tagOptions] =
     await Promise.all([
       (async () => {
         try {
@@ -68,6 +69,8 @@ export default async function MembersPage({
       db.member.count({ where: scope }),
       db.member.count({ where: { ...scope, status: "AKTIF" } }),
       db.member.count({ where: { ...scope, joinedAt: { gte: monthStartOf(today(session.user.timeZone)) } } }),
+      // The row pickers' options are only needed (and only sent) when the Tag column is shown.
+      columns.includes("tag") ? loadTagOptions(session.user) : null,
     ]);
   const isFiltered = Boolean(q || groupIds || tagIds || status);
 
@@ -148,6 +151,7 @@ export default async function MembersPage({
             sort={sort}
             sortHrefFor={(key) => sortHref("/dashboard/anggota", params, key, sort, DEFAULT_MEMBER_SORT)}
             today={today(session.user.timeZone)}
+            tagOptions={tagOptions}
           />
         ) : (
           <p className="px-4 py-10 text-center text-sm text-muted-foreground">Tidak ada anggota yang cocok.</p>
