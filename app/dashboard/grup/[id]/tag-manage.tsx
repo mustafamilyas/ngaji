@@ -19,9 +19,6 @@ import { TAG_DEFAULT_COLOR } from "@/lib/constants";
 import type { ActionResult } from "@/lib/errors";
 import type { GroupTag } from "@/lib/tag/group-tags";
 
-/** The shared menu items are 30px tall; these menus are used on phones, so they ask for a 44px target below `xl`. */
-const itemClass = "min-h-11 text-base xl:min-h-0 xl:text-sm";
-
 const labelOf = (tag: Pick<GroupTag, "key" | "value">) => (tag.value === null ? tag.key : `${tag.key}:${tag.value}`);
 
 /** Runs one management action; the dialog closes on success and shows the server's message otherwise. */
@@ -192,9 +189,9 @@ export function TagMenu({ tag }: { tag: GroupTag }) {
       <DropdownMenu>
         <MenuTrigger label={label} />
         <DropdownMenuContent>
-          <DropdownMenuItem className={itemClass} onClick={() => open("color")}>Ubah warna</DropdownMenuItem>
-          <DropdownMenuItem className={itemClass} onClick={() => open("rename")}>{isValue ? "Ubah nilai" : "Ubah nama"}</DropdownMenuItem>
-          <DropdownMenuItem className={itemClass} onClick={() => open("delete")}>Hapus</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => open("color")}>Ubah warna</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => open("rename")}>{isValue ? "Ubah nilai" : "Ubah nama"}</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => open("delete")}>Hapus</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -267,9 +264,9 @@ export function KeyMenu({
       <DropdownMenu>
         <MenuTrigger label={`kunci ${keyName}`} />
         <DropdownMenuContent>
-          <DropdownMenuItem className={itemClass} onClick={() => open("add")}>Tambah nilai</DropdownMenuItem>
-          <DropdownMenuItem className={itemClass} onClick={() => open("rename")}>Ubah nama kunci</DropdownMenuItem>
-          <DropdownMenuItem className={itemClass} onClick={() => open("delete")}>Hapus kunci</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => open("add")}>Tambah nilai</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => open("rename")}>Ubah nama kunci</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => open("delete")}>Hapus kunci</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 

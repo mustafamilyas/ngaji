@@ -35,8 +35,9 @@ function DropdownMenuContent({
   )
 }
 
+/** Touch sizes like the other primitives: 44px with 16px text below `xl`, compact again from `xl`. */
 const itemClass =
-  "flex w-full cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none select-none data-[highlighted]:bg-muted [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground"
+  "flex min-h-11 w-full cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-base outline-none select-none data-[highlighted]:bg-muted xl:min-h-0 xl:text-sm [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground"
 
 function DropdownMenuItem({
   className,
