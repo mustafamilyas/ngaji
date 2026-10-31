@@ -45,7 +45,7 @@
   - [x] 5.6a Mobile/tablet: tag filter fits the filter bar at phone width (collapses into a sheet/popover, selected chips wrap), usable one-handed; verify at 375px and 768px
 - [x] 5.7 Group detail `?tab=tag`: list owned tags grouped by key; create / rename key / recolor / delete dialog for ADMIN+ of that group only; verify tab hidden controls for USER and ancestor ADMIN
   - [x] 5.7a Mobile/tablet: dialogs fit 375px without clipping (scroll inside, buttons reachable), color swatches ≥ 44px tap targets with a visible selected state, tab bar still scrolls with the new "Tag" tab
-- [ ] 5.8 Audit viewer labels for `tag.*`, `member.tag/untag`, `activity.tag/untag`; verify audit page test
+- [x] 5.8 Audit viewer labels for `tag.*`, `member.tag/untag`, `activity.tag/untag`; verify audit page test
 
 ## 6. Docs and verification
 

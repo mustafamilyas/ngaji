@@ -130,6 +130,13 @@ export const AUDIT_ACTIONS = [
   "member_view.update",
   "member_view.delete",
   "member_view.transfer",
+  "tag.create",
+  "tag.update",
+  "tag.delete",
+  "member.tag",
+  "member.untag",
+  "activity.tag",
+  "activity.untag",
 ] as const;
 
 /** Tag limits (tags spec). Reject, never truncate. */
