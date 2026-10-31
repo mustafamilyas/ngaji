@@ -255,10 +255,27 @@ describe("TagPicker (task 5.2)", () => {
       expect(actions.detachTagAction).toHaveBeenCalledWith({ kind: "member", id: 10, tagId: 1 });
     });
 
+    it("shows a visible 'Tag' label on the trigger of a row that has no tags yet (task 8.9)", () => {
+      setup({ attached: [], compact: true, label: "Ahmad Fauzi" });
+      const trigger = screen.getByRole("button", { name: "Atur tag Ahmad Fauzi" });
+      expect(trigger).toHaveTextContent("Tag");
+      expect(trigger.className).toMatch(/h-11/);
+    });
+
+    it("keeps the bare '+' once the row has chips, so the chips stay the focus (task 8.9)", () => {
+      setup({ attached: [tag(1, 3, "fokus")], compact: true, label: "Ahmad Fauzi" });
+      expect(screen.getByRole("button", { name: "Atur tag Ahmad Fauzi" })).not.toHaveTextContent("Tag");
+    });
+
     it("gives the trigger a 44px touch target below xl", () => {
       setup({ compact: true, label: "Ahmad Fauzi" });
       const trigger = screen.getByRole("button", { name: "Atur tag Ahmad Fauzi" });
       expect(trigger.className).toMatch(/size-11|h-11/);
+    });
+
+    it("gives the bare '+' trigger of a row with chips a 44px touch target too", () => {
+      setup({ attached: [tag(1, 3, "fokus")], compact: true, label: "Ahmad Fauzi" });
+      expect(screen.getByRole("button", { name: "Atur tag Ahmad Fauzi" }).className).toMatch(/size-11/);
     });
 
     it("reads options and create right from the page's provider when it gets no props for them", async () => {

@@ -136,7 +136,13 @@ export function TagPicker({
   );
 
   const triggerLabel = compact && label ? `Atur tag ${label}` : "Atur tag";
-  const trigger = compact ? (
+  // A row with no tags yet gets a labelled button, aligned with the row's text; with chips, a bare "+" after them.
+  const trigger = compact && tags.length === 0 ? (
+    <Button type="button" variant="ghost" size="sm" className="-ml-3 text-muted-foreground xl:-ml-2.5" aria-label={triggerLabel} aria-haspopup="dialog" aria-expanded={open}>
+      <PlusIcon aria-hidden />
+      Tag
+    </Button>
+  ) : compact ? (
     <Button type="button" variant="ghost" size="icon-sm" aria-label={triggerLabel} aria-haspopup="dialog" aria-expanded={open}>
       <PlusIcon aria-hidden />
     </Button>
