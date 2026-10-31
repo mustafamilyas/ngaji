@@ -39,8 +39,8 @@
 - [x] 5.3 Member detail and activity detail: chips + picker in header area; verify by `pnpm dev:scratch` and attaching/removing a tag on each
 - [x] 5.4 Member table: "Tag" column (default, hideable via `lib/member/columns.ts`), per-row picker; activity list rows show chips + picker; verify column test and manual check
   - [x] 5.4a Mobile/tablet: the Tag column does not break the member table at phone width (chips wrap or truncate with "+N", no horizontal page scroll beyond the table's own scroll container); tap targets ≥ 44px
-- [ ] 5.5 Member table bulk selection + action bar "Tambah tag" / "Hapus tag", cleared on page change; verify jsdom test and manual check on phone width
-  - [ ] 5.5a Mobile/tablet: checkboxes have a ≥ 44px hit area; the action bar is sticky at the bottom, respects safe-area inset, does not cover the pager or the last row; selection count readable at 375px
+- [x] 5.5 Member table bulk selection + action bar "Tambah tag" / "Hapus tag", cleared on page change; verify jsdom test and manual check on phone width
+  - [x] 5.5a Mobile/tablet: checkboxes have a ≥ 44px hit area; the action bar is sticky at the bottom, respects safe-area inset, does not cover the pager or the last row; selection count readable at 375px
 - [ ] 5.6 Tag filter in `components/filters/filter-bar` for anggota and kegiatan (multi-select chips grouped by owner); verify URL updates and page resets to 1
   - [ ] 5.6a Mobile/tablet: tag filter fits the filter bar at phone width (collapses into a sheet/popover, selected chips wrap), usable one-handed; verify at 375px and 768px
 - [ ] 5.7 Group detail `?tab=tag`: list owned tags grouped by key; create / rename key / recolor / delete dialog for ADMIN+ of that group only; verify tab hidden controls for USER and ancestor ADMIN
@@ -74,3 +74,6 @@
 - [x] 8.8 Tag cell was too narrow at 768px: three chips stacked into a 121px row (found in 5.4a, browser pass at 768px); widened to `md:min-w-72` (row 93px); verify by measuring rows on `/dashboard/anggota` at 768px
 - [ ] 8.9 In the activity list a row with no tags shows only a bare "+" icon, indented and without a visible label, so on a phone it reads as a stray symbol (found in 5.4a, browser pass at 375px); show a visible "Tag" label or align the icon with the row text; verify by screenshot at 375px and 768px
 - [ ] 8.10 The compact "+" picker has no per-row feedback for a pending change beyond the optimistic chip, and chips in rows are read-only, so removing a tag takes two taps (open sheet, choose the tag again) (found in 5.4); decide in the 7.2/7.3 manual passes whether rows need a quicker remove
+- [ ] 8.11 On a phone (375px) the bulk bar is 121px tall (about 15% of the screen): "Tambah tag" wraps onto a second line with "Hapus tag" and "Batal", and it covers the select-all row while scrolling (found in 5.5a, browser pass); make it one compact row (e.g. icon-only "Batal") or collapse the actions, keeping 44px targets; verify by measuring the bar at 375px
+- [x] 8.12 Bulk selection appears only when the user has at least one usable tag, not "use or create" as first agreed: an ADMIN with zero tags would get a bar whose chooser is empty (found in 5.5); they create the first tag from a row or the detail page; revisit if that is too hidden
+- [ ] 8.13 Clearing the selection on a page/filter/sort change is covered by a test (provider `key` = the page's member ids) but was not seen in the browser, since the seed has fewer than `PAGE_SIZE` members (found in 5.5); verify by hand with 51+ members during 7.2

@@ -64,6 +64,30 @@ describe("MembersPage", () => {
     });
   });
 
+  describe("bulk selection (task 5.5)", () => {
+    it("offers row checkboxes and select-all to a user with usable tags, even with the Tag column hidden", async () => {
+      const fixture = await buildPageFixture("anggota-list-bulk");
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "USER", fixture.leaf) });
+      await db.tag.create({ data: { groupId: fixture.root.id, key: "bisa-dipakai", color: "blue", createdById: fixture.actorId } });
+      cookieValue.current = "grup,status";
+
+      const html = renderToStaticMarkup(await MembersPage({ searchParams: Promise.resolve({}) }));
+      cookieValue.current = undefined;
+      expect(html).toContain("Pilih Anggota Uji");
+      expect(html).toContain("Pilih semua di halaman ini");
+    });
+
+    it("offers no selection to a user who has no usable tag", async () => {
+      const fixture = await buildPageFixture("anggota-list-bulk-none");
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "USER", fixture.leaf) });
+
+      const html = renderToStaticMarkup(await MembersPage({ searchParams: Promise.resolve({}) }));
+      expect(html).toContain("Anggota Uji");
+      expect(html).not.toContain("Pilih Anggota Uji");
+      expect(html).not.toContain("Pilih semua");
+    });
+  });
+
   it("renders with search/status/page filters applied without crashing", async () => {
     const fixture = await buildPageFixture("anggota-list-filters");
     const session = sessionFor(fixture.actorId, "OWNER", fixture.root);

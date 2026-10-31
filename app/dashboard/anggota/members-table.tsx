@@ -5,13 +5,12 @@ import { MemberStatusBadge } from "@/components/member-status-badge";
 import { RowActions } from "@/components/row-actions";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { RowTags } from "@/components/tags/row-tags";
-import { TagOptionsProvider } from "@/components/tags/tag-options-context";
+import { RowCheckbox, SelectAllRow } from "@/components/tags/bulk-selection";
 import { WhatsAppButton } from "@/components/whatsapp-button";
 import { ageInYears } from "@/lib/dates";
 import { formatDate } from "@/lib/filters";
 import { MEMBER_COLUMNS, type MemberColumnKey } from "@/lib/member/columns";
 import { formatEnumLabel, SEX_LABELS } from "@/lib/member/labels";
-import { canPickTags, type TagOptionsData } from "@/lib/tag/entity";
 import { MEMBER_SORT_KEYS, type listMembers, type MemberSortKey } from "@/lib/member/queries";
 import type { SortState } from "@/lib/sort";
 import { cn, initials } from "@/lib/utils";
@@ -92,7 +91,8 @@ export function MembersTable({
   sort,
   sortHrefFor,
   today: asOf,
-  tagOptions,
+  canPickRowTags,
+  selectable,
 }: {
   members: MemberRow[];
   columns: MemberColumnKey[];
@@ -100,11 +100,13 @@ export function MembersTable({
   sortHrefFor: (key: MemberSortKey) => string;
   /** The viewer's organization "today" (`YYYY-MM-DD`), used for ages. */
   today: string;
-  /** Shared options for the row pickers; `null` when the Tag column is hidden. */
-  tagOptions: TagOptionsData | null;
+  /** The Tag column gets a picker per row (the page provides `TagOptionsProvider`); otherwise chips only. */
+  canPickRowTags: boolean;
+  /** Row checkboxes and "pilih semua" for bulk tagging (the page provides `BulkSelectionProvider`). */
+  selectable: boolean;
 }) {
   const visible = MEMBER_COLUMNS.filter((c) => columns.includes(c.key));
-  const canPick = tagOptions !== null && canPickTags(tagOptions);
+  const canPick = canPickRowTags;
 
   // `relative` keeps the absolutely positioned sr-only header labels inside the scroller; without it they widen the whole page.
   const table = (
@@ -151,15 +153,18 @@ export function MembersTable({
                 scope="row"
                 className="block bg-transparent p-0 text-left font-medium md:table-cell md:sticky md:left-0 md:z-10 md:bg-card md:px-4 md:py-2.5 md:group-hover/row:bg-muted"
               >
-                <Link
-                  href={`/dashboard/anggota/${member.id}`}
-                  className="flex min-h-11 items-center gap-2.5 hover:underline md:whitespace-nowrap xl:min-h-0"
-                >
-                  <Avatar size="sm">
-                    <AvatarFallback>{initials(member.name)}</AvatarFallback>
-                  </Avatar>
-                  {member.name}
-                </Link>
+                <div className="flex items-center gap-1">
+                  {selectable && <RowCheckbox memberId={member.id} name={member.name} />}
+                  <Link
+                    href={`/dashboard/anggota/${member.id}`}
+                    className="flex min-h-11 items-center gap-2.5 hover:underline md:whitespace-nowrap xl:min-h-0"
+                  >
+                    <Avatar size="sm">
+                      <AvatarFallback>{initials(member.name)}</AvatarFallback>
+                    </Avatar>
+                    {member.name}
+                  </Link>
+                </div>
               </th>
               {visible.map((column) => (
                 <td
@@ -196,11 +201,10 @@ export function MembersTable({
     </div>
   );
 
-  return canPick && tagOptions ? (
-    <TagOptionsProvider options={tagOptions.options} canCreate={tagOptions.canCreate}>
+  return (
+    <>
+      {selectable && <SelectAllRow />}
       {table}
-    </TagOptionsProvider>
-  ) : (
-    table
+    </>
   );
 }

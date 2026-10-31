@@ -9,17 +9,15 @@ import {
 } from "@/app/dashboard/tag/actions";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { TAG_DEFAULT_COLOR } from "@/lib/constants";
 import { tagIdsReplacedBy } from "@/lib/tag/exclusive";
 import type { TagSummary } from "@/lib/tag/include";
 import type { TagOwnerGroup } from "@/lib/tag/list";
-import { useMediaQuery, XL_QUERY } from "@/lib/use-media-query";
 import { parseTagInput } from "@/lib/validation/tag";
 import type { TagTarget } from "@/lib/validation/tag";
 import { TagChip } from "./tag-chip";
 import { useTagOptions } from "./tag-options-context";
+import { TagOverlay } from "./tag-overlay";
 
 const labelOf = (tag: Pick<TagSummary, "key" | "value">) => (tag.value === null ? tag.key : `${tag.key}:${tag.value}`);
 
@@ -65,7 +63,6 @@ export function TagPicker({
   const provided = useTagOptions();
   const options = optionsProp ?? provided?.options ?? [];
   const canCreate = canCreateProp ?? provided?.canCreate ?? false;
-  const wide = useMediaQuery(XL_QUERY);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -132,11 +129,11 @@ export function TagPicker({
 
   const triggerLabel = compact && label ? `Atur tag ${label}` : "Atur tag";
   const trigger = compact ? (
-    <Button type="button" variant="ghost" size="icon-sm" aria-label={triggerLabel} aria-haspopup="dialog" aria-expanded={open} onClick={wide ? undefined : () => setOpen(true)}>
+    <Button type="button" variant="ghost" size="icon-sm" aria-label={triggerLabel} aria-haspopup="dialog" aria-expanded={open}>
       <PlusIcon aria-hidden />
     </Button>
   ) : (
-    <Button type="button" variant="outline" aria-label={triggerLabel} aria-haspopup="dialog" aria-expanded={open} onClick={wide ? undefined : () => setOpen(true)}>
+    <Button type="button" variant="outline" aria-label={triggerLabel} aria-haspopup="dialog" aria-expanded={open}>
       <PlusIcon aria-hidden />
       Tag
     </Button>
@@ -156,25 +153,9 @@ export function TagPicker({
           </li>
         ))}
       </ul>
-      {wide ? (
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger render={trigger} />
-          <PopoverContent className="w-80 p-0">{panel}</PopoverContent>
-        </Popover>
-      ) : (
-        <>
-          {trigger}
-          <Sheet open={open} onOpenChange={setOpen}>
-            <SheetContent side="bottom" className="gap-0 rounded-t-xl">
-              <SheetHeader>
-                <SheetTitle>Atur tag</SheetTitle>
-                <SheetDescription className="sr-only">Pilih tag untuk dipasang atau dilepas.</SheetDescription>
-              </SheetHeader>
-              {panel}
-            </SheetContent>
-          </Sheet>
-        </>
-      )}
+      <TagOverlay open={open} onOpenChange={setOpen} trigger={trigger} title="Atur tag" description="Pilih tag untuk dipasang atau dilepas.">
+        {panel}
+      </TagOverlay>
       {error && (
         <p role="alert" className="w-full text-sm text-destructive">
           {error}

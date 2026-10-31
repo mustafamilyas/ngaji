@@ -7,14 +7,16 @@ import { type ActionResult, ValidationError, runAction } from "@/lib/errors";
 import {
   attachActivityTag,
   attachMemberTag,
+  bulkTagMembers,
   detachActivityTag,
   detachMemberTag,
   type AttachResult,
+  type BulkResult,
   type DetachResult,
 } from "@/lib/tag/assign";
 import { createTag } from "@/lib/tag/mutations";
 import { idSchema } from "@/lib/validation/common";
-import { createTagSchema, tagTargetSchema, type TagTarget } from "@/lib/validation/tag";
+import { bulkTagMembersSchema, createTagSchema, tagTargetSchema, type TagTarget } from "@/lib/validation/tag";
 
 function parseTarget(input: unknown): TagTarget {
   const parsed = tagTargetSchema.safeParse(input);
@@ -91,5 +93,20 @@ export async function createAndAttachTagAction(
     return { tag, ...(await attach(session, target, tag.id)) };
   });
   if (result.ok && target) revalidateTarget(target);
+  return result;
+}
+
+/**
+ * Adds or removes one tag on the selected members of the current page. `lib/tag/assign` resolves and
+ * checks every id and rejects the whole batch if any one fails.
+ */
+export async function bulkTagMembersAction(input: unknown): Promise<ActionResult<BulkResult>> {
+  const session = await requireSession();
+  const result = await runAction(async () => {
+    const parsed = bulkTagMembersSchema.safeParse(input);
+    if (!parsed.success) throw new ValidationError(parsed.error.issues[0]?.message ?? "Data tidak valid");
+    return bulkTagMembers(session, parsed.data);
+  });
+  if (result.ok && result.data.changed > 0) revalidatePath("/dashboard/anggota");
   return result;
 }
