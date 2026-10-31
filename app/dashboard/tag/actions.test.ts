@@ -13,7 +13,13 @@ import {
   attachTagAction,
   bulkTagMembersAction,
   createAndAttachTagAction,
+  createTagAction,
+  deleteTagAction,
+  deleteTagKeyAction,
   detachTagAction,
+  recolorTagAction,
+  renameTagKeyAction,
+  renameTagValueAction,
 } from "./actions";
 
 let fx: PageFixture;
@@ -154,6 +160,82 @@ describe("tag actions (task 5.2)", () => {
         error: "Pilih minimal satu anggota",
       });
       expect(await bulkTagMembersAction({ memberIds: [1], tagId: 1, op: "hapus" })).toMatchObject({ ok: false });
+    });
+  });
+
+  describe("tag management actions (task 5.7)", () => {
+    const make = (key: string, value: string | null = null, groupId = fx.leaf.id) =>
+      db.tag.create({ data: { groupId, key, value, color: "blue", createdById: fx.actorId } });
+
+    it("creates a tag in the caller's own group with the chosen color", async () => {
+      mockAuthSession(auth, { user: admin });
+      const result = await createTagAction({ name: "Kelola:Satu", color: "green" });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.data).toMatchObject({ groupId: fx.leaf.id, key: "kelola", value: "satu", color: "green" });
+      expect(revalidatePath).toHaveBeenCalledWith(`/dashboard/grup/${fx.leaf.id}`);
+    });
+
+    it("rejects a color outside the palette and a bad name with a validation message", async () => {
+      mockAuthSession(auth, { user: admin });
+      expect(await createTagAction({ name: "ok", color: "#ff00ff" })).toEqual({ ok: false, error: "Warna tidak valid" });
+      expect(await createTagAction({ name: "a:b:c", color: "blue" })).toMatchObject({ ok: false });
+    });
+
+    it("recolors a tag", async () => {
+      mockAuthSession(auth, { user: admin });
+      const tag = await make("warna-uji");
+      expect(await recolorTagAction({ tagId: tag.id, color: "pink" })).toMatchObject({ ok: true, data: { color: "pink" } });
+      expect((await db.tag.findUniqueOrThrow({ where: { id: tag.id } })).color).toBe("pink");
+    });
+
+    it("renames a key on every value, and one value on its own", async () => {
+      mockAuthSession(auth, { user: admin });
+      const high = await make("nama-lama", "tinggi");
+      const low = await make("nama-lama", "rendah");
+
+      expect(await renameTagKeyAction({ tagId: high.id, newKey: "Nama-Baru" })).toMatchObject({ ok: true });
+      expect((await db.tag.findMany({ where: { id: { in: [high.id, low.id] } } })).map((t) => t.key)).toEqual(["nama-baru", "nama-baru"]);
+
+      expect(await renameTagValueAction({ tagId: low.id, newValue: "sedang" })).toMatchObject({ ok: true });
+      expect((await db.tag.findUniqueOrThrow({ where: { id: low.id } })).value).toBe("sedang");
+    });
+
+    it("soft-deletes one tag, or a whole key", async () => {
+      mockAuthSession(auth, { user: admin });
+      const one = await make("hapus-satu");
+      const a = await make("hapus-kunci", "a");
+      const b = await make("hapus-kunci", "b");
+
+      expect(await deleteTagAction({ tagId: one.id })).toMatchObject({ ok: true });
+      expect(await db.tag.count({ where: { id: one.id } })).toBe(0);
+
+      expect(await deleteTagKeyAction({ tagId: a.id })).toMatchObject({ ok: true });
+      expect(await db.tag.count({ where: { id: { in: [a.id, b.id] } } })).toBe(0);
+    });
+
+    it("refuses a USER with a message and changes nothing", async () => {
+      mockAuthSession(auth, { user });
+      const tag = await make("dilindungi");
+      expect(await recolorTagAction({ tagId: tag.id, color: "red" })).toMatchObject({ ok: false });
+      expect(await deleteTagAction({ tagId: tag.id })).toMatchObject({ ok: false });
+      expect((await db.tag.findUniqueOrThrow({ where: { id: tag.id } })).color).toBe("blue");
+    });
+
+    it("refuses an ADMIN of an ancestor group for a descendant's tag", async () => {
+      const tag = await make("milik-leaf");
+      const row = await db.user.create({ data: { username: "tag-actions-branch-admin", passwordHash: "x", name: "B" } });
+      await db.userGroupRole.create({ data: { userId: row.id, groupId: fx.branch.id, role: "ADMIN" } });
+      mockAuthSession(auth, { user: sessionFor(row.id, "ADMIN", fx.branch) });
+
+      expect(await recolorTagAction({ tagId: tag.id, color: "red" })).toMatchObject({ ok: false });
+      expect((await db.tag.findUniqueOrThrow({ where: { id: tag.id } })).color).toBe("blue");
+    });
+
+    it("reports a malformed id with the generic validation error", async () => {
+      mockAuthSession(auth, { user: admin });
+      expect(await deleteTagAction({ tagId: "abc" })).toEqual({ ok: false, error: "Data tidak valid" });
     });
   });
 });

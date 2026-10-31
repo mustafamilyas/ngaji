@@ -14,9 +14,25 @@ import {
   type BulkResult,
   type DetachResult,
 } from "@/lib/tag/assign";
-import { createTag } from "@/lib/tag/mutations";
+import {
+  createTag,
+  deleteTag,
+  deleteTagKey,
+  recolorTag,
+  renameTagKey,
+  renameTagValue,
+} from "@/lib/tag/mutations";
 import { idSchema } from "@/lib/validation/common";
-import { bulkTagMembersSchema, createTagSchema, tagTargetSchema, type TagTarget } from "@/lib/validation/tag";
+import {
+  bulkTagMembersSchema,
+  createTagSchema,
+  deleteTagSchema,
+  recolorTagSchema,
+  renameKeySchema,
+  renameValueSchema,
+  tagTargetSchema,
+  type TagTarget,
+} from "@/lib/validation/tag";
 
 function parseTarget(input: unknown): TagTarget {
   const parsed = tagTargetSchema.safeParse(input);
@@ -109,4 +125,59 @@ export async function bulkTagMembersAction(input: unknown): Promise<ActionResult
   });
   if (result.ok && result.data.changed > 0) revalidatePath("/dashboard/anggota");
   return result;
+}
+
+/** Tag management (group Tag tab). Everything is re-resolved and checked in `lib/tag/mutations` (403 unless ADMIN+ of the owner group). */
+async function manage<T extends { groupId: number }>(
+  run: (session: Awaited<ReturnType<typeof requireSession>>) => Promise<T | T[]>,
+): Promise<ActionResult<T | T[]>> {
+  const session = await requireSession();
+  const result = await runAction(() => run(session));
+  if (result.ok) {
+    const rows = Array.isArray(result.data) ? result.data : [result.data];
+    revalidatePath(`/dashboard/grup/${rows[0]?.groupId ?? session.groupId}`);
+    // Chips, pickers and filters elsewhere show tag names and colors.
+    revalidatePath("/dashboard/anggota");
+    revalidatePath("/dashboard/kegiatan");
+  }
+  return result;
+}
+
+type Parsed<T> =
+  | { success: true; data: T }
+  | { success: false; error: { issues: { message: string; path: PropertyKey[] }[] } };
+
+/** Validates the client payload; a bad id gets the generic message, anything else its own (e.g. "Warna tidak valid"). */
+function parseWith<T>(schema: { safeParse: (input: unknown) => Parsed<T> }, input: unknown): T {
+  const parsed = schema.safeParse(input);
+  if (parsed.success) return parsed.data;
+  const issue = parsed.error.issues[0];
+  throw new ValidationError(!issue || issue.path.includes("tagId") ? "Data tidak valid" : issue.message);
+}
+
+/** `{ name: "key" | "key:value", color }`; the owner is always the caller's own group. */
+export async function createTagAction(input: unknown) {
+  const raw = (input ?? {}) as { name?: unknown; color?: unknown };
+  return manage((session) => createTag(session, parseWith(createTagSchema, { input: raw.name, color: raw.color })));
+}
+
+export async function recolorTagAction(input: unknown) {
+  return manage((session) => recolorTag(session, parseWith(recolorTagSchema, input)));
+}
+
+export async function renameTagKeyAction(input: unknown) {
+  return manage((session) => renameTagKey(session, parseWith(renameKeySchema, input)));
+}
+
+export async function renameTagValueAction(input: unknown) {
+  return manage((session) => renameTagValue(session, parseWith(renameValueSchema, input)));
+}
+
+export async function deleteTagAction(input: unknown) {
+  return manage((session) => deleteTag(session, parseWith(deleteTagSchema, input)));
+}
+
+/** Deletes the tag's whole key: every value in the owner group. */
+export async function deleteTagKeyAction(input: unknown) {
+  return manage((session) => deleteTagKey(session, parseWith(deleteTagSchema, input)));
 }

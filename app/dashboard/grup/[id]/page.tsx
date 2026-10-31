@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { CalendarDays, ChevronRight, Network, Settings, UserCog, UserPlus, Users } from "lucide-react";
+import { CalendarDays, ChevronRight, Network, Settings, Tags, UserCog, UserPlus, Users } from "lucide-react";
 import { auth } from "@/auth";
 import { DangerZone, DangerZoneItem } from "@/components/danger-zone";
 import { MemberStatusBadge } from "@/components/member-status-badge";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { TabNav, type TabItem } from "@/components/tab-nav";
+import { loadGroupTags } from "@/lib/tag/group-tags";
+import { TagTab } from "./tag-tab";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -27,7 +29,7 @@ import { AddSubgroupDialog } from "./add-subgroup-dialog";
 import { DeleteGroupForm } from "./delete-group-form";
 import { RenameGroupForm } from "./rename-group-form";
 
-const TABS = ["subgrup", "anggota", "kegiatan", "pengguna", "pengaturan"] as const;
+const TABS = ["subgrup", "anggota", "kegiatan", "pengguna", "tag", "pengaturan"] as const;
 type Tab = (typeof TABS)[number];
 
 const rowClass = "-mx-2 flex min-h-11 items-center justify-between gap-3 rounded-md px-2 py-2.5 hover:bg-muted";
@@ -62,7 +64,10 @@ export default async function GroupDetailPage({
   const memberTotal = await db.member.count({ where: { groupId: group.id } });
   const memberPage = clampPage(parsePage(query.anggota), memberTotal, EMBEDDED_PAGE_SIZE);
 
-  const [allChildren, members, allActivities, allUserRoles, levels, trail] = await Promise.all([
+  // Management follows `tag.manage`: ADMIN or OWNER by primary role, in this very group (extra roles never count).
+  const canManageTags = (session.user.role === "ADMIN" || session.user.role === "OWNER") && session.user.groupId === group.id;
+
+  const [allChildren, members, allActivities, allUserRoles, levels, trail, tagKeys] = await Promise.all([
     db.group.findMany({ where: { parentId: group.id }, orderBy: { name: "asc" } }),
     db.member.findMany({
       where: { groupId: group.id },
@@ -78,7 +83,9 @@ export default async function GroupDetailPage({
     }),
     getLevels(group.organizationId),
     groupTrail(session.user.groupPath, group.path),
+    loadGroupTags(group.id, { withCounts: canManageTags }),
   ]);
+  const tagTotal = tagKeys.reduce((sum, entry) => sum + entry.tags.length, 0);
 
   const children = paginate(allChildren, parsePage(query.subgrup), EMBEDDED_PAGE_SIZE);
   const activities = paginate(allActivities, parsePage(query.kegiatan), EMBEDDED_PAGE_SIZE);
@@ -98,6 +105,7 @@ export default async function GroupDetailPage({
       : { key: "subgrup", label: childLevelName || "Sub-grup", icon: Network, count: children.total },
     { key: "kegiatan", label: "Kegiatan", icon: CalendarDays, count: activities.total },
     { key: "pengguna", label: "Pengguna", icon: UserCog, count: userRoles.total },
+    { key: "tag", label: "Tag", icon: Tags, count: tagTotal },
     ...(canEdit ? [{ key: "pengaturan" as const, label: "Pengaturan", icon: Settings }] : []),
   ];
   const defaultTab: Tab = isLeaf ? "anggota" : "subgrup";
@@ -254,6 +262,14 @@ export default async function GroupDetailPage({
                 scroll={false}
                 hrefFor={(target) => pageHref(path, query, target, "pengguna")}
               />
+            </CardContent>
+          </Card>
+        )}
+
+        {tab === "tag" && (
+          <Card>
+            <CardContent>
+              <TagTab keys={tagKeys} canManage={canManageTags} />
             </CardContent>
           </Card>
         )}
