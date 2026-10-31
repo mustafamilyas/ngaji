@@ -57,10 +57,52 @@ describe("tag management dialogs (task 5.7)", () => {
       expect(screen.getByLabelText("Nama tag")).toHaveValue("fokus");
     });
 
+    it("drops the server's message as soon as the name or color is edited (task 8.24)", async () => {
+      actions.createTagAction.mockResolvedValue({ ok: false, error: "Nama tag maksimal 30 karakter" });
+      render(<NewTagDialog />);
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("button", { name: "Tag baru" }));
+      await user.type(screen.getByLabelText("Nama tag"), "terlalu-panjang");
+      await user.click(screen.getByRole("button", { name: "Simpan" }));
+      expect(await screen.findByRole("alert")).toBeInTheDocument();
+
+      await user.type(screen.getByLabelText("Nama tag"), "x");
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Simpan" }));
+      expect(await screen.findByRole("alert")).toBeInTheDocument();
+      await user.click(screen.getByRole("radio", { name: "Merah" }));
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
     it("can start from a key to add a value to it", async () => {
       render(<NewTagDialog initialName="prioritas:" triggerLabel="Tambah nilai" />);
       await userEvent.setup().click(screen.getByRole("button", { name: "Tambah nilai" }));
       expect(screen.getByLabelText("Nama tag")).toHaveValue("prioritas:");
+    });
+  });
+
+  describe("rename dialogs (task 8.24)", () => {
+    it("drops the server's message once the new name is edited", async () => {
+      actions.renameTagValueAction.mockResolvedValue({ ok: false, error: "Tag sudah ada" });
+      render(<TagMenu tag={valueTag} />);
+      const user = userEvent.setup();
+      await pick(user, "Aksi untuk prioritas:tinggi", "Ubah nilai");
+      await user.click(screen.getByRole("button", { name: "Simpan" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("Tag sudah ada");
+      await user.type(screen.getByLabelText("Nilai"), "x");
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("does the same when renaming a key", async () => {
+      actions.renameTagKeyAction.mockResolvedValue({ ok: false, error: "Tag sudah ada" });
+      render(<KeyMenu keyName="prioritas" firstTagId={7} values={2} members={1} activities={0} />);
+      const user = userEvent.setup();
+      await pick(user, "Aksi untuk kunci prioritas", "Ubah nama kunci");
+      await user.click(screen.getByRole("button", { name: "Simpan" }));
+      expect(await screen.findByRole("alert")).toBeInTheDocument();
+      await user.type(screen.getByLabelText("Nama kunci"), "x");
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
   });
 

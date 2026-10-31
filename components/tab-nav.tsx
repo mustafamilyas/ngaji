@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { tabHref } from "@/lib/tabs";
+import { ScrollActiveTabIntoView } from "./tab-nav-scroll";
 import { cn } from "@/lib/utils";
 
 export type TabItem<T extends string = string> = {
@@ -65,6 +66,7 @@ export function TabNav<T extends string>({
           );
         })}
       </ul>
+      <ScrollActiveTabIntoView current={current} />
     </nav>
   );
 }

@@ -148,9 +148,9 @@ export function NewTagDialog({
           <label htmlFor="tag-name" className="text-sm font-medium">
             Nama tag
           </label>
-          <input id="tag-name" value={name} onChange={(event) => setName(event.target.value)} required autoFocus autoComplete="off" className={touchField} />
+          <input id="tag-name" value={name} onChange={(event) => { setName(event.target.value); reset(); }} required autoFocus autoComplete="off" className={touchField} />
         </div>
-        <ColorSwatches value={color} onChange={setColor} />
+        <ColorSwatches value={color} onChange={(next) => { setColor(next); reset(); }} />
       </ManageDialog>
     </>
   );
@@ -196,7 +196,7 @@ export function TagMenu({ tag }: { tag: GroupTag }) {
       </DropdownMenu>
 
       <ManageDialog open={kind === "color"} onOpenChange={onOpenChange} title="Ubah warna" description={label} submitLabel="Simpan" pending={pending} error={error} onSubmit={() => run(() => recolorTagAction({ tagId: tag.id, color }))}>
-        <ColorSwatches value={color} onChange={setColor} />
+        <ColorSwatches value={color} onChange={(next) => { setColor(next); reset(); }} />
       </ManageDialog>
 
       <ManageDialog
@@ -213,7 +213,7 @@ export function TagMenu({ tag }: { tag: GroupTag }) {
           <label htmlFor="tag-rename" className="text-sm font-medium">
             {isValue ? "Nilai" : "Nama"}
           </label>
-          <input id="tag-rename" value={text} onChange={(event) => setText(event.target.value)} required autoFocus autoComplete="off" className={touchField} />
+          <input id="tag-rename" value={text} onChange={(event) => { setText(event.target.value); reset(); }} required autoFocus autoComplete="off" className={touchField} />
         </div>
       </ManageDialog>
 
@@ -286,7 +286,7 @@ export function KeyMenu({
           <label htmlFor="key-rename" className="text-sm font-medium">
             Nama kunci
           </label>
-          <input id="key-rename" value={text} onChange={(event) => setText(event.target.value)} required autoFocus autoComplete="off" className={touchField} />
+          <input id="key-rename" value={text} onChange={(event) => { setText(event.target.value); reset(); }} required autoFocus autoComplete="off" className={touchField} />
         </div>
       </ManageDialog>
 
