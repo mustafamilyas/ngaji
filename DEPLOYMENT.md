@@ -2,6 +2,8 @@
 
 Production deployment of Dahan on a single IDCloudHost Cloud VPS, with encrypted daily backups to IDCloudHost Object Storage. Local development setup is in [README.md](README.md). Architecture context: [DESIGN.md](DESIGN.md) §8.
 
+> **Docker alternative:** [DEPLOYMENT-DOCKER.md](DEPLOYMENT-DOCKER.md) runs the app as a container and replaces §4 (install), §9 (upgrade) and §10 (password reset) of this guide; everything else here still applies.
+
 The reference files live in the repository and are copied to the server in the steps below:
 
 | File | Installed at |
@@ -312,16 +314,20 @@ sudo -u dahan pnpm prisma migrate deploy
 Do **not** run `pnpm prisma db seed` in production (it creates fake sample data). Use `pnpm org:create` (`pnpm bootstrap` is an alias), which creates one organization, its levels, a root group and one OWNER. It works on an empty database and on one that already has organizations, so run it again for every additional organization:
 
 ```bash
-sudo -u dahan bash -c 'cd /opt/dahan && cat > /tmp/bootstrap.env' <<'EOF'
-BOOTSTRAP_ORG_NAME=Your Organization
-BOOTSTRAP_ROOT_GROUP_NAME=Pusat
-BOOTSTRAP_TIMEZONE=Asia/Jakarta
-BOOTSTRAP_OWNER_USERNAME=owner
-BOOTSTRAP_OWNER_NAME=Owner Full Name
-BOOTSTRAP_OWNER_PASSWORD=<strong password, min 8 chars>
+sudo -u dahan bash -c 'umask 077 && cat > /tmp/bootstrap.env' <<'EOF'
+BOOTSTRAP_ORG_NAME='Your Organization'
+BOOTSTRAP_ROOT_GROUP_NAME='Pusat'
+BOOTSTRAP_TIMEZONE='Asia/Jakarta'
+BOOTSTRAP_OWNER_USERNAME='owner'
+BOOTSTRAP_OWNER_NAME='Owner Full Name'
+BOOTSTRAP_OWNER_PASSWORD='<strong password, min 8 chars>'
 EOF
-sudo -u dahan bash -c 'cd /opt/dahan && set -a && . /tmp/bootstrap.env && set +a && pnpm org:create; rm -f /tmp/bootstrap.env'
+sudo -u dahan bash -c 'cd /opt/dahan && set -a && . ./.env && . /tmp/bootstrap.env && set +a && pnpm org:create; rm -f /tmp/bootstrap.env'
 ```
+
+- **Load `.env` first** (the `. ./.env` part). `pnpm org:create`, `pnpm leads` and `pnpm reset-owner-password` do not read `.env` themselves; without `DATABASE_URL` they silently use an empty `prisma/dev.db` inside `/opt/dahan` and fail with `The table main.User does not exist`. If that happened, delete the stray file (`sudo -u dahan rm -f /opt/dahan/prisma/dev.db`), make sure the migrations in "Generate the Prisma client and apply migrations" ran against `/var/lib/dahan/production.db`, and repeat. Check with `sudo -u dahan sqlite3 /var/lib/dahan/production.db '.tables'`: it must list `User`, `Group`, `Member`, ...
+
+- Keep the **single quotes** around every value. bash reads this file, so an unquoted value with a space breaks it: `BOOTSTRAP_OWNER_NAME=Owner Full Name` runs `Full` as a command and the script then reports a missing variable. A password must not itself contain a single quote. `umask 077` keeps the temporary file private to `dahan` while it holds the password.
 
 - The script aborts, writing nothing, if the owner username is already taken by any organization (usernames are unique across all organizations and stored in lowercase), if the timezone is invalid or if the password is shorter than 8 characters. The password is never printed.
 - `BOOTSTRAP_TIMEZONE` is optional: `Asia/Jakarta` (WIB, default), `Asia/Makassar` (WITA) or `Asia/Jayapura` (WIT). The OWNER can change it later under `/dashboard/pengaturan`.
@@ -335,8 +341,8 @@ The public `/daftar` form stores each submission as an interest lead (name, What
 
 ```bash
 cd /opt/dahan
-sudo -u dahan pnpm leads            # table, newest first (times in UTC)
-sudo -u dahan pnpm leads --csv > leads.csv
+sudo -u dahan bash -c 'set -a && . ./.env && set +a && pnpm leads'                 # table, newest first (times in UTC)
+sudo -u dahan bash -c 'set -a && . ./.env && set +a && pnpm leads --csv' > leads.csv
 ```
 
 `pnpm leads` is read-only. The form is limited per client IP (see `INTEREST_RATE_LIMIT_*` in `lib/constants.ts`) using the `X-Forwarded-For` / `X-Real-IP` headers, which `deploy/nginx/dahan.conf` sets from `$remote_addr`; requests without either header share one global limit of the same size (so a bypass of nginx cannot flood the table, but real visitors would then block each other); do not remove those lines. Leads contain personal data: keep exports off shared drives and delete them when done.
@@ -384,14 +390,27 @@ sudo sed -i 's/dahan.example.com/dahan.example.org/g' /etc/nginx/sites-available
 sudo rm -f /etc/nginx/sites-enabled/default
 ```
 
-The config references certificates that do not exist yet, so get them first, then enable the site:
+If the VPS has no IPv6, nginx refuses the `listen [::]` lines (`socket() [::]:80 failed (97: Address family not supported by protocol)`) and will not start. Check, and remove those lines if the check says so:
 
 ```bash
-sudo certbot certonly --nginx -d dahan.example.org
-sudo ln -s /etc/nginx/sites-available/dahan.conf /etc/nginx/sites-enabled/dahan.conf
-sudo nginx -t && sudo systemctl reload nginx
-sudo systemctl list-timers | grep certbot     # auto-renew timer present
+test -e /proc/net/if_inet6 && echo "IPv6 supported" || echo "no IPv6"
+sudo sed -i '/listen \[::\]/d' /etc/nginx/sites-available/dahan.conf      # only when "no IPv6"
 ```
+
+The config references certificates that do not exist yet, so nginx cannot start with it. Get the certificate first with certbot's own temporary web server (`--standalone`, port 80 must be free, so nginx is stopped), and only then enable the site. The two hooks are saved in certbot's renewal settings: before each renewal nginx is stopped (seconds of downtime) and afterwards started again with the new certificate.
+
+```bash
+sudo rm -f /etc/nginx/sites-enabled/dahan.conf        # must not be enabled yet
+sudo systemctl stop nginx
+sudo certbot certonly --standalone -d dahan.example.org \
+  --pre-hook "systemctl stop nginx" --post-hook "systemctl start nginx"
+sudo ln -sf /etc/nginx/sites-available/dahan.conf /etc/nginx/sites-enabled/dahan.conf
+sudo nginx -t && sudo systemctl restart nginx
+sudo certbot renew --dry-run                          # renewal works, nginx comes back
+sudo systemctl list-timers | grep certbot             # auto-renew timer present
+```
+
+Before running certbot, `dig +short dahan.example.org` must print the VPS IP (§2.2) and port 80 must be open (§3). If you see `cannot load certificate ... fullchain.pem` from `nginx -t`, the site was enabled before the certificate existed: remove the link from `sites-enabled/` and start again from the first line.
 
 Verify:
 
@@ -522,7 +541,7 @@ Run on the server as the `dahan` user. The temporary password is printed once; t
 
 ```bash
 cd /opt/dahan
-sudo -u dahan pnpm reset-owner-password <username> [--activate]
+sudo -u dahan bash -c 'set -a && . ./.env && set +a && pnpm reset-owner-password <username> [--activate]'
 ```
 
 The action is audited with `actorId = null` and `meta.via = "cli"`. It exits non-zero for an unknown username.
