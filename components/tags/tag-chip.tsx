@@ -17,15 +17,20 @@ export const TAG_CHIP_CLASS: Record<TagColor, string> = {
 
 type ChipTag = { key: string; value: string | null; color: string };
 
-/** Read-only chip: the label is always text (`key` or `key:value`), color is decoration; removal lives in the picker. */
-export function TagChip({ tag, className }: { tag: ChipTag; className?: string }) {
+/**
+ * Read-only chip: the label is always text (`key` or `key:value`), color is decoration; removal lives in the picker.
+ * Long labels are cut with an ellipsis (full text in `title`, which touch screens never show); where there is room
+ * (pickers, filter, detail pages) pass `wrap` so the whole label stays readable.
+ */
+export function TagChip({ tag, className, wrap = false }: { tag: ChipTag; className?: string; wrap?: boolean }) {
   const label = tag.value === null ? tag.key : `${tag.key}:${tag.value}`;
   const palette = TAG_CHIP_CLASS[tag.color as TagColor] ?? TAG_CHIP_CLASS.slate;
   return (
     <span
       title={label}
       className={cn(
-        "inline-block max-w-40 truncate rounded-full border px-2 py-0.5 align-middle text-xs font-medium",
+        "inline-block rounded-full border px-2 py-0.5 align-middle text-xs font-medium",
+        wrap ? "min-w-0 max-w-full [overflow-wrap:anywhere]" : "max-w-40 truncate",
         palette,
         "print:border-black print:bg-white print:text-black",
         className,

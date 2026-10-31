@@ -15,7 +15,7 @@ function TagRow({ tag, canManage }: { tag: GroupTag; canManage: boolean }) {
   return (
     <li className="flex min-h-11 items-center justify-between gap-3 py-1">
       <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-        <TagChip tag={tag} />
+        <TagChip tag={tag} wrap />
         <Usage tag={tag} />
       </div>
       {canManage && <TagMenu tag={tag} />}

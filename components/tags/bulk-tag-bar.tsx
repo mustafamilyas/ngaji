@@ -78,7 +78,7 @@ function BulkChooser({ op, label, shortLabel }: { op: Op; label: string; shortLa
     >
       {chosen ? (
         <div className="flex flex-col gap-3 p-4">
-          <TagChip tag={chosen} className="self-start" />
+          <TagChip tag={chosen} wrap className="self-start" />
           <p className="text-base xl:text-sm">
             {op === "add"
               ? `Tambah "${labelOf(chosen)}" ke ${selectedIds.length} anggota?`
@@ -110,7 +110,7 @@ function BulkChooser({ op, label, shortLabel }: { op: Op; label: string; shortLa
               <CommandGroup key={group.id} heading={group.isOwn ? "Grup sendiri" : group.name}>
                 {tags.map((tag) => (
                   <CommandItem key={tag.id} value={String(tag.id)} keywords={[labelOf(tag)]} onSelect={() => setChosen(tag)}>
-                    <TagChip tag={tag} />
+                    <TagChip tag={tag} wrap />
                   </CommandItem>
                 ))}
               </CommandGroup>

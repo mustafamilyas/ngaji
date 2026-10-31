@@ -118,7 +118,7 @@ export function TagPicker({
             {groupTags.map((tag) => (
               <CommandItem key={tag.id} value={String(tag.id)} keywords={[labelOf(tag)]} onSelect={() => toggle(tag)}>
                 <CheckIcon className={attachedIds.has(tag.id) ? "size-4 shrink-0" : "size-4 shrink-0 opacity-0"} aria-hidden />
-                <TagChip tag={tag} />
+                <TagChip tag={tag} wrap />
               </CommandItem>
             ))}
           </CommandGroup>
@@ -158,7 +158,7 @@ export function TagPicker({
       <ul aria-label="Tag" className="contents">
         {tags.map((tag) => (
           <li key={tag.id} className="inline-flex max-w-full items-center">
-            <TagChip tag={tag} />
+            <TagChip tag={tag} wrap />
             {!compact && usableIds.has(tag.id) && (
               <Button type="button" variant="ghost" size="icon-sm" aria-label={`Hapus tag ${labelOf(tag)}`} onClick={() => run({ type: "detach", tagId: tag.id }, () => detachTagAction({ ...target, tagId: tag.id }))}>
                 <XIcon aria-hidden />

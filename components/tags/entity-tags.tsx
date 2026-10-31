@@ -13,7 +13,7 @@ export function EntityTags({ target, attached, options, canCreate }: EntityTagsD
       <ul aria-label="Tag" className="flex flex-wrap items-center gap-1.5">
         {attached.map((tag) => (
           <li key={tag.id}>
-            <TagChip tag={tag} />
+            <TagChip tag={tag} wrap />
           </li>
         ))}
       </ul>

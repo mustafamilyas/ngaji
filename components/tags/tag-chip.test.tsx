@@ -45,6 +45,14 @@ describe("TagChip (task 5.1)", () => {
     expect(chip).toHaveAttribute("title", `prioritas:${value}`);
   });
 
+  it("wraps instead of truncating when asked, so touch users can read the whole label", () => {
+    const value = "sangat-panjang-sekali-nilai-tag-ini";
+    render(<TagChip wrap tag={{ key: "prioritas", value, color: "amber" }} />);
+    const chip = screen.getByText(`prioritas:${value}`);
+    expect(chip).not.toHaveClass("truncate");
+    expect(chip).toHaveClass("min-w-0", "max-w-full", "[overflow-wrap:anywhere]");
+  });
+
   it("keeps a visible border in print so the chip does not depend on color", () => {
     render(<TagChip tag={{ key: "fokus", value: null, color: "teal" }} />);
     expect(screen.getByText("fokus")).toHaveClass("print:border-black");

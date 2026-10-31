@@ -87,7 +87,7 @@ export function TagFilter({ tags, selected: selectedProp, name = "tag" }: { tags
                       onSelect={() => toggle(tag.id)}
                     >
                       <CheckIcon className={draftSet.has(tag.id) ? "size-4 shrink-0" : "size-4 shrink-0 opacity-0"} aria-hidden />
-                      <TagChip tag={tag} />
+                      <TagChip tag={tag} wrap />
                     </CommandItem>
                   ))}
                 </CommandGroup>
