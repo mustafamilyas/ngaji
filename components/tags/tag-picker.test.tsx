@@ -144,6 +144,28 @@ describe("TagPicker (task 5.2)", () => {
     });
   });
 
+  describe("keyboard and screen readers (task 7.5)", () => {
+    for (const [mode, wide] of [["popover", true], ["sheet", false]] as const) {
+      it(`reports expanded state and returns focus to the trigger on Escape (${mode})`, async () => {
+        stubBrowser(wide);
+        setup();
+        const trigger = screen.getByRole("button", { name: "Atur tag" });
+        expect(trigger).toHaveAttribute("aria-haspopup", "dialog");
+        expect(trigger).toHaveAttribute("aria-expanded", "false");
+
+        await openPicker();
+        await waitFor(() => expect(screen.getByRole("combobox")).toHaveFocus());
+        expect(trigger).toHaveAttribute("aria-expanded", "true");
+        expect(screen.getByRole("listbox")).toBeInTheDocument();
+
+        await userEvent.setup().keyboard("{Escape}");
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+        expect(trigger).toHaveFocus();
+        expect(trigger).toHaveAttribute("aria-expanded", "false");
+      });
+    }
+  });
+
   describe("empty state (task 8.2)", () => {
     it("tells a user who cannot create tags that there is nothing to choose yet", async () => {
       setup({ options: [], canCreate: false });

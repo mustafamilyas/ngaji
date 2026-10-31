@@ -131,32 +131,46 @@ export function BulkTagBar() {
   const selection = useBulkSelection();
   if (!selection) return null;
   const count = selection.selectedIds.length;
+  // One live region that is mounted from the first render: screen readers often skip a region that appears
+  // already filled, so the visible bar below carries no role of its own.
+  const announcement = count > 0 ? `${count} anggota dipilih` : (selection.message ?? "");
+  const liveRegion = (
+    <div role="status" className="sr-only">
+      {announcement}
+    </div>
+  );
 
   if (count === 0) {
-    if (!selection.message) return null;
+    if (!selection.message) return liveRegion;
     return (
-      <div data-slot="bulk-tag-bar" className="sticky bottom-0 z-30 flex items-center justify-between gap-3 border-t bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
-        <p role="status" className="text-base xl:text-sm">
-          {selection.message}
-        </p>
-        <Button type="button" variant="ghost" onClick={() => selection.setMessage(null)}>
-          Tutup
-        </Button>
-      </div>
+      <>
+        {liveRegion}
+        <div data-slot="bulk-tag-bar" className="sticky bottom-0 z-30 flex items-center justify-between gap-3 border-t bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+          <p className="text-base xl:text-sm" aria-hidden>
+            {selection.message}
+          </p>
+          <Button type="button" variant="ghost" onClick={() => selection.setMessage(null)}>
+            Tutup
+          </Button>
+        </div>
+      </>
     );
   }
 
   return (
-    <div data-slot="bulk-tag-bar" className="sticky bottom-0 z-30 flex flex-wrap items-center gap-1.5 border-t bg-background/95 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur -mx-4 sm:mx-0 sm:gap-2 sm:px-4">
-      <p role="status" className="mr-auto text-base font-medium xl:text-sm">
-        {count} <span className="sr-only sm:not-sr-only">anggota </span>dipilih
-      </p>
-      <BulkChooser op="add" label="Tambah tag" shortLabel="Tambah" />
-      <BulkChooser op="remove" label="Hapus tag" shortLabel="Hapus" />
-      <Button type="button" variant="ghost" aria-label="Batal" className="w-11 px-0 sm:w-auto sm:px-4" onClick={selection.clear}>
-        <XIcon className="sm:hidden" aria-hidden />
-        <span className="hidden sm:inline">Batal</span>
-      </Button>
-    </div>
+    <>
+      {liveRegion}
+      <div data-slot="bulk-tag-bar" className="sticky bottom-0 z-30 flex flex-wrap items-center gap-1.5 border-t bg-background/95 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur -mx-4 sm:mx-0 sm:gap-2 sm:px-4">
+        <p className="mr-auto text-base font-medium xl:text-sm" aria-hidden>
+          {count} anggota dipilih
+        </p>
+        <BulkChooser op="add" label="Tambah tag" shortLabel="Tambah" />
+        <BulkChooser op="remove" label="Hapus tag" shortLabel="Hapus" />
+        <Button type="button" variant="ghost" aria-label="Batal" className="w-11 px-0 sm:w-auto sm:px-4" onClick={selection.clear}>
+          <XIcon className="sm:hidden" aria-hidden />
+          <span className="hidden sm:inline">Batal</span>
+        </Button>
+      </div>
+    </>
   );
 }

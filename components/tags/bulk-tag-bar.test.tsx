@@ -60,6 +60,16 @@ describe("bulk tagging on the member table (task 5.5)", () => {
     expect(screen.queryByRole("button", { name: "Tambah tag" })).not.toBeInTheDocument();
   });
 
+  it("keeps one live region mounted from the start, so the first selection is announced (task 7.5)", async () => {
+    render(<Page />);
+    const region = screen.getByRole("status");
+    expect(region).toBeEmptyDOMElement();
+    await userEvent.setup().click(screen.getByRole("checkbox", { name: "Pilih Ahmad" }));
+    expect(screen.getByRole("status")).toBe(region);
+    expect(region).toHaveTextContent("1 anggota dipilih");
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+  });
+
   it("announces how many members are selected", async () => {
     render(<Page />);
     const user = userEvent.setup();
@@ -138,7 +148,8 @@ describe("bulk tagging on the member table (task 5.5)", () => {
     await user.click(screen.getByRole("option", { name: /fokus/ }));
     await user.click(screen.getByRole("button", { name: "Terapkan" }));
 
-    expect(await screen.findByText("2 anggota diubah.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("2 anggota diubah."));
+    expect(screen.getAllByText("2 anggota diubah.")).toHaveLength(2); // live region + the visible bar
     expect(screen.queryByRole("button", { name: "Tambah tag" })).not.toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Pilih Ahmad" })).not.toBeChecked();
   });
@@ -151,7 +162,7 @@ describe("bulk tagging on the member table (task 5.5)", () => {
     await user.click(screen.getByRole("button", { name: "Tambah tag" }));
     await user.click(screen.getByRole("option", { name: /fokus/ }));
     await user.click(screen.getByRole("button", { name: "Terapkan" }));
-    expect(await screen.findByText("Tidak ada anggota yang berubah.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Tidak ada anggota yang berubah."));
   });
 
   it("keeps the selection and shows the server's message when the action fails", async () => {
@@ -177,7 +188,7 @@ describe("bulk tagging on the member table (task 5.5)", () => {
     it("pins the bar to the bottom of the scroll area above the safe-area inset", async () => {
       render(<Page />);
       await userEvent.setup().click(screen.getByRole("checkbox", { name: "Pilih Ahmad" }));
-      const bar = screen.getByRole("status").closest("[data-slot=bulk-tag-bar]");
+      const bar = screen.getByRole("button", { name: "Tambah tag" }).closest("[data-slot=bulk-tag-bar]");
       expect(bar?.className).toContain("sticky");
       expect(bar?.className).toContain("bottom-0");
       expect(bar?.className).toContain("safe-area-inset-bottom");
