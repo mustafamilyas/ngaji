@@ -88,6 +88,13 @@ export type MemberTagInput = z.infer<typeof memberTagSchema>;
 export const activityTagSchema = z.object({ activityId: idSchema, tagId: idSchema });
 export type ActivityTagInput = z.infer<typeof activityTagSchema>;
 
+/** What the picker tags: one member or one activity, by id (resolved and scope-checked on the server). */
+export const tagTargetSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("member"), id: idSchema }),
+  z.object({ kind: z.literal("activity"), id: idSchema }),
+]);
+export type TagTarget = z.infer<typeof tagTargetSchema>;
+
 export const BULK_TAG_OPS = ["add", "remove"] as const;
 
 /** Selection on one page of the member table: 1–`PAGE_SIZE` distinct ids. */

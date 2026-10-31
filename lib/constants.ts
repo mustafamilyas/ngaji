@@ -138,4 +138,6 @@ export const TAG_MAX_PER_GROUP = 100;
 export const TAG_MAX_PER_ENTITY = 20;
 export const MAX_TAG_FILTER_IDS = 50;
 /** Fixed tag palette; `components/tags/tag-chip.tsx` maps each token to checked-contrast classes. */
+/** Color of a tag created from the picker; the owner group recolors it from its Tag tab. */
+export const TAG_DEFAULT_COLOR = "slate" as const;
 export const TAG_COLORS = ["slate", "red", "orange", "amber", "green", "teal", "blue", "indigo", "purple", "pink"] as const;

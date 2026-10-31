@@ -34,8 +34,8 @@
 ## 5. UI
 
 - [x] 5.1 `components/tags/tag-chip.tsx` with palette classes and print styles; verify `*.test.tsx` renders text + color class
-- [ ] 5.2 `components/tags/tag-picker.tsx` (combobox, `key:value` search, owner labels, "Buat tag" for ADMIN+, optimistic attach/detach); verify jsdom test: USER has no create option, ADMIN create-and-attach calls the action
-  - [ ] 5.2a Mobile/tablet: picker opens as a bottom sheet (or full-width popover) at phone width; options and "Buat tag" row ≥ 44px, search input 16px (no iOS zoom), list scrolls inside the viewport above the on-screen keyboard; verify at 375px and 768px in `pnpm dev:scratch`
+- [x] 5.2 `components/tags/tag-picker.tsx` (combobox, `key:value` search, owner labels, "Buat tag" for ADMIN+, optimistic attach/detach); verify jsdom test: USER has no create option, ADMIN create-and-attach calls the action
+  - [x] 5.2a Mobile/tablet: picker opens as a bottom sheet (or full-width popover) at phone width; options and "Buat tag" row ≥ 44px, search input 16px (no iOS zoom), list scrolls inside the viewport above the on-screen keyboard; verify at 375px and 768px in `pnpm dev:scratch`
 - [ ] 5.3 Member detail and activity detail: chips + picker in header area; verify by `pnpm dev:scratch` and attaching/removing a tag on each
 - [ ] 5.4 Member table: "Tag" column (default, hideable via `lib/member/columns.ts`), per-row picker; activity list rows show chips + picker; verify column test and manual check
   - [ ] 5.4a Mobile/tablet: the Tag column does not break the member table at phone width (chips wrap or truncate with "+N", no horizontal page scroll beyond the table's own scroll container); tap targets ≥ 44px
@@ -65,3 +65,6 @@
 
 <!-- Add one line per failure/finding: `- [ ] 8.N <what failed> (found in task X.Y); verify <how>` -->
 - [x] 8.1 Spec scenarios "member outside the tag group's subtree" and "activity in an unrelated branch" cannot reach the fit check through the public API: a usable tag (owner is ancestor-or-self of the user) plus an in-scope member or visible activity already implies the fit, so they surface as 404 (sibling) instead. The check stays as defense in depth in `lib/tag/assign.ts`; revisit if `canTagMember`/`canTagActivity` get callers outside this flow (found in 3.3); verify by `lib/tag/assign.test.ts` sibling 404 cases
+- [ ] 8.2 Picker empty state is unhelpful: with no usable tags the sheet shows only "Tidak ditemukan." even for an ADMIN who could create one (e.g. root admin whose visible tags all belong to descendants) (found in 5.2a, browser pass at 375px); show a hint such as "Ketik nama untuk membuat tag" when `canCreate`, and "Belum ada tag yang bisa dipakai" otherwise; verify by `tag-picker.test.tsx` empty-state cases
+- [ ] 8.3 Bottom sheet does not focus the search field on open: the first characters typed after opening went nowhere (found in 5.2a, browser pass at 375px); decide per device (autofocus raises the on-screen keyboard on phones, which may hide the list) and make keyboard users land in the field; verify by jsdom focus test and manual pass at 375px/768px (also covers 7.5 "focus")
+- [ ] 8.4 Sheet height vs the on-screen keyboard is only checked by emulation (`max-h-[70dvh]`); real iOS/Android keyboards are not covered (found in 5.2a); verify on a real phone during 7.2 and adjust the sheet height/`interactive-widget` if the list is hidden
