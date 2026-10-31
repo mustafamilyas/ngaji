@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { XIcon } from "lucide-react";
 import { bulkTagMembersAction } from "@/app/dashboard/tag/actions";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -20,7 +21,7 @@ function filterTags(_value: string, search: string, keywords?: string[]): number
 }
 
 /** One action of the bar: choose a tag, then confirm what will happen to how many members, then apply. */
-function BulkChooser({ op, label }: { op: Op; label: string }) {
+function BulkChooser({ op, label, shortLabel }: { op: Op; label: string; shortLabel: string }) {
   const selection = useBulkSelection();
   const tagOptions = useTagOptions();
   const [open, setOpen] = useState(false);
@@ -66,8 +67,10 @@ function BulkChooser({ op, label }: { op: Op; label: string }) {
       open={open}
       onOpenChange={reset}
       trigger={
-        <Button type="button" variant="outline" aria-haspopup="dialog" aria-expanded={open}>
-          {label}
+        // Below `sm` the short word keeps the bar on one row; the full name stays the accessible name.
+        <Button type="button" variant="outline" aria-label={label} aria-haspopup="dialog" aria-expanded={open} className="px-3 sm:px-4">
+          <span className="sm:hidden">{shortLabel}</span>
+          <span className="hidden sm:inline">{label}</span>
         </Button>
       }
       title={label}
@@ -144,14 +147,15 @@ export function BulkTagBar() {
   }
 
   return (
-    <div data-slot="bulk-tag-bar" className="sticky bottom-0 z-30 flex flex-wrap items-center gap-2 border-t bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+    <div data-slot="bulk-tag-bar" className="sticky bottom-0 z-30 flex flex-wrap items-center gap-1.5 border-t bg-background/95 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur -mx-4 sm:mx-0 sm:gap-2 sm:px-4">
       <p role="status" className="mr-auto text-base font-medium xl:text-sm">
-        {count} anggota dipilih
+        {count} <span className="sr-only sm:not-sr-only">anggota </span>dipilih
       </p>
-      <BulkChooser op="add" label="Tambah tag" />
-      <BulkChooser op="remove" label="Hapus tag" />
-      <Button type="button" variant="ghost" onClick={selection.clear}>
-        Batal
+      <BulkChooser op="add" label="Tambah tag" shortLabel="Tambah" />
+      <BulkChooser op="remove" label="Hapus tag" shortLabel="Hapus" />
+      <Button type="button" variant="ghost" aria-label="Batal" className="w-11 px-0 sm:w-auto sm:px-4" onClick={selection.clear}>
+        <XIcon className="sm:hidden" aria-hidden />
+        <span className="hidden sm:inline">Batal</span>
       </Button>
     </div>
   );

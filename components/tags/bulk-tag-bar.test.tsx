@@ -183,6 +183,23 @@ describe("bulk tagging on the member table (task 5.5)", () => {
       expect(bar?.className).toContain("safe-area-inset-bottom");
     });
 
+    it("keeps the bar to one row on a phone: short labels and an icon-only Batal that still has its name (task 8.11)", async () => {
+      render(<Page />);
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("checkbox", { name: "Pilih Ahmad" }));
+
+      // The full words stay available to screen readers and from sm up.
+      expect(screen.getByRole("status")).toHaveTextContent("1 anggota dipilih");
+      expect(screen.getByRole("button", { name: "Tambah tag" })).toHaveTextContent("Tambah");
+      expect(screen.getByRole("button", { name: "Hapus tag" })).toHaveTextContent("Hapus");
+      const cancel = screen.getByRole("button", { name: "Batal" });
+      expect(cancel.className).toContain("w-11");
+      expect(cancel.querySelector("svg")).not.toBeNull();
+
+      await user.click(cancel);
+      expect(screen.queryByRole("button", { name: "Tambah tag" })).not.toBeInTheDocument();
+    });
+
     it("opens the chooser as a bottom sheet below xl", async () => {
       stubBrowser(false);
       render(<Page />);
