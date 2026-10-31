@@ -50,7 +50,7 @@
 ## 6. Docs and verification
 
 - [x] 6.1 DESIGN.md already updated in this change (§2, §3.2, §4.5, §7, §10, §13); re-check it matches the final implementation (checked schema, constants, authz, audit meta/groupId, split copy, filters, pages; three drifts fixed in §13.3, see 8.17)
-- [ ] 6.2 `pnpm lint && pnpm tsc --noEmit && pnpm test` pass
+- [x] 6.2 `pnpm lint && pnpm tsc --noEmit && pnpm test` pass (lint and tsc clean; 205 files, 1945 tests passed; no failures to log)
 - [ ] 6.3 `pnpm audit:viewport` passes (picker, bulk bar, filter at phone/tablet widths) and `pnpm audit:print` passes with a tag filter
 
 ## 7. Mobile and tablet excellence
