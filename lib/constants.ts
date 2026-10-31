@@ -75,6 +75,8 @@ export const VIEW_SECTION_PAGE_SIZE = 25;
 export const VIEW_EXPANDED_SECTIONS = 5;
 /** Most in-scope groups offered in the view editor's group picker. */
 export const VIEW_GROUP_OPTIONS_LIMIT = 500;
+/** Most visible tags offered in the view editor's tag picker. */
+export const VIEW_TAG_OPTIONS_LIMIT = 500;
 /** Max length (characters) of the base64url `?d=` URL draft. */
 export const VIEW_MAX_DRAFT_LENGTH = 4000;
 /** Most summaries ("Ringkasan") one member view may hold. */

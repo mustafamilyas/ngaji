@@ -6,7 +6,7 @@ import { today as todayIn } from "@/lib/dates";
 import type { MemberColumnKey } from "@/lib/member/columns";
 import { clampPage } from "@/lib/pagination";
 import { visibleTagLinks } from "@/lib/tag/include";
-import { resolveDefinitionGroupsLenient } from "@/lib/resolve";
+import { resolveDefinitionGroupsLenient, resolveDefinitionTagsLenient } from "@/lib/resolve";
 import type { Definition } from "@/lib/validation/member-view";
 import { buildOrderBy, buildWhere, type QueryContext } from "./query";
 
@@ -61,16 +61,22 @@ export async function prepareView(
   definition: Definition,
   today: string = todayIn(session.timeZone),
 ): Promise<PreparedView> {
-  const { definition: resolved, dropped } = await resolveDefinitionGroupsLenient(session, definition);
+  const groupsResolved = await resolveDefinitionGroupsLenient(session, definition);
+  const tagsResolved = await resolveDefinitionTagsLenient(session, groupsResolved.definition);
+  const resolved = tagsResolved.definition;
+  const dropped = groupsResolved.dropped || tagsResolved.dropped;
 
   const groupIds = new Set<number>();
+  // Every tag id left after the lenient pass is one the viewer may see.
+  const visibleTagIds = new Set<number>();
   for (const group of resolved.filter.groups) {
     for (const rule of group.rules) {
       if (rule.field === "group") for (const id of rule.value as number[]) groupIds.add(id);
+      if (rule.field === "tag") for (const id of rule.value as number[]) visibleTagIds.add(id);
     }
   }
   const groups = groupIds.size > 0 ? await db.group.findMany({ where: { id: { in: [...groupIds] } }, select: { id: true, path: true } }) : [];
-  const ctx: QueryContext = { today, groupPaths: new Map(groups.map((g) => [g.id, g.path])) };
+  const ctx: QueryContext = { today, groupPaths: new Map(groups.map((g) => [g.id, g.path])), visibleTagIds };
 
   const where: Prisma.MemberWhereInput = {
     AND: [{ deletedAt: null, group: { path: { startsWith: session.groupPath } } }, buildWhere(resolved, ctx)],

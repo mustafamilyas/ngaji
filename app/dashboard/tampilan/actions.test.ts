@@ -135,3 +135,60 @@ describe("view mutation actions", () => {
     expect((await db.memberView.findUniqueOrThrow({ where: { id: view.id } })).ownerId).toBe(fixture.actorId);
   });
 });
+
+describe("tag rules in saved views", () => {
+  const tagRuleDefinition = (tagId: number) => ({
+    ...emptyDefinition(),
+    filter: { op: "AND", groups: [{ op: "AND", rules: [{ field: "tag", operator: "hasAnyOf", value: [tagId] }] }] },
+  });
+
+  async function setup(label: string) {
+    const fixture = await buildPageFixture(label);
+    const newTag = (groupId: number, key: string, extra: { deletedAt?: Date } = {}) =>
+      db.tag.create({ data: { groupId, key, color: "blue", createdById: fixture.actorId, ...extra } });
+    return { fixture, newTag, viewCount: (name: string) => db.memberView.count({ where: { name } }) };
+  }
+
+  it("saves a tag inherited from an ancestor", async () => {
+    const { fixture, newTag } = await setup("tampilan-tag-inherited");
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "ADMIN", fixture.leaf) });
+    const tag = await newTag(fixture.branch.id, "diwarisi");
+    expect((await createMemberViewAction({ name: "Warisan", definition: tagRuleDefinition(tag.id) })).ok).toBe(true);
+  });
+
+  it("saves a tag owned by a descendant group", async () => {
+    const { fixture, newTag } = await setup("tampilan-tag-descendant");
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "ADMIN", fixture.branch) });
+    const tag = await newTag(fixture.leaf.id, "turunan");
+    expect((await createMemberViewAction({ name: "Turunan", definition: tagRuleDefinition(tag.id) })).ok).toBe(true);
+  });
+
+  it("rejects a sibling's tag and writes nothing", async () => {
+    const { fixture, newTag, viewCount } = await setup("tampilan-tag-sibling");
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "ADMIN", fixture.leaf) });
+    const tag = await newTag(fixture.otherLeaf.id, "saudara");
+    expect((await createMemberViewAction({ name: "Saudara", definition: tagRuleDefinition(tag.id) })).ok).toBe(false);
+    expect(await viewCount("Saudara")).toBe(0);
+  });
+
+  it("rejects a deleted tag and writes nothing", async () => {
+    const { fixture, newTag, viewCount } = await setup("tampilan-tag-deleted");
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "ADMIN", fixture.leaf) });
+    const tag = await newTag(fixture.leaf.id, "terhapus", { deletedAt: new Date() });
+    expect((await createMemberViewAction({ name: "Terhapus", definition: tagRuleDefinition(tag.id) })).ok).toBe(false);
+    expect(await viewCount("Terhapus")).toBe(0);
+  });
+
+  it("rejects another organization's tag with the same error as an unknown id", async () => {
+    const { fixture, viewCount } = await setup("tampilan-tag-foreign");
+    const foreign = await buildPageFixture("tampilan-tag-foreign-org");
+    const foreignTag = await db.tag.create({ data: { groupId: foreign.leaf.id, key: "asing", color: "blue", createdById: foreign.actorId } });
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "ADMIN", fixture.leaf) });
+
+    const foreignResult = await createMemberViewAction({ name: "Asing", definition: tagRuleDefinition(foreignTag.id) });
+    const unknownResult = await createMemberViewAction({ name: "Asing", definition: tagRuleDefinition(999_999_999) });
+    expect(foreignResult.ok).toBe(false);
+    expect(foreignResult).toEqual(unknownResult);
+    expect(await viewCount("Asing")).toBe(0);
+  });
+});

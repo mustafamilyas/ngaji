@@ -212,3 +212,60 @@ export async function resolveDefinitionGroupsLenient(session: SessionUser, defin
   }
   return { definition: { ...definition, filter: { ...definition.filter, groups } }, dropped };
 }
+
+const isTagRule = (rule: Rule) => rule.field === "tag";
+
+/** Ids of every tag rule in the definition that the viewer may see (live, same organization, ancestor or in scope). */
+async function visibleRuleTagIds(session: SessionUser, definition: Definition) {
+  const ids = new Set<number>();
+  for (const group of definition.filter.groups) {
+    for (const rule of group.rules) {
+      if (isTagRule(rule)) for (const id of rule.value as number[]) ids.add(id);
+    }
+  }
+  const visible = await resolveVisibleTags(session, [...ids]);
+  return new Set(visible.map((tag) => tag.id));
+}
+
+/**
+ * Save-time check: every tag id in a tag rule must be a tag the viewer can see
+ * (`visibleTagWhere`), else the whole save is rejected. Unknown, deleted, other
+ * organization and invisible ids share one generic message.
+ */
+export async function resolveDefinitionTagsStrict(session: SessionUser, definition: Definition) {
+  const valid = await visibleRuleTagIds(session, definition);
+  for (const group of definition.filter.groups) {
+    for (const rule of group.rules) {
+      if (isTagRule(rule) && (rule.value as number[]).some((id) => !valid.has(id))) {
+        throw new ValidationError("Tag tidak valid");
+      }
+    }
+  }
+}
+
+/**
+ * Load-time check: unusable ids are removed from a tag rule, a rule left with
+ * none is dropped, and so is a rule group left empty. Unlike group rules, the
+ * remaining ids still apply (the spec removes ids, not whole rules). `dropped`
+ * drives the "Beberapa aturan diabaikan" notice. Returns a new definition.
+ */
+export async function resolveDefinitionTagsLenient(session: SessionUser, definition: Definition) {
+  const valid = await visibleRuleTagIds(session, definition);
+  let dropped = false;
+  const groups = [];
+  for (const group of definition.filter.groups) {
+    const rules: Rule[] = [];
+    for (const rule of group.rules) {
+      if (!isTagRule(rule)) {
+        rules.push(rule);
+        continue;
+      }
+      const ids = rule.value as number[];
+      const kept = ids.filter((id) => valid.has(id));
+      if (kept.length !== ids.length) dropped = true;
+      if (kept.length > 0) rules.push({ ...rule, value: kept });
+    }
+    if (rules.length > 0) groups.push({ ...group, rules });
+  }
+  return { definition: { ...definition, filter: { ...definition.filter, groups } }, dropped };
+}

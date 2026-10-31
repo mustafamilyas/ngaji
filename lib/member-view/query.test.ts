@@ -8,9 +8,32 @@ const ctx: QueryContext = {
     [3, "1/3/"],
     [7, "1/7/"],
   ]),
+  visibleTagIds: new Set([11, 12]),
 };
 const def = (groups: Definition["filter"]["groups"], op: "AND" | "OR" = "AND"): Definition => ({ ...emptyDefinition(), filter: { op, groups } });
 const r = (field: Rule["field"], operator: string, value?: unknown) => ({ field, operator, value }) as Rule;
+
+describe("tag rules", () => {
+  it("has any of: members linked to at least one of the tags", () => {
+    expect(ruleToWhere(r("tag", "hasAnyOf", [11, 12]), ctx)).toEqual({ tags: { some: { tagId: { in: [11, 12] } } } });
+  });
+
+  it("has none of: members not linked to any of the tags, so untagged members match", () => {
+    expect(ruleToWhere(r("tag", "hasNoneOf", [11]), ctx)).toEqual({ tags: { none: { tagId: { in: [11] } } } });
+  });
+
+  it("only uses tag ids the viewer can see", () => {
+    expect(ruleToWhere(r("tag", "hasAnyOf", [11, 99]), ctx)).toEqual({ tags: { some: { tagId: { in: [11] } } } });
+  });
+
+  it("has any of with no visible tag matches nothing", () => {
+    expect(ruleToWhere(r("tag", "hasAnyOf", [99]), ctx)).toEqual({ id: { in: [] } });
+  });
+
+  it("has none of with no visible tag excludes nobody", () => {
+    expect(ruleToWhere(r("tag", "hasNoneOf", [99]), ctx)).toEqual({});
+  });
+});
 
 describe("buildWhere", () => {
   it("is empty for an empty filter", () => {

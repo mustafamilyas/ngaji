@@ -135,6 +135,37 @@ describe("lib/member-view/mutations", () => {
       );
     });
 
+    describe("tag rules", () => {
+      const withTag = (tagId: number): Definition => ({
+        ...emptyDefinition(),
+        filter: { op: "AND", groups: [{ op: "AND", rules: [{ field: "tag", operator: "hasAnyOf", value: [tagId] }] }] },
+      });
+      const newTag = (groupId: number, key: string) => db.tag.create({ data: { groupId, key, color: "blue", createdById: fx.actorId } });
+
+      it("accepts a tag inherited from an ancestor group", async () => {
+        const inherited = await newTag(fx.branch.id, "view-inherited");
+        const view = await createMemberView(ownerSession, createMemberViewSchema.parse({ name: uniqueName(), definition: withTag(inherited.id) }));
+        expect(view.id).toBeGreaterThan(0);
+      });
+
+      it("rejects a tag owned by a sibling branch and writes nothing", async () => {
+        const sibling = await newTag(fx.otherLeaf.id, "view-sibling");
+        const name = uniqueName("Sibling");
+        await expect(createMemberView(ownerSession, createMemberViewSchema.parse({ name, definition: withTag(sibling.id) }))).rejects.toBeInstanceOf(
+          ValidationError,
+        );
+        expect(await db.memberView.count({ where: { groupId: fx.leaf.id, name } })).toBe(0);
+      });
+
+      it("rejects an unknown tag id on update and leaves the stored definition alone", async () => {
+        const view = await createMemberView(ownerSession, createMemberViewSchema.parse({ name: uniqueName(), definition: emptyDefinition() }));
+        await expect(
+          updateMemberView(ownerSession, updateMemberViewSchema.parse({ viewId: view.id, definition: withTag(999_999_999) })),
+        ).rejects.toBeInstanceOf(ValidationError);
+        expect((await viewRow(view.id))?.definition).toEqual(emptyDefinition());
+      });
+    });
+
     it("rejects an unsupported source or visibility at the schema", () => {
       const base = { name: "X", definition: emptyDefinition() };
       expect(createMemberViewSchema.safeParse({ ...base, source: "attendance" }).success).toBe(false);

@@ -7,6 +7,7 @@ import {
   VIEW_MAX_TEXT_VALUE_LENGTH,
   VIEW_MAX_WITHIN_DAYS,
   MAX_NAME_LENGTH,
+  MAX_TAG_FILTER_IDS,
 } from "@/lib/constants";
 import { isDateString } from "@/lib/dates";
 import { VIEW_SOURCES, VIEW_VISIBILITIES } from "@/lib/validation/enums";
@@ -74,6 +75,11 @@ function parseRuleValue(field: FieldKey, operator: Operator, value: unknown): Va
     case "group": {
       const result = z.array(positiveInt).min(1).max(VIEW_MAX_GROUP_IDS).safeParse(value);
       if (!result.success || new Set(result.data).size !== result.data.length) return fail("Grup tidak valid");
+      return ok(result.data);
+    }
+    case "tag": {
+      const result = z.array(positiveInt).min(1).max(MAX_TAG_FILTER_IDS).safeParse(value);
+      if (!result.success || new Set(result.data).size !== result.data.length) return fail("Tag tidak valid");
       return ok(result.data);
     }
   }

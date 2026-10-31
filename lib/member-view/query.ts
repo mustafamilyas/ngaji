@@ -13,6 +13,8 @@ export type QueryContext = {
   today: string;
   /** Resolved group id → `Group.path`. An id missing here matches nothing. */
   groupPaths: ReadonlyMap<number, string>;
+  /** Tag ids the viewer may see (resolved by the caller). A tag rule only uses ids in this set. */
+  visibleTagIds: ReadonlySet<number>;
 };
 
 type MemberWhere = Prisma.MemberWhereInput;
@@ -42,6 +44,12 @@ export function ruleToWhere(rule: Rule, ctx: QueryContext): MemberWhere {
     case "group": {
       const paths = (value as number[]).flatMap((id) => ctx.groupPaths.get(id) ?? []);
       return paths.length === 0 ? NO_MATCH : { OR: paths.map((path) => ({ group: { path: { startsWith: path } } })) };
+    }
+    case "tag": {
+      const tagIds = (value as number[]).filter((id) => ctx.visibleTagIds.has(id));
+      // "has any of" nothing usable matches nobody; "has none of" nothing usable excludes nobody.
+      if (tagIds.length === 0) return operator === "hasAnyOf" ? NO_MATCH : {};
+      return operator === "hasAnyOf" ? { tags: { some: { tagId: { in: tagIds } } } } : { tags: { none: { tagId: { in: tagIds } } } };
     }
   }
 }

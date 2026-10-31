@@ -92,6 +92,7 @@ describe("rule editor phone and tablet sizes", () => {
         ],
       },
       groups: [],
+      tags: [],
       onChange: () => undefined,
       onRemove: () => undefined,
     }),

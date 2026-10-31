@@ -9,11 +9,11 @@
 
 ## 2. Tag rule in member views
 
-- [ ] 2.1 Add `tag` field (`hasAnyOf`/`hasNoneOf`, not sortable/groupable) to `lib/member-view/fields.ts` and the rule value parser; tests for operator/value validation; verify `pnpm test lib/member-view/fields lib/validation`
-- [ ] 2.2 Translate tag rules in `lib/member-view/query.ts`, restricted to visible tag IDs; tests incl. "has none of" matching untagged members; verify `pnpm test lib/member-view/query`
-- [ ] 2.3 Resolve tag IDs on save (reject unknown/deleted/other org/invisible) and on load (drop + notice) next to group-ID resolution; server-action tests for sibling, other-org, deleted, inherited and descendant tags; verify `pnpm test app/dashboard/tampilan lib/member-view`
-- [ ] 2.4 Tag picker in the rule editor (`rule-editor.tsx`) using visible tags; verify in `pnpm dev:scratch` and a `*.test.tsx`
-- [ ] 2.5 Mobile/tablet check of the tag picker in the rule editor: at 375px and 768px it fits without horizontal scroll, touch targets ≥ 44px, long tag names wrap/truncate, picker opens above the on-screen keyboard; `pnpm audit:viewport` clean
+- [x] 2.1 Add `tag` field (`hasAnyOf`/`hasNoneOf`, not sortable/groupable) to `lib/member-view/fields.ts` and the rule value parser; tests for operator/value validation; verify `pnpm test lib/member-view/fields lib/validation`
+- [x] 2.2 Translate tag rules in `lib/member-view/query.ts`, restricted to visible tag IDs; tests incl. "has none of" matching untagged members; verify `pnpm test lib/member-view/query`
+- [x] 2.3 Resolve tag IDs on save (reject unknown/deleted/other org/invisible) and on load (drop + notice) next to group-ID resolution; server-action tests for sibling, other-org, deleted, inherited and descendant tags; verify `pnpm test app/dashboard/tampilan lib/member-view`
+- [x] 2.4 Tag picker in the rule editor (`rule-editor.tsx`) using visible tags; verify in `pnpm dev:scratch` and a `*.test.tsx`
+- [x] 2.5 Mobile/tablet check of the tag picker in the rule editor: at 375px and 768px it fits without horizontal scroll, touch targets ≥ 44px, long tag names wrap/truncate, picker opens above the on-screen keyboard; `pnpm audit:viewport` clean
 
 ## 3. DB-side counting
 

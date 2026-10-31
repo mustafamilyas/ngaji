@@ -18,9 +18,9 @@ import { ViewMenu } from "./view-menu";
 
 const NEW_RULE = { field: "status", operator: "isAnyOf", value: ["AKTIF"] } as const;
 
-function summarize(group: RuleGroup, groupLabels: ReadonlyMap<number, string>): string {
+function summarize(group: RuleGroup, groupLabels: ReadonlyMap<number, string>, tagLabels: ReadonlyMap<number, string>): string {
   const joiner = group.op === "AND" ? " dan " : " atau ";
-  return group.rules.map((rule) => describeRule(rule, groupLabels)).join(joiner);
+  return group.rules.map((rule) => describeRule(rule, groupLabels, tagLabels)).join(joiner);
 }
 
 /**
@@ -46,6 +46,7 @@ export function ViewToolbar({
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const groupLabels = new Map(options.groups.map((g) => [g.id, g.label]));
+  const tagLabels = new Map(options.tags.map((t) => [t.id, t.label]));
   const { groups, op } = definition.filter;
 
   function apply(next: Definition) {
@@ -68,6 +69,7 @@ export function ViewToolbar({
       key={`${groups.length}-${index}`}
       group={group}
       groups={options.groups}
+      tags={options.tags}
       onChange={(next) => apply(replaceRuleGroup(definition, index, next))}
       onRemove={() => {
         apply(removeRuleGroup(definition, index));
@@ -107,7 +109,7 @@ export function ViewToolbar({
               )}
               <Popover open={openChip === index} onOpenChange={(open) => setOpenChip(open ? index : null)}>
                 <PopoverTrigger className={`${filterTriggerClass(true)} max-w-xs`}>
-                  <span className="truncate">{summarize(group, groupLabels)}</span>
+                  <span className="truncate">{summarize(group, groupLabels, tagLabels)}</span>
                 </PopoverTrigger>
                 <PopoverContent className="w-[min(26rem,calc(100vw-24px))]">
                   <div className="max-h-[min(30rem,var(--available-height))] overflow-y-auto p-3">

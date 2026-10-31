@@ -5,6 +5,8 @@ import { emptyDefinition, type Definition } from "@/lib/validation/member-view";
 import {
   resolveDefinitionGroupsLenient,
   resolveDefinitionGroupsStrict,
+  resolveDefinitionTagsLenient,
+  resolveDefinitionTagsStrict,
   resolveMemberView,
   resolveActivity,
   resolveGroup,
@@ -500,6 +502,112 @@ describe("lib/resolve", () => {
         const snapshot = structuredClone(definition);
         await resolveDefinitionGroupsLenient(session, definition);
         expect(definition).toEqual(snapshot);
+      });
+    });
+  });
+
+  describe("definition tag resolution", () => {
+    const newTag = (groupId: number, key: string, extra: { deletedAt?: Date } = {}) =>
+      db.tag.create({ data: { groupId, key, color: "blue", createdById: owner.id, ...extra } });
+
+    function definitionWith(...ruleValues: number[][]): Definition {
+      const definition = emptyDefinition();
+      definition.filter.groups = ruleValues.map((value) => ({
+        op: "AND" as const,
+        rules: [{ field: "tag" as const, operator: "hasAnyOf" as const, value }],
+      }));
+      return definition;
+    }
+    const tagValues = (definition: Definition) => definition.filter.groups.map((g) => g.rules[0].value);
+
+    describe("strict", () => {
+      it("accepts own, inherited and descendant tags", async () => {
+        const own = await newTag(branchA.id, "strict-own");
+        const inherited = await newTag(root.id, "strict-inherited");
+        const below = await newTag(leafA.id, "strict-below");
+        const session = sessionAt(branchA.id, branchA.path);
+        await expect(
+          resolveDefinitionTagsStrict(session, definitionWith([own.id, inherited.id, below.id])),
+        ).resolves.toBeUndefined();
+      });
+
+      it("accepts a definition without tag rules", async () => {
+        await expect(resolveDefinitionTagsStrict(sessionAt(branchA.id, branchA.path), emptyDefinition())).resolves.toBeUndefined();
+      });
+
+      it("rejects a sibling-branch tag", async () => {
+        const sibling = await newTag(branchB.id, "strict-sibling");
+        await expect(
+          resolveDefinitionTagsStrict(sessionAt(branchA.id, branchA.path), definitionWith([sibling.id])),
+        ).rejects.toBeInstanceOf(ValidationError);
+      });
+
+      it("rejects an unknown id and a deleted tag with the same error", async () => {
+        const deleted = await newTag(branchA.id, "strict-gone", { deletedAt: new Date() });
+        const session = sessionAt(branchA.id, branchA.path);
+        const unknown = await resolveDefinitionTagsStrict(session, definitionWith([999_999_999])).catch((e) => e);
+        const gone = await resolveDefinitionTagsStrict(session, definitionWith([deleted.id])).catch((e) => e);
+        expect(unknown).toBeInstanceOf(ValidationError);
+        expect(gone).toBeInstanceOf(ValidationError);
+        expect(gone.message).toBe(unknown.message);
+      });
+
+      it("rejects a tag of another organization with the same error as an unknown id", async () => {
+        const otherOrg = await db.organization.create({ data: { name: "Other Rule Tag Org" } });
+        const otherRoot = await db.group.create({ data: { organizationId: otherOrg.id, depth: 0, name: "Other Root", path: "" } });
+        await db.group.update({ where: { id: otherRoot.id }, data: { path: `${otherRoot.id}/` } });
+        const foreign = await newTag(otherRoot.id, "strict-foreign");
+        const session = sessionAt(branchA.id, branchA.path);
+        const foreignError = await resolveDefinitionTagsStrict(session, definitionWith([foreign.id])).catch((e) => e);
+        const unknownError = await resolveDefinitionTagsStrict(session, definitionWith([999_999_999])).catch((e) => e);
+        expect(foreignError).toBeInstanceOf(ValidationError);
+        expect(foreignError.message).toBe(unknownError.message);
+      });
+
+      it("rejects when one id of several is unusable", async () => {
+        const own = await newTag(branchA.id, "strict-mixed-own");
+        const sibling = await newTag(branchB.id, "strict-mixed-sibling");
+        await expect(
+          resolveDefinitionTagsStrict(sessionAt(branchA.id, branchA.path), definitionWith([own.id, sibling.id])),
+        ).rejects.toBeInstanceOf(ValidationError);
+      });
+    });
+
+    describe("lenient", () => {
+      it("keeps visible tags and reports nothing dropped", async () => {
+        const own = await newTag(branchA.id, "lenient-own");
+        const inherited = await newTag(root.id, "lenient-inherited");
+        const result = await resolveDefinitionTagsLenient(sessionAt(branchA.id, branchA.path), definitionWith([own.id, inherited.id]));
+        expect(result.dropped).toBe(false);
+        expect(tagValues(result.definition)).toEqual([[own.id, inherited.id]]);
+      });
+
+      it("removes unusable ids from a rule and keeps the rest", async () => {
+        const own = await newTag(branchA.id, "lenient-keep");
+        const sibling = await newTag(branchB.id, "lenient-sibling");
+        const deleted = await newTag(branchA.id, "lenient-gone", { deletedAt: new Date() });
+        const result = await resolveDefinitionTagsLenient(
+          sessionAt(branchA.id, branchA.path),
+          definitionWith([own.id, sibling.id, deleted.id, 999_999_999]),
+        );
+        expect(result.dropped).toBe(true);
+        expect(tagValues(result.definition)).toEqual([[own.id]]);
+      });
+
+      it("drops a rule left with no ids, and its group, but keeps other rules", async () => {
+        const gone = await newTag(branchA.id, "lenient-only", { deletedAt: new Date() });
+        const definition = definitionWith([gone.id]);
+        definition.filter.groups.push({ op: "AND", rules: [{ field: "sex", operator: "isAnyOf", value: ["L"] }] });
+        const result = await resolveDefinitionTagsLenient(sessionAt(branchA.id, branchA.path), definition);
+        expect(result.dropped).toBe(true);
+        expect(result.definition.filter.groups).toEqual([{ op: "AND", rules: [{ field: "sex", operator: "isAnyOf", value: ["L"] }] }]);
+      });
+
+      it("does not mutate its input", async () => {
+        const gone = await newTag(branchA.id, "lenient-nomutate", { deletedAt: new Date() });
+        const definition = definitionWith([gone.id]);
+        await resolveDefinitionTagsLenient(sessionAt(branchA.id, branchA.path), definition);
+        expect(tagValues(definition)).toEqual([[gone.id]]);
       });
     });
   });

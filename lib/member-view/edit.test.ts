@@ -34,6 +34,16 @@ describe("describeRule", () => {
       "Grup berada di Desa Menteng, (grup tidak tersedia)",
     );
   });
+
+  it("describes tag rules with the tag labels, flagging unknown tags", () => {
+    const tagLabels = new Map([[4, "fokus"], [5, "prioritas:tinggi"]]);
+    expect(describeRule({ field: "tag", operator: "hasAnyOf", value: [4, 5] }, labels, tagLabels)).toBe(
+      "Tag memiliki salah satu dari fokus, prioritas:tinggi",
+    );
+    expect(describeRule({ field: "tag", operator: "hasNoneOf", value: [4, 9] }, labels, tagLabels)).toBe(
+      "Tag tidak memiliki satu pun dari fokus, (tag tidak tersedia)",
+    );
+  });
 });
 
 describe("initialRuleValue", () => {

@@ -29,6 +29,8 @@ export const OPERATOR_LABELS: Record<Operator, string> = {
   lt: "<",
   lte: "≤",
   inSubtreeOf: "berada di",
+  hasAnyOf: "memiliki salah satu dari",
+  hasNoneOf: "tidak memiliki satu pun dari",
 };
 
 /** Label of one choice value (`AKTIF` → "Aktif", `L` → "Laki-laki"). */
@@ -38,8 +40,8 @@ export function choiceLabel(field: FieldKey, value: string): string {
   return formatEnumLabel(value);
 }
 
-/** One-line description of a rule for a filter chip. `groupLabels` maps group id → name. */
-export function describeRule(rule: Rule, groupLabels: ReadonlyMap<number, string>): string {
+/** One-line description of a rule for a filter chip. `groupLabels` maps group id → name, `tagLabels` tag id → "key" / "key:value". */
+export function describeRule(rule: Rule, groupLabels: ReadonlyMap<number, string>, tagLabels: ReadonlyMap<number, string> = new Map()): string {
   const label = MEMBER_VIEW_FIELDS[rule.field].label;
   const operator = OPERATOR_LABELS[rule.operator];
   const value = rule.value;
@@ -55,6 +57,8 @@ export function describeRule(rule: Rule, groupLabels: ReadonlyMap<number, string
         : `${label} ${operator} ${String(value)}`;
     case "group":
       return `${label} ${operator} ${(value as number[]).map((id) => groupLabels.get(id) ?? "(grup tidak tersedia)").join(", ")}`;
+    case "tag":
+      return `${label} ${operator} ${(value as number[]).map((id) => tagLabels.get(id) ?? "(tag tidak tersedia)").join(", ")}`;
     case "date":
     case "nullableDate":
       if (rule.operator === "isEmpty" || rule.operator === "isNotEmpty") return `${label} ${operator}`;
@@ -80,6 +84,7 @@ export function initialRuleValue(field: FieldKey, operator: Operator): unknown {
     case "age":
       return operator === "between" ? [0, 17] : 0;
     case "group":
+    case "tag":
       return [];
     case "date":
     case "nullableDate":

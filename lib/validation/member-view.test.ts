@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { VIEW_MAX_AGE_BUCKETS, VIEW_MAX_RULES_PER_GROUP, VIEW_MAX_RULE_GROUPS } from "@/lib/constants";
+import { MAX_TAG_FILTER_IDS, VIEW_MAX_AGE_BUCKETS, VIEW_MAX_RULES_PER_GROUP, VIEW_MAX_RULE_GROUPS } from "@/lib/constants";
 import { DEFAULT_MEMBER_COLUMNS } from "@/lib/member/columns";
 import { definitionSchema, emptyDefinition, newViewDefinition, parseDefinitionLenient, ruleSchema, viewNameSchema } from "./member-view";
 
@@ -89,6 +89,39 @@ describe("Fields and operators", () => {
   it("trims text values and rejects blank ones", () => {
     expect(ruleSchema.parse(rule("name", "contains", "  ali  "))).toEqual(rule("name", "contains", "ali"));
     expect(ruleSchema.safeParse(rule("name", "contains", "   ")).success).toBe(false);
+  });
+});
+
+describe("Tag rule", () => {
+  it("accepts has any of / has none of with 1..MAX_TAG_FILTER_IDS unique positive ids", () => {
+    expect(ruleSchema.safeParse(rule("tag", "hasAnyOf", [3, 5])).success).toBe(true);
+    expect(ruleSchema.safeParse(rule("tag", "hasNoneOf", [3])).success).toBe(true);
+    const max = Array.from({ length: MAX_TAG_FILTER_IDS }, (_, i) => i + 1);
+    expect(ruleSchema.safeParse(rule("tag", "hasAnyOf", max)).success).toBe(true);
+    expect(ruleSchema.safeParse(rule("tag", "hasAnyOf", [...max, MAX_TAG_FILTER_IDS + 1])).success).toBe(false);
+  });
+
+  it("rejects other operators, bad values and a missing value", () => {
+    expect(ruleSchema.safeParse(rule("tag", "isAnyOf", [3])).success).toBe(false);
+    expect(ruleSchema.safeParse(rule("tag", "contains", "x")).success).toBe(false);
+    expect(ruleSchema.safeParse(rule("tag", "hasAnyOf")).success).toBe(false);
+    expect(ruleSchema.safeParse(rule("tag", "hasAnyOf", [])).success).toBe(false);
+    expect(ruleSchema.safeParse(rule("tag", "hasAnyOf", [3, 3])).success).toBe(false);
+    expect(ruleSchema.safeParse(rule("tag", "hasAnyOf", [0])).success).toBe(false);
+    expect(ruleSchema.safeParse(rule("tag", "hasAnyOf", [1.5])).success).toBe(false);
+    expect(ruleSchema.safeParse(rule("tag", "hasAnyOf", ["3"])).success).toBe(false);
+    expect(ruleSchema.safeParse(rule("tag", "hasAnyOf", 3)).success).toBe(false);
+  });
+
+  it("rejects sort and group-by on tag", () => {
+    expect(definitionSchema.safeParse({ ...emptyDefinition(), sort: { field: "tag", dir: "asc" } }).success).toBe(false);
+    expect(definitionSchema.safeParse({ ...emptyDefinition(), groupBy: { kind: "property", field: "tag" } }).success).toBe(false);
+  });
+
+  it("falls back to the default sort for a draft sorting by tag", () => {
+    const result = parseDefinitionLenient({ ...emptyDefinition(), sort: { field: "tag", dir: "asc" } });
+    expect(result.definition.sort).toEqual({ field: "name", dir: "asc" });
+    expect(result.warnings).toContain("sort_invalid");
   });
 });
 
