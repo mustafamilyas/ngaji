@@ -32,6 +32,64 @@ describe("MemberDetailPage", () => {
     expect(html).not.toContain("Hapus anggota");
   });
 
+  describe("tags (task 5.3)", () => {
+    const tagData = (groupId: number, key: string, actorId: number, extra: { deletedAt?: Date } = {}) => ({
+      groupId,
+      key,
+      value: null,
+      color: "blue",
+      createdById: actorId,
+      ...extra,
+    });
+
+    async function render(session: ReturnType<typeof sessionFor>, memberId: number) {
+      mockAuthSession(auth, { user: session });
+      return renderToStaticMarkup(
+        await MemberDetailPage({ params: Promise.resolve({ id: String(memberId) }), searchParams: Promise.resolve({}) }),
+      );
+    }
+
+    it("shows the member's visible tags with a picker to a user who can use tags", async () => {
+      const fixture = await buildPageFixture("anggota-detail-tag-picker");
+      const tag = await db.tag.create({ data: tagData(fixture.root.id, "fokus-root", fixture.actorId) });
+      await db.memberTag.create({ data: { memberId: fixture.memberId, tagId: tag.id, createdById: fixture.actorId } });
+
+      const html = await render(sessionFor(fixture.actorId, "USER", fixture.leaf), fixture.memberId);
+      expect(html).toContain("fokus-root");
+      expect(html).toContain("Atur tag");
+    });
+
+    it("shows tags read-only when the user can neither use nor create any", async () => {
+      const fixture = await buildPageFixture("anggota-detail-tag-readonly");
+      const tag = await db.tag.create({ data: tagData(fixture.leaf.id, "binaan-leaf", fixture.actorId) });
+      await db.memberTag.create({ data: { memberId: fixture.memberId, tagId: tag.id, createdById: fixture.actorId } });
+
+      // A USER at the branch sees the leaf's tag (descendant) but may use only the branch's and ancestors' tags.
+      const html = await render(sessionFor(fixture.actorId, "USER", fixture.branch), fixture.memberId);
+      expect(html).toContain("binaan-leaf");
+      expect(html).not.toContain("Atur tag");
+      expect(html).not.toContain("Hapus tag");
+    });
+
+    it("offers the picker to an ADMIN with no usable tags so they can create one", async () => {
+      const fixture = await buildPageFixture("anggota-detail-tag-admin");
+      const html = await render(sessionFor(fixture.actorId, "ADMIN", fixture.leaf), fixture.memberId);
+      expect(html).toContain("Atur tag");
+    });
+
+    it("hides deleted tags and tags from another branch", async () => {
+      const fixture = await buildPageFixture("anggota-detail-tag-hidden");
+      const deleted = await db.tag.create({ data: tagData(fixture.root.id, "sudah-dihapus", fixture.actorId, { deletedAt: new Date() }) });
+      const foreign = await db.tag.create({ data: tagData(fixture.otherLeaf.id, "cabang-lain", fixture.actorId) });
+      await db.memberTag.create({ data: { memberId: fixture.memberId, tagId: deleted.id, createdById: fixture.actorId } });
+      await db.memberTag.create({ data: { memberId: fixture.memberId, tagId: foreign.id, createdById: fixture.actorId } });
+
+      const html = await render(sessionFor(fixture.actorId, "USER", fixture.leaf), fixture.memberId);
+      expect(html).not.toContain("sudah-dihapus");
+      expect(html).not.toContain("cabang-lain");
+    });
+  });
+
   it("shows the edit form and delete action on the edit tab", async () => {
     const fixture = await buildPageFixture("anggota-detail-ubah");
     const session = sessionFor(fixture.actorId, "OWNER", fixture.root);

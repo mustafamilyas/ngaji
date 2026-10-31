@@ -112,6 +112,13 @@ describe("TagPicker (task 5.2)", () => {
     expect(actions.detachTagAction).toHaveBeenCalledWith({ kind: "member", id: 10, tagId: 1 });
   });
 
+  it("shows a tag the user cannot use as a chip without a remove button (task 8.5)", () => {
+    setup({ attached: [tag(1, 3, "fokus"), tag(77, 99, "binaan-desa-bawah")] });
+    expect(screen.getByRole("button", { name: "Hapus tag fokus" })).toBeInTheDocument();
+    expect(screen.getByText("binaan-desa-bawah")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Hapus tag binaan-desa-bawah" })).not.toBeInTheDocument();
+  });
+
   it("rolls the chip back and shows the server's message when the action fails", async () => {
     actions.attachTagAction.mockResolvedValue({ ok: false, error: "Satu data maksimal memiliki 20 tag" });
     setup();

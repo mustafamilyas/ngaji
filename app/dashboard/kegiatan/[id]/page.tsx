@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { EntityTags } from "@/components/tags/entity-tags";
 import { scheduleLabel, WEEKDAY_LABELS } from "@/lib/activity/labels";
 import { toActivityTemplate } from "@/lib/activity/template";
 import { occurrencesFor } from "@/lib/activity/occurrences";
@@ -37,6 +38,7 @@ import { NotFoundError } from "@/lib/errors";
 import { formatDate, parsePage, resolveDateRange } from "@/lib/filters";
 import { pageHref, paginate } from "@/lib/pagination";
 import { resolveActivity } from "@/lib/resolve";
+import { loadEntityTags } from "@/lib/tag/entity";
 import { isInScope } from "@/lib/scope";
 import { activityAttendanceSummary } from "@/lib/stats";
 import { parseTab, tabHref } from "@/lib/tabs";
@@ -81,7 +83,10 @@ export default async function ActivityDetailPage({
 
   const now = today(session.user.timeZone);
   const scheduleTo = addDays(now, CONFLICT_HORIZON_DAYS);
-  const rows = await loadOccurrenceRows(activity.id, now, scheduleTo);
+  const [rows, entityTags] = await Promise.all([
+    loadOccurrenceRows(activity.id, now, scheduleTo),
+    loadEntityTags(session.user, { kind: "activity", id: activity.id }),
+  ]);
   const occurrences = occurrencesFor(toActivityTemplate(activity), now, scheduleTo, rows);
   const todays = occurrences.find((o) => o.effectiveDate === now && o.status !== "CANCELLED");
   const ended = activity.endsOn !== null && activity.endsOn < now;
@@ -155,6 +160,8 @@ export default async function ActivityDetailPage({
         </p>
       )}
       {activity.notes && <p className="text-sm whitespace-pre-line text-muted-foreground">{activity.notes}</p>}
+
+      <EntityTags {...entityTags} />
 
       <div className="flex flex-col gap-4">
         <TabNav path={path} tabs={tabs} current={tab} defaultTab="absensi" />

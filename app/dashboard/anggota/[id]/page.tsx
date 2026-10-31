@@ -10,6 +10,7 @@ import { TabNav } from "@/components/tab-nav";
 import { buttonVariants } from "@/components/ui/button";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { EntityTags } from "@/components/tags/entity-tags";
 import { WhatsAppButton } from "@/components/whatsapp-button";
 import { attendanceHistoryForMember } from "@/lib/attendance/history";
 import { ageInYears, today } from "@/lib/dates";
@@ -18,6 +19,7 @@ import { formatDate, parsePage } from "@/lib/filters";
 import { groupTrail } from "@/lib/group/trail";
 import { formatEnumLabel, SEX_LABELS } from "@/lib/member/labels";
 import { pageHref } from "@/lib/pagination";
+import { loadEntityTags } from "@/lib/tag/entity";
 import { resolveMember } from "@/lib/resolve";
 import { parseTab, tabHref } from "@/lib/tabs";
 import { cn } from "@/lib/utils";
@@ -62,9 +64,10 @@ export default async function MemberDetailPage({
 
   const tab = parseTab(query.tab, TABS, "profil");
   const path = `/dashboard/anggota/${member.id}`;
-  const [history, trail] = await Promise.all([
+  const [history, trail, entityTags] = await Promise.all([
     attendanceHistoryForMember(member.id, parsePage(query.riwayat)),
     groupTrail(session.user.groupPath, member.group.path),
+    loadEntityTags(session.user, { kind: "member", id: member.id }),
   ]);
   // The leaf and its parent are enough to place a member; the full chain is on the group page.
   const groupCrumbs = trail.slice(-2);
@@ -122,6 +125,8 @@ export default async function MemberDetailPage({
           </>
         }
       />
+
+      <EntityTags {...entityTags} />
 
       <div className="flex flex-col gap-4">
         <TabNav

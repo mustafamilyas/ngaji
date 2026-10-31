@@ -51,6 +51,36 @@ describe("ActivityDetailPage", () => {
     expect(html).toContain("diwarisi dari");
   });
 
+  it("shows the activity's visible tags with a picker, also for a group that only inherits the activity (task 5.3)", async () => {
+    const fixture = await buildPageFixture("kegiatan-detail-tags");
+    const tag = await db.tag.create({
+      data: { groupId: fixture.root.id, key: "fokus-root", value: null, color: "blue", createdById: fixture.actorId },
+    });
+    await db.activityTag.create({ data: { activityId: fixture.activityId, tagId: tag.id, createdById: fixture.actorId } });
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "USER", fixture.leaf) });
+
+    const html = renderToStaticMarkup(
+      await ActivityDetailPage({ params: Promise.resolve({ id: String(fixture.activityId) }), searchParams: Promise.resolve({}) }),
+    );
+    expect(html).toContain("fokus-root");
+    expect(html).toContain("Atur tag");
+  });
+
+  it("shows activity tags read-only when the user can neither use nor create any (task 5.3)", async () => {
+    const fixture = await buildPageFixture("kegiatan-detail-tags-readonly");
+    const tag = await db.tag.create({
+      data: { groupId: fixture.leaf.id, key: "binaan-leaf", value: null, color: "blue", createdById: fixture.actorId },
+    });
+    await db.activityTag.create({ data: { activityId: fixture.activityId, tagId: tag.id, createdById: fixture.actorId } });
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "USER", fixture.branch) });
+
+    const html = renderToStaticMarkup(
+      await ActivityDetailPage({ params: Promise.resolve({ id: String(fixture.activityId) }), searchParams: Promise.resolve({}) }),
+    );
+    expect(html).toContain("binaan-leaf");
+    expect(html).not.toContain("Atur tag");
+  });
+
   it("never renders the settings tab for a caller who cannot edit, even when asked for it", async () => {
     const fixture = await buildPageFixture("kegiatan-detail-inherited-settings");
     const session = sessionFor(fixture.actorId, "OWNER", fixture.root);

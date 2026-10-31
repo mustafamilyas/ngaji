@@ -63,6 +63,8 @@ export function TagPicker({
   const [tags, applyOptimistic] = useOptimistic(attached, applyChange);
 
   const attachedIds = new Set(tags.map((tag) => tag.id));
+  // Chips of visible but unusable tags (e.g. a descendant group's) stay read-only; the server would answer 403.
+  const usableIds = new Set(options.flatMap((group) => group.tags.map((tag) => tag.id)));
   const parsed = parseTagInput(search);
   const knownLabels = new Set(options.flatMap((group) => group.tags.map(labelOf)));
   const createLabel = canCreate && search.trim() !== "" && parsed.ok && !knownLabels.has(labelOf(parsed)) ? labelOf(parsed) : null;
@@ -131,9 +133,11 @@ export function TagPicker({
         {tags.map((tag) => (
           <li key={tag.id} className="inline-flex max-w-full items-center">
             <TagChip tag={tag} />
-            <Button type="button" variant="ghost" size="icon-sm" aria-label={`Hapus tag ${labelOf(tag)}`} onClick={() => run({ type: "detach", tagId: tag.id }, () => detachTagAction({ ...target, tagId: tag.id }))}>
-              <XIcon aria-hidden />
-            </Button>
+            {usableIds.has(tag.id) && (
+              <Button type="button" variant="ghost" size="icon-sm" aria-label={`Hapus tag ${labelOf(tag)}`} onClick={() => run({ type: "detach", tagId: tag.id }, () => detachTagAction({ ...target, tagId: tag.id }))}>
+                <XIcon aria-hidden />
+              </Button>
+            )}
           </li>
         ))}
       </ul>
