@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, userEvent, waitFor } from "@/lib/test/dom";
+import { act, render, screen, userEvent, waitFor } from "@/lib/test/dom";
 import type { TagOwnerGroup } from "@/lib/tag/list";
 
 const actions = vi.hoisted(() => ({
@@ -245,6 +245,29 @@ describe("TagPicker (task 5.2)", () => {
     await openPicker();
     expect(document.querySelector('[data-slot="popover-content"]')).not.toBeNull();
     expect(document.querySelector('[data-slot="sheet-content"]')).toBeNull();
+  });
+
+  it("lifts the sheet above the on-screen keyboard and shrinks the list (task 8.4)", async () => {
+    stubBrowser(false);
+    vi.stubGlobal("innerHeight", 812);
+    const listeners: Array<() => void> = [];
+    const vv = {
+      height: 812,
+      offsetTop: 0,
+      addEventListener: (_: string, fn: () => void) => listeners.push(fn),
+      removeEventListener: () => {},
+    };
+    vi.stubGlobal("visualViewport", vv);
+    setup();
+    await openPicker();
+    const sheet = document.querySelector<HTMLElement>('[data-slot="sheet-content"]')!;
+    expect(sheet.style.bottom).toBe("0px");
+
+    vv.height = 512; // keyboard of 300px
+    act(() => listeners.forEach((fn) => fn()));
+    expect(sheet.style.bottom).toBe("300px");
+    expect(sheet.style.getPropertyValue("--kb-inset")).toBe("300px");
+    expect(screen.getByRole("combobox").closest("[cmdk-root]")?.className).toContain("var(--kb-inset");
   });
 
   it("gives the sheet a title for screen readers and 44px, 16px controls", async () => {

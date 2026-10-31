@@ -17,7 +17,7 @@ import { parseTagInput } from "@/lib/validation/tag";
 import type { TagTarget } from "@/lib/validation/tag";
 import { TagChip } from "./tag-chip";
 import { useTagOptions } from "./tag-options-context";
-import { TagOverlay } from "./tag-overlay";
+import { TAG_LIST_MAX_H, TagOverlay } from "./tag-overlay";
 
 const labelOf = (tag: Pick<TagSummary, "key" | "value">) => (tag.value === null ? tag.key : `${tag.key}:${tag.value}`);
 
@@ -109,7 +109,7 @@ export function TagPicker({
         : "Belum ada tag yang bisa dipakai.";
 
   const panel = (
-    <Command filter={filterTags} className="max-h-[70dvh] xl:max-h-80">
+    <Command filter={filterTags} className={TAG_LIST_MAX_H}>
       <CommandInput value={search} onValueChange={setSearch} placeholder="Cari atau buat tag (kunci:nilai)" aria-label="Cari tag" />
       <CommandList className="pb-[env(safe-area-inset-bottom)]">
         <CommandEmpty>{emptyText}</CommandEmpty>

@@ -10,7 +10,7 @@ import type { BULK_TAG_OPS } from "@/lib/validation/tag";
 import { useBulkSelection } from "./bulk-selection";
 import { TagChip } from "./tag-chip";
 import { useTagOptions } from "./tag-options-context";
-import { TagOverlay } from "./tag-overlay";
+import { TAG_LIST_MAX_H, TagOverlay } from "./tag-overlay";
 
 type Op = (typeof BULK_TAG_OPS)[number];
 
@@ -102,7 +102,7 @@ function BulkChooser({ op, label, shortLabel }: { op: Op; label: string; shortLa
           </div>
         </div>
       ) : (
-        <Command filter={filterTags} className="max-h-[70dvh] xl:max-h-80">
+        <Command filter={filterTags} className={TAG_LIST_MAX_H}>
           <CommandInput placeholder="Cari tag" aria-label="Cari tag" />
           <CommandList className="pb-[env(safe-area-inset-bottom)]">
             <CommandEmpty>{op === "remove" ? "Tidak ada tag untuk dihapus dari anggota terpilih." : "Tidak ditemukan."}</CommandEmpty>
