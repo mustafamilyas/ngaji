@@ -72,23 +72,23 @@ export function BreakdownSection({
               <caption className="sr-only">Kehadiran menurut {breakdown.label}</caption>
               <thead>
                 <tr className="border-b text-left text-xs text-muted-foreground">
-                  <th scope="col" className="py-2 pr-3 font-medium">{breakdown.label}</th>
-                  <th scope="col" className="px-2 py-2 text-right font-medium">Expected</th>
-                  <th scope="col" className="px-2 py-2 text-right font-medium">Hadir</th>
-                  <th scope="col" className="px-2 py-2 text-right font-medium">Izin</th>
-                  <th scope="col" className="px-2 py-2 text-right font-medium">Tidak hadir</th>
-                  <th scope="col" className="py-2 pl-2 text-right font-medium">% hadir</th>
+                  <th scope="col" className="sticky left-0 bg-background py-2 pr-3 font-medium">{breakdown.label}</th>
+                  <th scope="col" className="px-1.5 py-2 text-right font-medium xl:px-2">Expected</th>
+                  <th scope="col" className="px-1.5 py-2 text-right font-medium xl:px-2">Hadir</th>
+                  <th scope="col" className="px-1.5 py-2 text-right font-medium xl:px-2">Izin</th>
+                  <th scope="col" className="px-1.5 py-2 text-right font-medium xl:px-2">Tidak hadir</th>
+                  <th scope="col" className="py-2 pl-1.5 text-right xl:pl-2 font-medium">% hadir</th>
                 </tr>
               </thead>
               <tbody>
                 {shown.items.map((row) => (
                   <tr key={row.key} className="border-b last:border-0">
-                    <th scope="row" className="min-w-32 py-2 pr-3 text-left font-normal break-words">{row.label}</th>
-                    <td className="px-2 py-2 text-right tabular-nums">{row.expected}</td>
-                    <td className="px-2 py-2 text-right tabular-nums">{row.hadir}</td>
-                    <td className="px-2 py-2 text-right tabular-nums">{row.izin}</td>
-                    <td className="px-2 py-2 text-right tabular-nums">{row.absent}</td>
-                    <td className="py-2 pl-2 text-right tabular-nums text-muted-foreground">{formatPercent(row.percentHadir)}</td>
+                    <th scope="row" className="sticky left-0 min-w-24 bg-background py-2 pr-3 text-left font-normal break-words">{row.label}</th>
+                    <td className="px-1.5 py-2 text-right tabular-nums xl:px-2">{row.expected}</td>
+                    <td className="px-1.5 py-2 text-right tabular-nums xl:px-2">{row.hadir}</td>
+                    <td className="px-1.5 py-2 text-right tabular-nums xl:px-2">{row.izin}</td>
+                    <td className="px-1.5 py-2 text-right tabular-nums xl:px-2">{row.absent}</td>
+                    <td className="py-2 pl-1.5 text-right xl:pl-2 tabular-nums text-muted-foreground">{formatPercent(row.percentHadir)}</td>
                   </tr>
                 ))}
                 {shown.total === 0 && (

@@ -61,6 +61,12 @@ export function buildScenarios(ids: SeedIds): Scenario[] {
       steps: [{ click: { selector: 'section[aria-labelledby="per-tag"] button[aria-label="Pilih tag"]' }, measure: "picker open" }],
     },
     {
+      name: "statistik rincian picker",
+      role: "admin",
+      path: "/dashboard/statistik?tab=kegiatan&rincian=sex",
+      steps: [{ click: { selector: 'button[aria-label^="Rincian menurut"]' }, measure: "picker open" }],
+    },
+    {
       name: "activity list tag picker",
       role: "admin",
       path: "/dashboard/kegiatan",

@@ -30,6 +30,7 @@ describe("buildPageList", () => {
     expect(paths).toContain("/dashboard/statistik?tab=partisipasi");
     expect(paths).toContain("/dashboard/statistik?tab=kegiatan&rincian=sex");
     expect(paths).toContain("/dashboard/kegiatan/7?rincian=age");
+    expect(paths).toContain("/dashboard/statistik?tab=kegiatan&rincian=tag:9");
     expect(paths).toContain("/dashboard/statistik?tab=anggota&tag=9");
     expect(paths).toContain("/dashboard/survei/1/isi");
   });
