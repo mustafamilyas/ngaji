@@ -6,6 +6,14 @@ import { participationPage } from "@/lib/participation/page";
 import type { ParticipationRow } from "@/lib/stats";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+// Link's `scroll` is not rendered to HTML; expose it so the paging behavior can be asserted.
+vi.mock("next/link", () => ({
+  default: ({ href, scroll, children, ...rest }: { href: string; scroll?: boolean; children: React.ReactNode }) => (
+    <a href={href} data-scroll={String(scroll ?? true)} {...rest}>
+      {children}
+    </a>
+  ),
+}));
 
 import { ParticipationTable } from "./participation-table";
 
@@ -107,6 +115,17 @@ describe("ParticipationTable server paging", () => {
     expect(out).toContain("peserta=2");
     expect(out).toContain('aria-label="Urutkan peserta"');
     expect(out.match(/href="\/dashboard\/anggota\/\d+"/g)).toHaveLength(10);
+  });
+
+  it("a full-page list scrolls to the top on a new page, an embedded one keeps the reader's place", () => {
+    const page = participationPage(many, { sort: DEFAULT_PARTICIPATION_SORT, page: 1 });
+    const render = (embedded: boolean) =>
+      renderToStaticMarkup(
+        <ParticipationTable page={page} sort={DEFAULT_PARTICIPATION_SORT} basePath={base} searchParams={{}} embedded={embedded} />,
+      );
+    const pagerLink = (out: string) => out.match(/<a [^>]*aria-label="Halaman berikutnya"[^>]*>/)?.[0] ?? "";
+    expect(pagerLink(render(false))).toContain('data-scroll="true"');
+    expect(pagerLink(render(true))).toContain('data-scroll="false"');
   });
 
   it("shows the empty state when no member matches", () => {

@@ -27,6 +27,8 @@ export type SeedIds = {
   viewId: number | null;
   /** A value of a key–value tag, so Statistik → Anggota can be measured with "Per tag" selected. */
   keyTagId: number | null;
+  /** The bulk-seeded daily activity (scripts/viewport-audit/bulk-seed.ts): its tables have several pages. */
+  pagedActivityId: number | null;
 };
 
 export type AuditPage = { path: string; anonymous: boolean };
@@ -73,6 +75,10 @@ export function buildPageList(ids: SeedIds): AuditPage[] {
   if (ids.surveyId !== null) {
     const base = `/dashboard/survei/${ids.surveyId}`;
     paths.push(base, `${base}?tab=responden`, `${base}?tab=formulir`, `${base}/isi`);
+  }
+  paths.push("/dashboard/statistik?tab=partisipasi&sort=nama&dir=asc&page=2");
+  if (ids.pagedActivityId !== null) {
+    paths.push(`/dashboard/kegiatan/${ids.pagedActivityId}?kejadian=2&peserta=2&ksort=hadir&kdir=desc&psort=nama&pdir=asc`);
   }
   if (ids.viewId !== null) paths.push(`/dashboard/tampilan/${ids.viewId}`);
   if (ids.keyTagId !== null) {

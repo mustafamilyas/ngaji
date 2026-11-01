@@ -369,6 +369,7 @@ function AttendanceTab({
             searchParams={query}
             params={MEMBER_SORT_PARAMS}
             selectLabel="Urutkan peserta"
+            embedded
           />
         </section>
         <BreakdownSection

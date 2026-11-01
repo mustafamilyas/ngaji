@@ -10,6 +10,7 @@ const ids: SeedIds = {
   surveyId: 1,
   viewId: 2,
   keyTagId: 9,
+  pagedActivityId: 11,
 };
 
 describe("buildPageList", () => {
@@ -35,8 +36,14 @@ describe("buildPageList", () => {
     expect(paths).toContain("/dashboard/survei/1/isi");
   });
 
+  it("opens the second page of every server-paginated table, with its sort params", () => {
+    const paths = buildPageList(ids).map((p) => p.path);
+    expect(paths).toContain("/dashboard/statistik?tab=partisipasi&sort=nama&dir=asc&page=2");
+    expect(paths).toContain("/dashboard/kegiatan/11?kejadian=2&peserta=2&ksort=hadir&kdir=desc&psort=nama&pdir=asc");
+  });
+
   it("has no duplicate paths and leaves out pages whose seed id is missing", () => {
-    const paths = buildPageList({ ...ids, attendanceDate: null, viewId: null, keyTagId: null }).map((p) => p.path);
+    const paths = buildPageList({ ...ids, attendanceDate: null, viewId: null, keyTagId: null, pagedActivityId: null }).map((p) => p.path);
     expect(new Set(paths).size).toBe(paths.length);
     expect(paths.some((p) => /kegiatan\/7\/\d{4}-/.test(p))).toBe(false);
     expect(paths.some((p) => p.startsWith("/dashboard/tampilan/") && p !== "/dashboard/tampilan/baru")).toBe(false);

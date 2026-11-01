@@ -36,6 +36,7 @@ export function ParticipationTable({
   searchParams,
   params = DEFAULT_SORT_PARAMS,
   selectLabel,
+  embedded = false,
 }: {
   page: Paginated<ParticipationRow>;
   sort: SortState<ParticipationSortKey>;
@@ -44,6 +45,8 @@ export function ParticipationTable({
   /** Query param names of this table's order and page; a page with a second table gives each its own. */
   params?: SortParams;
   selectLabel?: string;
+  /** In a detail page (not a list of its own): a new page keeps the reader's place instead of scrolling to the top. */
+  embedded?: boolean;
 }) {
   const fallback = DEFAULT_PARTICIPATION_SORT;
   const cell = "flex items-center justify-between gap-3 text-sm md:table-cell md:py-2 md:text-right";
@@ -131,7 +134,7 @@ export function ParticipationTable({
           </tbody>
         </table>
       </div>
-      <Pagination {...page} hrefFor={(target) => pageHref(basePath, searchParams, target, params.page)} scroll={false} />
+      <Pagination {...page} hrefFor={(target) => pageHref(basePath, searchParams, target, params.page)} scroll={!embedded} />
     </div>
   );
 }

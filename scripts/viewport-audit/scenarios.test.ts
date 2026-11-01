@@ -12,6 +12,7 @@ const ids: SeedIds = {
   surveyId: 1,
   viewId: 2,
   keyTagId: 9,
+  pagedActivityId: 11,
 };
 
 describe("buildScenarios", () => {

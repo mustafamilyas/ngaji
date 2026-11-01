@@ -5,6 +5,7 @@ import { join } from "node:path";
 import Database from "better-sqlite3";
 import type { Role } from "./args";
 import { freePort, sleep } from "./cdp";
+import { BULK_ACTIVITY_NAME } from "./bulk-activity";
 import type { SeedIds } from "./pages";
 
 /** Seeded accounts from prisma/seed.ts (test data only). */
@@ -48,6 +49,7 @@ function readSeedIds(dbPath: string): SeedIds {
       attendanceDate: attendance?.date ?? null,
       surveyId: one("SELECT id FROM Survey WHERE deletedAt IS NULL ORDER BY id LIMIT 1") as number | null,
       viewId: one("SELECT id FROM MemberView WHERE deletedAt IS NULL ORDER BY id LIMIT 1") as number | null,
+      pagedActivityId: one("SELECT id FROM Activity WHERE name = ? AND deletedAt IS NULL", BULK_ACTIVITY_NAME) as number | null,
       keyTagId: one("SELECT id FROM Tag WHERE value IS NOT NULL AND deletedAt IS NULL ORDER BY id LIMIT 1") as number | null,
     };
   } finally {
@@ -64,7 +66,7 @@ export type ScratchDatabase = {
 };
 
 /**
- * Creates a throwaway database (migrate + seed) in a temp folder and clears the forced password change
+ * Creates a throwaway database (migrate + seed + bulk rows for paged tables) in a temp folder and clears the forced password change
  * on the seeded accounts. Shared by the viewport audit and `pnpm dev:scratch`; never touches prisma/dev.db.
  */
 export function prepareScratchDatabase(prefix = "dahan-scratch-"): ScratchDatabase {
@@ -76,6 +78,8 @@ export function prepareScratchDatabase(prefix = "dahan-scratch-"): ScratchDataba
   console.error("Preparing scratch database (migrate + seed)...");
   run(["prisma", "migrate", "deploy"], env);
   run(["prisma", "db", "seed"], env);
+  // Every server-paginated table needs more than one page to be checked on a phone.
+  run(["tsx", "scripts/viewport-audit/bulk-seed.ts"], env);
 
   const writable = new Database(dbPath);
   writable.prepare("UPDATE User SET mustChangePassword = 0").run();
