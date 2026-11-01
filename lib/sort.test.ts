@@ -3,7 +3,9 @@ import {
   compareValues,
   DEFAULT_OCCURRENCE_SORT,
   DEFAULT_PARTICIPATION_SORT,
+  MEMBER_SORT_PARAMS,
   OCCURRENCE_SORT_KEYS,
+  OCCURRENCE_SORT_PARAMS,
   PARTICIPATION_SORT_KEYS,
   parseSort,
   sortHref,
@@ -154,5 +156,12 @@ describe("hostile sort params", () => {
     expect(parseSort({ sort: "nama" }, OCCURRENCE_SORT_KEYS, DEFAULT_OCCURRENCE_SORT)).toEqual(DEFAULT_OCCURRENCE_SORT);
     expect(parseSort({ sort: "tanggal" }, PARTICIPATION_SORT_KEYS, DEFAULT_PARTICIPATION_SORT)).toEqual(DEFAULT_PARTICIPATION_SORT);
     expect(parseSort({ sort: "__proto__", dir: "desc" }, PARTICIPATION_SORT_KEYS, DEFAULT_PARTICIPATION_SORT)).toEqual(DEFAULT_PARTICIPATION_SORT);
+  });
+});
+
+describe("per-table param names on the activity Absensi tab", () => {
+  it("are distinct from each other and from the defaults, and page params match the table", () => {
+    expect(OCCURRENCE_SORT_PARAMS).toEqual({ sort: "ksort", dir: "kdir", page: "kejadian" });
+    expect(MEMBER_SORT_PARAMS).toEqual({ sort: "psort", dir: "pdir", page: "peserta" });
   });
 });

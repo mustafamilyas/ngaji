@@ -14,6 +14,9 @@ type Params = Record<string, string | string[] | undefined>;
  */
 export type SortParams = { sort: string; dir: string; page: string };
 export const DEFAULT_SORT_PARAMS: SortParams = { sort: "sort", dir: "dir", page: "page" };
+/** The two tables on the activity Absensi tab (per occurrence, per member) each keep their own order and page. */
+export const OCCURRENCE_SORT_PARAMS: SortParams = { sort: "ksort", dir: "kdir", page: "kejadian" };
+export const MEMBER_SORT_PARAMS: SortParams = { sort: "psort", dir: "pdir", page: "peserta" };
 
 export function parseSort<K extends string>(
   params: Params,

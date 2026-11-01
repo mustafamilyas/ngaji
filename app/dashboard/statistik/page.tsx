@@ -13,6 +13,8 @@ import { today } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
 import { breakdownParam, formatDateRange, parseBreakdown, parseGroupIds, parsePage, parseSearch, parseTagId, resolveDateRange } from "@/lib/filters";
 import { resolveBreakdown } from "@/lib/summary/breakdown";
+import { participationPage } from "@/lib/participation/page";
+import { DEFAULT_PARTICIPATION_SORT, PARTICIPATION_SORT_KEYS, parseSort, sortPreserve } from "@/lib/sort";
 import { parseTab } from "@/lib/tabs";
 import { tagChoices } from "@/lib/tag/choices";
 import { loadTagOptions } from "@/lib/tag/entity";
@@ -49,6 +51,7 @@ export default async function StatisticsPage({
   // Statistics are computed for one scope group (breakdowns are per direct sub-group), so only the first id counts.
   const grup = parseGroupIds(params.grup)?.[0];
   const q = tab === "partisipasi" ? parseSearch(params.q) : undefined;
+  const participationSort = parseSort(params, PARTICIPATION_SORT_KEYS, DEFAULT_PARTICIPATION_SORT);
 
   const groups = await db.group.findMany({
     where: visibleGroupsWhere(session.user),
@@ -77,7 +80,7 @@ export default async function StatisticsPage({
   let data:
     | { tab: "anggota"; stats: Awaited<ReturnType<typeof memberStatistics>> }
     | { tab: "kegiatan"; stats: Awaited<ReturnType<typeof activityStatistics>> }
-    | { tab: "partisipasi"; rows: Awaited<ReturnType<typeof participationStatistics>> };
+    | { tab: "partisipasi"; page: ReturnType<typeof participationPage> };
   try {
     if (tab === "anggota") {
       data = { tab, stats: await memberStatistics(session.user, grup, { tagId: parseTagId(params.tag) }) };
@@ -89,8 +92,7 @@ export default async function StatisticsPage({
       data = { tab, stats: await activityStatistics(session.user, { from, to, groupId: grup, breakdown }) };
     } else {
       const rows = await participationStatistics(session.user, { from, to, groupId: grup });
-      const needle = q?.toLocaleLowerCase("id-ID");
-      data = { tab, rows: needle ? rows.filter((r) => r.memberName.toLocaleLowerCase("id-ID").includes(needle)) : rows };
+      data = { tab, page: participationPage(rows, { sort: participationSort, page: parsePage(params.page), q }) };
     }
   } catch (error) {
     if (error instanceof NotFoundError) notFound();
@@ -126,7 +128,7 @@ export default async function StatisticsPage({
         />
       </div>
     ) : (
-      <ParticipationTable rows={data.rows} />
+      <ParticipationTable page={data.page} sort={participationSort} basePath="/dashboard/statistik" searchParams={{ ...params, tab }} />
     );
 
   return (
@@ -157,6 +159,8 @@ export default async function StatisticsPage({
             ...(tab === "anggota" ? rangeParams : {}),
             // The breakdown choice survives a range or group change.
             ...(tab === "kegiatan" && rincian ? { rincian } : {}),
+            // A filter change keeps the chosen order (and, because `page` is not preserved, starts at page 1).
+            ...(tab === "partisipasi" ? sortPreserve(participationSort, DEFAULT_PARTICIPATION_SORT) : {}),
           }}
           isFiltered={Boolean(grup || q || (tab !== "anggota" && rangeFiltered))}
           resetHref={`/dashboard/statistik?tab=${tab}`}

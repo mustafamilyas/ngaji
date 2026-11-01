@@ -1,14 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { ParticipationTable } from "@/app/dashboard/statistik/participation-table";
-import { Pagination } from "@/components/pagination";
-import { EMBEDDED_PAGE_SIZE } from "@/lib/constants";
-import { paginate } from "@/lib/pagination";
-import type { ActivityAttendanceSummary } from "@/lib/stats";
-import { cn } from "@/lib/utils";
 
 const tooltipStyle = { fontSize: 12, background: "var(--popover, white)", border: "1px solid var(--border)" };
 
@@ -17,13 +9,6 @@ const TONE_CLASS = {
   warning: "text-amber-700 dark:text-amber-400",
   critical: "text-destructive",
 } as const;
-
-// Below md the table markup is laid out as one card per occurrence: date and action on the first line, then the numbers two per row.
-const statCell = "flex items-center justify-between gap-3 text-sm md:table-cell md:py-2 md:pr-2 md:text-right";
-
-function PhoneLabel({ children }: { children: React.ReactNode }) {
-  return <span className="shrink-0 text-xs text-muted-foreground md:hidden">{children}</span>;
-}
 
 function StatTile({
   label,
@@ -42,39 +27,24 @@ function StatTile({
   );
 }
 
+export type AttendanceTotals = { occurrenceCount: number; hadir: number; izin: number; absent: number; percentHadir: number };
+
 /**
- * Attendance for one activity's own detail page, split in three per
- * DESIGN.md §6 narrowed to one activity: the whole-activity aggregate
- * (metric tiles + % hadir trend line chart), the single-occurrence
- * breakdown (table, with a link into each occurrence to record/adjust it),
- * and the per-member "who is actually attending" drill-down.
+ * Whole-activity aggregate of the Absensi tab (metric tiles + % hadir trend line chart). Only totals and trend
+ * points cross to the browser: the per-occurrence and per-member tables are rendered on the server, one page each.
  */
 export function ActivityAttendanceChart({
-  summary,
   from,
   to,
-  activityId,
-  canRecord,
+  totals,
+  trend,
 }: {
-  summary: ActivityAttendanceSummary;
   from: string;
   to: string;
-  activityId: number;
-  canRecord: boolean;
+  totals: AttendanceTotals;
+  /** Oldest first. */
+  trend: { date: string; percentHadir: number }[];
 }) {
-  const [occurrencePage, setOccurrencePage] = useState(1);
-  const [prevSummary, setPrevSummary] = useState(summary);
-  if (summary !== prevSummary) {
-    setPrevSummary(summary);
-    setOccurrencePage(1);
-  }
-  const visibleOccurrences = paginate(summary.occurrences, occurrencePage, EMBEDDED_PAGE_SIZE);
-
-  const totalAbsent = summary.totalExpected - summary.totalHadir - summary.totalIzin;
-  const trend = [...summary.occurrences]
-    .reverse()
-    .map((o) => ({ date: o.effectiveDate, percentHadir: o.percentHadir }));
-
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -82,14 +52,14 @@ export function ActivityAttendanceChart({
           Ringkasan ({from} – {to})
         </h3>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <StatTile label="Occurrence" value={summary.occurrences.length} />
-          <StatTile label="Hadir" value={summary.totalHadir} tone="good" />
-          <StatTile label="Izin" value={summary.totalIzin} tone="warning" />
-          <StatTile label="Tidak hadir" value={totalAbsent} tone="critical" />
+          <StatTile label="Occurrence" value={totals.occurrenceCount} />
+          <StatTile label="Hadir" value={totals.hadir} tone="good" />
+          <StatTile label="Izin" value={totals.izin} tone="warning" />
+          <StatTile label="Tidak hadir" value={totals.absent} tone="critical" />
         </div>
         <div className="mt-2 rounded-md border p-4">
           <p className="text-xs text-muted-foreground">% hadir keseluruhan</p>
-          <p className="text-3xl font-semibold">{summary.percentHadir}%</p>
+          <p className="text-3xl font-semibold">{totals.percentHadir}%</p>
         </div>
       </div>
 
@@ -114,78 +84,6 @@ export function ActivityAttendanceChart({
           </ResponsiveContainer>
         </div>
       )}
-
-      <div>
-        <h3 className="mb-2 text-sm font-medium">Per occurrence</h3>
-        <div className="relative overflow-x-auto">
-          <table className="block w-full text-sm md:table">
-            <thead className="hidden md:table-header-group">
-              <tr className="border-b text-left text-xs whitespace-nowrap text-muted-foreground">
-                <th className="py-2 pr-2">Tanggal</th>
-                <th className="py-2 pr-2 text-right">Hadir</th>
-                <th className="py-2 pr-2 text-right">Izin</th>
-                <th className="py-2 pr-2 text-right">Tidak hadir</th>
-                <th className="py-2 pr-2 text-right">Expected</th>
-                <th className="py-2 pr-2 text-right">% Hadir</th>
-                <th className="py-2 pl-2 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="block md:table-row-group">
-              {visibleOccurrences.items.map((o) => (
-                <tr
-                  key={o.key}
-                  className="grid grid-cols-2 items-center gap-x-4 gap-y-1 border-b py-3 last:border-0 md:table-row md:p-0"
-                >
-                  <td className="block font-medium md:table-cell md:py-2 md:pr-2 md:font-normal md:whitespace-nowrap">
-                    {o.effectiveDate}
-                  </td>
-                  <td className={cn(statCell, "col-span-1")}>
-                    <PhoneLabel>Hadir</PhoneLabel>
-                    {o.hadir}
-                  </td>
-                  <td className={statCell}>
-                    <PhoneLabel>Izin</PhoneLabel>
-                    {o.izin}
-                  </td>
-                  <td className={statCell}>
-                    <PhoneLabel>Tidak hadir</PhoneLabel>
-                    {o.absent}
-                  </td>
-                  <td className={statCell}>
-                    <PhoneLabel>Expected</PhoneLabel>
-                    {o.expected}
-                  </td>
-                  <td className={statCell}>
-                    <PhoneLabel>% Hadir</PhoneLabel>
-                    {o.percentHadir}%
-                  </td>
-                  <td className="col-start-2 row-start-1 text-right md:table-cell md:py-2 md:pl-2">
-                    <Link
-                      href={`/dashboard/kegiatan/${activityId}/${o.key}`}
-                      className="inline-flex min-h-11 items-center text-base text-primary hover:underline xl:min-h-0 xl:text-xs"
-                    >
-                      {canRecord ? (o.hadir + o.izin > 0 ? "Ubah absensi" : "Isi absensi") : "Lihat"}
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-              {summary.occurrences.length === 0 && (
-                <tr className="block md:table-row">
-                  <td colSpan={7} className="block py-4 text-center text-muted-foreground md:table-cell">
-                    Belum ada riwayat absensi pada rentang ini.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        <Pagination {...visibleOccurrences} onPageChange={setOccurrencePage} className="mt-3" />
-      </div>
-
-      <div>
-        <h3 className="mb-2 text-sm font-medium">Siapa yang hadir</h3>
-        <ParticipationTable rows={summary.participation} pageSize={EMBEDDED_PAGE_SIZE} />
-      </div>
     </div>
   );
 }

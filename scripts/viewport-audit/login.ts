@@ -17,7 +17,8 @@ export async function login(cdp: Cdp, baseUrl: string, role: Role) {
     set('password', ${JSON.stringify(password)});
     document.querySelector('form').requestSubmit();
   })()`);
-  for (let attempt = 0; attempt < 40; attempt++) {
+  // The first /dashboard hit compiles on demand (dev server), which on a busy machine takes well over 10s.
+  for (let attempt = 0; attempt < 180; attempt++) {
     await sleep(250);
     if ((await cdp.evaluate<string>("location.pathname")).startsWith("/dashboard")) return;
   }

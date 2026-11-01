@@ -165,4 +165,37 @@ describe("ActivityDetailPage", () => {
       expect(html).not.toContain("Berdasarkan data anggota saat ini.");
     });
   });
+
+  describe("server-paginated tables (tasks 7.2-7.3)", () => {
+    async function render(label: string, searchParams: Record<string, string>) {
+      const fixture = await buildPageFixture(label);
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "OWNER", fixture.leaf) });
+      return renderToStaticMarkup(
+        await ActivityDetailPage({
+          params: Promise.resolve({ id: String(fixture.activityId) }),
+          searchParams: Promise.resolve(searchParams),
+        }),
+      );
+    }
+
+    it("shows both tables with their own sort selects", async () => {
+      const html = await render("kegiatan-tables-default", {});
+      expect(html).toContain('aria-label="Urutkan kejadian"');
+      expect(html).toContain('aria-label="Urutkan peserta"');
+    });
+
+    it("ignores unknown sort keys and clamps pages far past the end", async () => {
+      const html = await render("kegiatan-tables-hostile", {
+        ksort: "phone",
+        psort: "__proto__",
+        pdir: "sideways",
+        kejadian: "999",
+        peserta: "-4",
+      });
+      expect(html).toContain('aria-label="Urutkan kejadian"');
+      // The default orders stay active: newest occurrence first, highest % hadir first.
+      expect(html).toMatch(/aria-sort="descending"[^>]*><a [^>]*>Tanggal/);
+      expect(html).toMatch(/aria-sort="descending"[^>]*><a [^>]*>% Hadir/);
+    });
+  });
 });

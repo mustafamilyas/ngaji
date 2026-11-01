@@ -38,6 +38,18 @@ import { addDays, today, weekdayOf } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
 import { breakdownParam, formatDate, parseBreakdown, parsePage, resolveDateRange } from "@/lib/filters";
 import { pageHref, paginate } from "@/lib/pagination";
+import { participationPage } from "@/lib/participation/page";
+import {
+  DEFAULT_OCCURRENCE_SORT,
+  DEFAULT_PARTICIPATION_SORT,
+  MEMBER_SORT_PARAMS,
+  OCCURRENCE_SORT_KEYS,
+  OCCURRENCE_SORT_PARAMS,
+  PARTICIPATION_SORT_KEYS,
+  parseSort,
+  sortOccurrences,
+  sortPreserve,
+} from "@/lib/sort";
 import { resolveActivity } from "@/lib/resolve";
 import { tagChoices } from "@/lib/tag/choices";
 import { loadEntityTags, loadTagOptions } from "@/lib/tag/entity";
@@ -48,7 +60,9 @@ import { activityAttendanceSummary } from "@/lib/stats";
 import { parseTab, tabHref } from "@/lib/tabs";
 import { cn } from "@/lib/utils";
 import { ActivityForm } from "../activity-form";
+import { ParticipationTable } from "@/app/dashboard/statistik/participation-table";
 import { ActivityAttendanceChart } from "./attendance-chart";
+import { OccurrenceTable } from "./occurrence-table";
 import { DeleteActivityForm } from "./delete-activity-form";
 import { EndActivityForm } from "./end-activity-form";
 import { OccurrenceOverrideDialog } from "./occurrence-override-dialog";
@@ -284,6 +298,21 @@ function AttendanceTab({
 }) {
   const path = `/dashboard/kegiatan/${activityId}`;
 
+  const occurrenceSort = parseSort(query, OCCURRENCE_SORT_KEYS, DEFAULT_OCCURRENCE_SORT, OCCURRENCE_SORT_PARAMS);
+  const memberSort = parseSort(query, PARTICIPATION_SORT_KEYS, DEFAULT_PARTICIPATION_SORT, MEMBER_SORT_PARAMS);
+  const occurrencePage = paginate(
+    sortOccurrences(summary.occurrences, occurrenceSort),
+    parsePage(query[OCCURRENCE_SORT_PARAMS.page]),
+    EMBEDDED_PAGE_SIZE,
+  );
+  const memberPage = participationPage(summary.participation, {
+    sort: memberSort,
+    page: parsePage(query[MEMBER_SORT_PARAMS.page]),
+    pageSize: EMBEDDED_PAGE_SIZE,
+  });
+  // `summary.occurrences` is newest first; the trend reads oldest first.
+  const trend = [...summary.occurrences].reverse().map((o) => ({ date: o.effectiveDate, percentHadir: o.percentHadir }));
+
   return (
     <Card>
       <CardHeader>
@@ -293,19 +322,55 @@ function AttendanceTab({
       <CardContent className="flex flex-col gap-4">
         <FilterBar
           action={path}
-          preserve={rincian ? { rincian } : undefined}
+          preserve={{
+            ...(rincian ? { rincian } : {}),
+            // A range change keeps both tables' order; their pages are not preserved, so each starts at page 1.
+            ...sortPreserve(occurrenceSort, DEFAULT_OCCURRENCE_SORT, OCCURRENCE_SORT_PARAMS),
+            ...sortPreserve(memberSort, DEFAULT_PARTICIPATION_SORT, MEMBER_SORT_PARAMS),
+          }}
           isFiltered={statsRange.mode !== STATS_DATE_RANGE.defaultMode || statsRange.anchor !== now}
           resetHref={path}
         >
           <DateRangeFilter range={statsRange} {...STATS_DATE_RANGE} today={now} />
         </FilterBar>
         <ActivityAttendanceChart
-          summary={summary}
           from={statsFrom}
           to={statsTo}
-          activityId={activityId}
-          canRecord={canRecord}
+          totals={{
+            occurrenceCount: summary.occurrences.length,
+            hadir: summary.totalHadir,
+            izin: summary.totalIzin,
+            absent: summary.totalExpected - summary.totalHadir - summary.totalIzin,
+            percentHadir: summary.percentHadir,
+          }}
+          trend={trend}
         />
+        <section aria-labelledby="per-occurrence" className="flex min-w-0 flex-col gap-2">
+          <h3 id="per-occurrence" className="text-sm font-medium">
+            Per occurrence
+          </h3>
+          <OccurrenceTable
+            page={occurrencePage}
+            sort={occurrenceSort}
+            activityId={activityId}
+            canRecord={canRecord}
+            basePath={path}
+            searchParams={query}
+          />
+        </section>
+        <section aria-labelledby="siapa-hadir" className="flex min-w-0 flex-col gap-2">
+          <h3 id="siapa-hadir" className="text-sm font-medium">
+            Siapa yang hadir
+          </h3>
+          <ParticipationTable
+            page={memberPage}
+            sort={memberSort}
+            basePath={path}
+            searchParams={query}
+            params={MEMBER_SORT_PARAMS}
+            selectLabel="Urutkan peserta"
+          />
+        </section>
         <BreakdownSection
           choices={choices}
           breakdown={summary.breakdown}
