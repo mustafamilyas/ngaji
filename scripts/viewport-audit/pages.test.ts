@@ -9,6 +9,7 @@ const ids: SeedIds = {
   attendanceDate: "2026-10-04",
   surveyId: 1,
   viewId: 2,
+  keyTagId: 9,
 };
 
 describe("buildPageList", () => {
@@ -27,14 +28,16 @@ describe("buildPageList", () => {
     expect(paths).toContain("/dashboard/grup/3?tab=subgrup");
     expect(paths).toContain("/dashboard/grup/3?tab=tag");
     expect(paths).toContain("/dashboard/statistik?tab=partisipasi");
+    expect(paths).toContain("/dashboard/statistik?tab=anggota&tag=9");
     expect(paths).toContain("/dashboard/survei/1/isi");
   });
 
   it("has no duplicate paths and leaves out pages whose seed id is missing", () => {
-    const paths = buildPageList({ ...ids, attendanceDate: null, viewId: null }).map((p) => p.path);
+    const paths = buildPageList({ ...ids, attendanceDate: null, viewId: null, keyTagId: null }).map((p) => p.path);
     expect(new Set(paths).size).toBe(paths.length);
     expect(paths.some((p) => /kegiatan\/7\/\d{4}-/.test(p))).toBe(false);
     expect(paths.some((p) => p.startsWith("/dashboard/tampilan/") && p !== "/dashboard/tampilan/baru")).toBe(false);
+    expect(paths.some((p) => p.includes("&tag="))).toBe(false);
   });
 });
 

@@ -8,6 +8,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { filterTriggerClass } from "@/components/filters/filter-bar";
 import { SUMMARY_MAX_BARS } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 import type { TagBreakdown } from "@/lib/stats";
 import { selectedChoice, type TagChoiceGroup } from "@/lib/tag/choices";
 import { SummaryChart } from "../tampilan/summary-chart";
@@ -63,12 +64,13 @@ export function TagBreakdownCard({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 id="per-tag" className="text-sm font-medium">Per tag</h3>
         {hasChoices && (
-          <div className="flex min-w-0 items-center gap-1">
+          <div className="flex min-w-0 max-w-full items-center gap-1">
             <Popover open={open} onOpenChange={setOpen}>
-              <PopoverTrigger className={filterTriggerClass(Boolean(selected))} aria-label={selected ? `Tag: ${selected.label}` : "Pilih tag"}>
-                <TagIcon className="size-4 text-muted-foreground" aria-hidden />
-                <span className="max-w-56 truncate">{selected ? selected.label : "Pilih tag"}</span>
-                <ChevronDown className="size-4 text-muted-foreground" aria-hidden />
+              {/* min-w-0 lets a long key shrink (ellipsis) so the clear button never leaves the card on a phone. */}
+              <PopoverTrigger className={cn(filterTriggerClass(Boolean(selected)), "min-w-0")} aria-label={selected ? `Tag: ${selected.label}` : "Pilih tag"}>
+                <TagIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                <span className="min-w-0 max-w-56 truncate">{selected ? selected.label : "Pilih tag"}</span>
+                <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden />
               </PopoverTrigger>
               <PopoverContent
                 className="flex w-[min(22rem,calc(100vw-24px))] flex-col"

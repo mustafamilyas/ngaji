@@ -11,6 +11,7 @@ const ids: SeedIds = {
   attendanceDate: "2026-10-04",
   surveyId: 1,
   viewId: 2,
+  keyTagId: 9,
 };
 
 describe("buildScenarios", () => {

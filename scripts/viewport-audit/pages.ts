@@ -25,6 +25,8 @@ export type SeedIds = {
   attendanceDate: string | null;
   surveyId: number | null;
   viewId: number | null;
+  /** A value of a key–value tag, so Statistik → Anggota can be measured with "Per tag" selected. */
+  keyTagId: number | null;
 };
 
 export type AuditPage = { path: string; anonymous: boolean };
@@ -72,6 +74,7 @@ export function buildPageList(ids: SeedIds): AuditPage[] {
     paths.push(base, `${base}?tab=responden`, `${base}?tab=formulir`, `${base}/isi`);
   }
   if (ids.viewId !== null) paths.push(`/dashboard/tampilan/${ids.viewId}`);
+  if (ids.keyTagId !== null) paths.push(`/dashboard/statistik?tab=anggota&tag=${ids.keyTagId}`);
 
   return [...anonymous, ...[...new Set(paths)].map((path) => ({ path, anonymous: false }))];
 }

@@ -55,6 +55,12 @@ export function buildScenarios(ids: SeedIds): Scenario[] {
       steps: [{ click: { selector: '[data-slot="tag-filter"]' }, measure: "filter open" }],
     },
     {
+      name: "statistik per tag picker",
+      role: "admin",
+      path: "/dashboard/statistik?tab=anggota",
+      steps: [{ click: { selector: 'section[aria-labelledby="per-tag"] button[aria-label="Pilih tag"]' }, measure: "picker open" }],
+    },
+    {
       name: "activity list tag picker",
       role: "admin",
       path: "/dashboard/kegiatan",

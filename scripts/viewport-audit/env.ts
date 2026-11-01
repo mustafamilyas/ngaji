@@ -48,6 +48,7 @@ function readSeedIds(dbPath: string): SeedIds {
       attendanceDate: attendance?.date ?? null,
       surveyId: one("SELECT id FROM Survey WHERE deletedAt IS NULL ORDER BY id LIMIT 1") as number | null,
       viewId: one("SELECT id FROM MemberView WHERE deletedAt IS NULL ORDER BY id LIMIT 1") as number | null,
+      keyTagId: one("SELECT id FROM Tag WHERE value IS NOT NULL AND deletedAt IS NULL ORDER BY id LIMIT 1") as number | null,
     };
   } finally {
     db.close();
