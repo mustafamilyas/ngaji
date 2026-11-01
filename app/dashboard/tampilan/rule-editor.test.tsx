@@ -5,9 +5,9 @@ import type { RuleGroup } from "@/lib/validation/member-view";
 import { RuleGroupEditor } from "./rule-editor";
 
 const tags = [
-  { id: 1, label: "binaan" },
-  { id: 2, label: "fokus" },
-  { id: 3, label: "prioritas:tinggi" },
+  { id: 1, label: "binaan", key: "binaan", value: null, groupId: 1 },
+  { id: 2, label: "fokus", key: "fokus", value: null, groupId: 1 },
+  { id: 3, label: "prioritas:tinggi", key: "prioritas", value: "tinggi", groupId: 1 },
 ];
 
 const statusGroup: RuleGroup = { op: "AND", rules: [{ field: "status", operator: "isAnyOf", value: ["AKTIF"] }] };

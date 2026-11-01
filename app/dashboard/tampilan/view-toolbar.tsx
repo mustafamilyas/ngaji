@@ -147,7 +147,7 @@ export function ViewToolbar({
         </Button>
 
         <div className="ml-auto">
-          <ViewMenu definition={definition} levels={options.levels} onChange={apply} />
+          <ViewMenu definition={definition} levels={options.levels} tags={options.tags} onChange={apply} />
         </div>
       </div>
 

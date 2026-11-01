@@ -15,11 +15,14 @@ import { listViewMembers } from "@/lib/member-view/results";
 import { loadViewDefinition, type LoadedView } from "@/lib/member-view/load";
 import type { SessionUser } from "@/lib/auth/session-user";
 import { listViewSections } from "@/lib/member-view/sections";
+import { computeSummaries } from "@/lib/member-view/summaries";
+import { VIEW_MAX_SUMMARIES } from "@/lib/constants";
 import { pageHref } from "@/lib/pagination";
 import { DeleteViewButton } from "./delete-view-button";
 import { ViewActions } from "./view-actions";
 import { ViewToolbar } from "./view-toolbar";
 import { ViewSections } from "./view-sections";
+import { SummaryCards, summaryPageParam } from "./summary-cards";
 import { ViewMembersTable, type ViewMemberRow } from "./view-table";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -71,7 +74,15 @@ export async function ViewPage({ viewId, searchParams }: { viewId: number | null
     ? null
     : await listViewMembers(session.user, definition, { page: parsePage(searchParams.page), today: asOf });
 
-  const dropped = warnings.length > 0 || Boolean(sectionResult?.dropped) || Boolean(flat?.dropped);
+  const summaryPages = Object.fromEntries(
+    Array.from({ length: VIEW_MAX_SUMMARIES }, (_, i) => [i, parsePage(searchParams[summaryPageParam(i)])]),
+  );
+  const summaries = definition.summaries?.length
+    ? await computeSummaries(session.user, definition, { today: asOf, pages: summaryPages })
+    : null;
+
+  const dropped =
+    warnings.length > 0 || Boolean(sectionResult?.dropped) || Boolean(flat?.dropped) || Boolean(summaries?.dropped);
   const levelInvalid = sectionResult && !sectionResult.grouped && sectionResult.levelInvalid;
   const total = grouped ? grouped.sections.reduce((sum, s) => sum + s.count, 0) : flat!.total;
 
@@ -107,6 +118,8 @@ export async function ViewPage({ viewId, searchParams }: { viewId: number | null
       {draftUnreadable && <Notice>Perubahan pada tautan tidak dapat dibaca. Menampilkan tampilan tersimpan.</Notice>}
       {dropped && <Notice>Beberapa aturan diabaikan karena tidak berlaku lagi.</Notice>}
       {levelInvalid && <Notice>Pengelompokan menurut tingkat grup tidak berlaku untuk akun Anda.</Notice>}
+
+      {summaries && <SummaryCards cards={summaries.cards} basePath={basePath} searchParams={searchParams} />}
 
       {grouped ? (
         grouped.sections.length > 0 ? (

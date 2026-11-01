@@ -6,8 +6,8 @@ import { visibleTagWhere } from "@/lib/tag/access";
 
 export type GroupOption = { id: number; label: string };
 export type LevelOption = { depth: number; name: string };
-/** A tag the viewer can see; `label` is `key` or `key:value`. */
-export type TagOption = { id: number; label: string };
+/** A tag the viewer can see; `label` is `key` or `key:value`. `groupId` is the owner group; `value` is null for a simple tag. */
+export type TagOption = { id: number; label: string; key: string; value: string | null; groupId: number };
 export type EditorOptions = { groups: GroupOption[]; levels: LevelOption[]; tags: TagOption[] };
 
 /**
@@ -32,13 +32,13 @@ export async function loadEditorOptions(session: SessionUser): Promise<EditorOpt
       where: visibleTagWhere(session),
       orderBy: [{ key: "asc" }, { value: "asc" }, { id: "asc" }],
       take: VIEW_TAG_OPTIONS_LIMIT,
-      select: { id: true, key: true, value: true },
+      select: { id: true, key: true, value: true, groupId: true },
     }),
   ]);
 
   return {
     groups: groups.map((g) => ({ id: g.id, label: g.parent ? `${g.parent.name} › ${g.name}` : g.name })),
-    tags: tags.map((t) => ({ id: t.id, label: t.value === null ? t.key : `${t.key}:${t.value}` })),
+    tags: tags.map((t) => ({ id: t.id, label: t.value === null ? t.key : `${t.key}:${t.value}`, key: t.key, value: t.value, groupId: t.groupId })),
     levels: levels.filter((l) => l.depth >= own.depth).map((l) => ({ depth: l.depth, name: l.name })),
   };
 }

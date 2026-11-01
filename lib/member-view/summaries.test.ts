@@ -64,7 +64,7 @@ describe("computeSummaries", () => {
     keyTagId = tinggi.id;
     const sibling = await db.tag.create({ data: { groupId: fx.otherLeaf.id, key: "rahasia", value: "x", color: "slate", createdById: fx.actorId } });
     siblingTagId = sibling.id;
-    const putri = await db.member.findFirstOrThrow({ where: { name: "Remaja Putri" } });
+    const putri = await db.member.findFirstOrThrow({ where: { name: "Remaja Putri", groupId: fx.leaf.id } });
     await db.memberTag.create({ data: { memberId: putri.id, tagId: tinggi.id, createdById: fx.actorId } });
 
     // 14 more leaves with one member each under the branch, for pagination.

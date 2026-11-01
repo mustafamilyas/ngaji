@@ -1,15 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, SlidersHorizontal, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 import { filterTriggerClass } from "@/components/filters/filter-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { VIEW_MAX_AGE_BUCKETS } from "@/lib/constants";
+import { VIEW_MAX_AGE_BUCKETS, VIEW_MAX_SUMMARIES } from "@/lib/constants";
 import { ageBucketsFromBrackets } from "@/lib/member-view/edit";
-import type { LevelOption } from "@/lib/member-view/editor-options";
+import type { LevelOption, TagOption } from "@/lib/member-view/editor-options";
+import {
+  addSummary,
+  choiceShownFor,
+  dimensionOfChoice,
+  moveSummary,
+  removeSummary,
+  replaceSummaryDimension,
+  summaryChoices,
+} from "@/lib/member-view/summary-edit";
 import { GROUPABLE_FIELDS, MEMBER_VIEW_FIELDS, SORT_FIELD_KEYS, type SortField } from "@/lib/member-view/fields";
 import { MEMBER_COLUMNS, type MemberColumnKey } from "@/lib/member/columns";
 import { columnsSchema, groupBySchema, type Definition, type GroupBy } from "@/lib/validation/member-view";
@@ -118,13 +127,17 @@ function AgeBucketEditor({ buckets, onCommit }: { buckets: Buckets; onCommit: (b
 export function ViewMenu({
   definition,
   levels,
+  tags = [],
   onChange,
 }: {
   definition: Definition;
   levels: LevelOption[];
+  tags?: TagOption[];
   onChange: (definition: Definition) => void;
 }) {
   const { groupBy, sort, columns } = definition;
+  const summaries = definition.summaries ?? [];
+  const choices = summaryChoices(levels, tags);
 
   function setGroupBy(value: string) {
     if (value === "") return onChange({ ...definition, groupBy: undefined });
@@ -194,6 +207,58 @@ export function ViewMenu({
               </select>
             </div>
           </div>
+
+          <fieldset className="flex flex-col gap-2 text-sm">
+            <legend className="mb-1 text-xs font-medium text-muted-foreground">Ringkasan (maks. {VIEW_MAX_SUMMARIES})</legend>
+            <ul className="flex flex-col gap-3">
+              {summaries.map((summary, index) => {
+                const shown = choiceShownFor(summary.dimension, tags);
+                const known = choices.some((c) => c.value === shown);
+                return (
+                  <li key={index} className="flex flex-col gap-2 rounded-lg border p-2">
+                    <div className="flex items-center gap-1">
+                      <select
+                        aria-label={`Ringkasan ${index + 1}: hitung menurut`}
+                        className={`${nativeSelectClass} min-w-0 flex-1`}
+                        value={shown}
+                        onChange={(e) => {
+                          const dimension = dimensionOfChoice(e.target.value);
+                          if (dimension) onChange(replaceSummaryDimension(definition, index, dimension));
+                        }}
+                      >
+                        {!known && <option value={shown}>(tidak tersedia)</option>}
+                        {choices.map((choice) => (
+                          <option key={choice.value} value={choice.value}>
+                            {choice.label}
+                          </option>
+                        ))}
+                      </select>
+                      <Button type="button" variant="ghost" size="icon-sm" aria-label={`Naikkan ringkasan ${index + 1}`} disabled={index === 0} onClick={() => onChange(moveSummary(definition, index, -1))}>
+                        <ArrowUp />
+                      </Button>
+                      <Button type="button" variant="ghost" size="icon-sm" aria-label={`Turunkan ringkasan ${index + 1}`} disabled={index === summaries.length - 1} onClick={() => onChange(moveSummary(definition, index, 1))}>
+                        <ArrowDown />
+                      </Button>
+                      <Button type="button" variant="ghost" size="icon-sm" aria-label={`Hapus ringkasan ${index + 1}`} onClick={() => onChange(removeSummary(definition, index))}>
+                        <Trash2 />
+                      </Button>
+                    </div>
+                    {summary.dimension.kind === "ageBuckets" && (
+                      <AgeBucketEditor
+                        key={JSON.stringify(summary.dimension.buckets)}
+                        buckets={summary.dimension.buckets}
+                        onCommit={(buckets) => onChange(replaceSummaryDimension(definition, index, { kind: "ageBuckets", buckets }))}
+                      />
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            <Button type="button" variant="outline" size="sm" className="self-start" disabled={summaries.length >= VIEW_MAX_SUMMARIES} onClick={() => onChange(addSummary(definition))}>
+              <Plus />
+              Tambah ringkasan
+            </Button>
+          </fieldset>
 
           <fieldset className="flex flex-col gap-1 text-sm">
             <legend className="mb-1 text-xs font-medium text-muted-foreground">Kolom (nama selalu tampil)</legend>
