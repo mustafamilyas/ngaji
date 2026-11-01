@@ -11,12 +11,15 @@ import { STATS_DATE_RANGE } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { today } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
-import { formatDateRange, parseGroupIds, parseSearch, resolveDateRange } from "@/lib/filters";
+import { formatDateRange, parseGroupIds, parseSearch, parseTagId, resolveDateRange } from "@/lib/filters";
 import { parseTab } from "@/lib/tabs";
+import { tagChoices } from "@/lib/tag/choices";
+import { loadTagOptions } from "@/lib/tag/entity";
 import { activityStatistics, memberStatistics, participationStatistics } from "@/lib/stats";
 import { ActivityCharts } from "./activity-charts";
 import { MemberCharts } from "./member-charts";
 import { ParticipationTable } from "./participation-table";
+import { TagBreakdownCard } from "./tag-breakdown-card";
 
 const TABS = [
   { key: "anggota", label: "Anggota", icon: Users },
@@ -74,7 +77,7 @@ export default async function StatisticsPage({
     | { tab: "partisipasi"; rows: Awaited<ReturnType<typeof participationStatistics>> };
   try {
     if (tab === "anggota") {
-      data = { tab, stats: await memberStatistics(session.user, grup) };
+      data = { tab, stats: await memberStatistics(session.user, grup, { tagId: parseTagId(params.tag) }) };
     } else if (tab === "kegiatan") {
       data = { tab, stats: await activityStatistics(session.user, { from, to, groupId: grup }) };
     } else {
@@ -87,9 +90,22 @@ export default async function StatisticsPage({
     throw error;
   }
 
+  // "Per tag" only needs the tags the viewer can see; an id outside them was already ignored by memberStatistics.
+  const tagCardQuery: Record<string, string> = { tab };
+  if (grup) tagCardQuery.grup = String(grup);
+
   const content =
     data.tab === "anggota" ? (
-      <MemberCharts stats={data.stats} />
+      <div className="flex flex-col gap-6">
+        <MemberCharts stats={data.stats} />
+        <TagBreakdownCard
+          choices={tagChoices((await loadTagOptions(session.user)).visible)}
+          breakdown={data.stats.byTag}
+          total={data.stats.total}
+          basePath="/dashboard/statistik"
+          query={tagCardQuery}
+        />
+      </div>
     ) : data.tab === "kegiatan" ? (
       <ActivityCharts stats={data.stats} />
     ) : (

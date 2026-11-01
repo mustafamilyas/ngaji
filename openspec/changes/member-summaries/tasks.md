@@ -31,7 +31,7 @@
 
 ## 5. Statistik → Anggota
 
-- [ ] 5.1 "Per tag" card with a visible-tag picker (`?tag=`), invisible ID ignored, out-of-scope `?grup=` still 404; page tests + `pnpm audit:viewport` clean
+- [x] 5.1 "Per tag" card with a visible-tag picker (`?tag=`), invisible ID ignored, out-of-scope `?grup=` still 404; page tests + `pnpm audit:viewport` clean
 - [ ] 5.2 Mobile/tablet check of "Per tag": picker is a touch-friendly native/sheet control, long key/value names do not overflow, chart and numbers readable at 375/768px
 
 ## 6. Attendance breakdown
@@ -67,3 +67,5 @@
 - [ ] 10.4 `pnpm audit:viewport` is clean but never reaches the Ringkasan cards or the menu editor: `/dashboard/tampilan/1` is skipped (HTTP 404, the audit seed has no saved view) and the menu/age-bucket editor is not a click-through flow. Seed a view with summaries (incl. a >12-bucket org level) and add a flow that opens the "Tampilan" menu (covers 8.4)
 - [x] 10.5 Summary card chart: label column is fixed at 104px and labels are cut at 16 chars (checked in 4.3a at 375/768/812x375: no overflow; names that share a prefix, e.g. "Kelompok Panjang…", look identical in the chart, so the full-name table under it is the reference; accepted). Found and fixed in 4.3a: the 2-column grid stretched the short card to the tall one, now `items-start`
 - [ ] 10.6 Not checkable in the browser pane, left for 8.2 on the iOS Simulator: the Tampilan menu editor with the on-screen keyboard open (age bucket inputs near the bottom of the popover), and real touch on the select/up/down/remove controls. 4.3a verified 44px targets by CSS, the popover fitting 812x375 (scrolls inside), and no hover/drag-only controls
+- [ ] 10.7 `pnpm audit:viewport` is clean with the "Per tag" card but does not measure it: no route loads `/dashboard/statistik?tab=anggota&tag=<id>` and no flow opens the card's picker popover (seed needs a key with values and a simple tag). Add both (covers 5.2 and 8.4)
+- [ ] 10.8 "Per tag" lists every bucket in its table (chart is capped at `SUMMARY_MAX_BARS`); a key with dozens of values makes a long card. Decide whether to page it beyond `EMBEDDED_PAGE_SIZE` (own `?` param) like the Ringkasan cards; the spec only requires the dimension rules
