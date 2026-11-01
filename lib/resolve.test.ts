@@ -645,6 +645,14 @@ describe("lib/resolve", () => {
         ).resolves.toBeUndefined();
       });
 
+      it("rejects an org level above the viewer's group and accepts their own and below", async () => {
+        const session = sessionAt(branchA.id, branchA.path);
+        const level = (depth: number) => definitionWith({ kind: "groupLevel", depth });
+        await expect(resolveDefinitionSummariesStrict(session, level(0))).rejects.toBeInstanceOf(ValidationError);
+        await expect(resolveDefinitionSummariesStrict(session, level(1))).resolves.toBeUndefined();
+        await expect(resolveDefinitionSummariesStrict(session, level(2))).resolves.toBeUndefined();
+      });
+
       it("rejects a sibling-branch tag", async () => {
         const sibling = await newTag(branchB.id, "sum-strict-sibling", "x");
         await expect(

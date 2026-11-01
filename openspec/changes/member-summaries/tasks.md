@@ -27,7 +27,7 @@
 - [x] 4.2 `lib/member-view/summaries.ts`: compute every summary over `prepareView`'s population, paginating bucket tables beyond `SUMMARY_MAX_BARS`; tests for scope, org level above viewer rejected, independence from page/grouping; verify `pnpm test lib/member-view`
 - [x] 4.3 "Ringkasan" cards (Recharts bar + numbers + paginated table, `?ringkasan<i>=`) in `view-page.tsx`, and the summary editor in the "Tampilan" menu (add/remove/reorder/dimension, age bucket editor reused); component tests + `pnpm audit:viewport` clean
 - [x] 4.3a Mobile/tablet check of summary cards and editor: charts resize at 375/768px (no overflow, labels readable, numbers also shown as text), bucket tables scroll or stack without breaking the page, reorder/remove controls have ≥ 44px targets and work by touch (no hover/drag-only), editor usable with the on-screen keyboard open
-- [ ] 4.4 Save/draft/"Simpan sebagai baru"/owner rules cover summaries; action tests incl. non-owner save rejected (403); verify `pnpm test app/dashboard/tampilan`
+- [x] 4.4 Save/draft/"Simpan sebagai baru"/owner rules cover summaries; action tests incl. non-owner save rejected (403); verify `pnpm test app/dashboard/tampilan`
 
 ## 5. Statistik → Anggota
 
@@ -61,8 +61,8 @@
 
 ## 10. Additional tasks found while implementing
 
-- [ ] 10.1 Flaky test: `components/tags/tag-picker.test.tsx` "leaves the search field unfocused when the sheet is opened by touch" failed in two full `pnpm test` runs after slice 4.1 (passes alone and passed in the full run before it); it asserts "not focused" immediately after the dialog appears, so late focus under load breaks it. Make it wait for a settled state (or assert after a tick) and re-run the full suite to confirm
-- [ ] 10.2 Org level above the viewer is not rejected on save yet (spec "Org level above viewer rejected"); decide in 4.2/4.4 where this check lives (summary compute returns invalid, save rejects)
+- [ ] 10.1 Flaky test: `components/tags/tag-picker.test.tsx` "leaves the search field unfocused when the sheet is opened by touch" failed in three of the full `pnpm test` runs since slice 4.1 (latest in 4.4) (passes alone and passed in the full run before it); it asserts "not focused" immediately after the dialog appears, so late focus under load breaks it. Make it wait for a settled state (or assert after a tick) and re-run the full suite to confirm
+- [x] 10.2 Org level above the viewer is now rejected on save in `resolveDefinitionSummariesStrict` (done in 4.4); display still shows the "tidak berlaku" card from 4.2 for old saved views
 - [x] 10.3 (decided in 4.3: the param keeps indexing the displayed cards; a shifted page after a dropped summary is harmless) Card page param `?ringkasan<i>=` indexes the cards after unusable summaries were dropped, so it can shift against the saved order when a tag summary is dropped; decide in 4.3 whether the param should use the saved index instead
 - [ ] 10.4 `pnpm audit:viewport` is clean but never reaches the Ringkasan cards or the menu editor: `/dashboard/tampilan/1` is skipped (HTTP 404, the audit seed has no saved view) and the menu/age-bucket editor is not a click-through flow. Seed a view with summaries (incl. a >12-bucket org level) and add a flow that opens the "Tampilan" menu (covers 8.4)
 - [x] 10.5 Summary card chart: label column is fixed at 104px and labels are cut at 16 chars (checked in 4.3a at 375/768/812x375: no overflow; names that share a prefix, e.g. "Kelompok Panjang…", look identical in the chart, so the full-name table under it is the reference; accepted). Found and fixed in 4.3a: the 2-column grid stretched the short card to the tall one, now `items-start`

@@ -65,3 +65,29 @@ describe("tampered input", () => {
     expect(decodeDraft(b64url(JSON.stringify(tampered)))).toEqual({ ok: true, definition: emptyDefinition(), warnings: ["rule_invalid"] });
   });
 });
+
+describe("summaries in a draft", () => {
+  const sex = { dimension: { kind: "property" as const, field: "sex" as const } };
+  const byKey = { dimension: { kind: "tagKey" as const, tagId: 7 } };
+
+  it("round-trips summaries in their order", () => {
+    const def: Definition = { ...newViewDefinition(), summaries: [byKey, sex] };
+    expect(decodeDraft(encodeDraft(def)!)).toEqual({ ok: true, definition: def, warnings: [] });
+  });
+
+  it("drops an invalid summary from a tampered draft with a warning instead of failing", () => {
+    const tampered = { ...newViewDefinition(), summaries: [sex, { dimension: { kind: "property", field: "email" } }] };
+    const decoded = decodeDraft(b64url(JSON.stringify(tampered)));
+    expect(decoded).toMatchObject({ ok: true, warnings: ["summaries_invalid"] });
+    expect(decoded.ok && decoded.definition.summaries).toEqual([sex]);
+  });
+
+  it("refuses to encode a draft whose summaries push it over the limit", () => {
+    const buckets = Array.from({ length: 12 }, (_, i) => ({ label: "x".repeat(50), min: i * 10, max: i * 10 + 9 }));
+    const def: Definition = {
+      ...newViewDefinition(),
+      summaries: Array.from({ length: 6 }, () => ({ dimension: { kind: "ageBuckets" as const, buckets } })),
+    };
+    expect(encodeDraft(def)).toBeNull();
+  });
+});

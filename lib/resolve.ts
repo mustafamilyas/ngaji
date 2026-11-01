@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { isAncestorOf, isInScope } from "@/lib/scope";
 import { canViewTag, visibleTagWhere } from "@/lib/tag/access";
-import type { Definition, Rule } from "@/lib/validation/member-view";
+import { depthOf } from "@/lib/summary/count";import type { Definition, Rule } from "@/lib/validation/member-view";
 import type { SessionUser } from "./auth/session-user";
 
 /**
@@ -291,10 +291,15 @@ async function usableSummaryTagIds(session: SessionUser, definition: Definition)
 }
 
 /**
- * Save-time check: every tag a summary refers to must be usable (see above),
- * else the whole save is rejected with one generic message.
+ * Save-time check: every tag a summary refers to must be usable (see above)
+ * and no org level may be above the viewer's own group, else the whole save
+ * is rejected with one generic message.
  */
 export async function resolveDefinitionSummariesStrict(session: SessionUser, definition: Definition) {
+  const own = depthOf(session.groupPath);
+  if ((definition.summaries ?? []).some((s) => s.dimension.kind === "groupLevel" && s.dimension.depth < own)) {
+    throw new ValidationError("Tingkat grup tidak valid");
+  }
   const usable = await usableSummaryTagIds(session, definition);
   if ((definition.summaries ?? []).some((s) => isTagSummary(s) && !usable(s))) {
     throw new ValidationError("Tag tidak valid");
