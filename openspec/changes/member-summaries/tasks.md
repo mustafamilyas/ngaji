@@ -61,7 +61,7 @@
 
 ## 10. Additional tasks found while implementing
 
-- [ ] 10.1 Flaky test: `components/tags/tag-picker.test.tsx` "leaves the search field unfocused when the sheet is opened by touch" failed in three of the full `pnpm test` runs since slice 4.1 (latest in 4.4) (passes alone and passed in the full run before it); it asserts "not focused" immediately after the dialog appears, so late focus under load breaks it. Make it wait for a settled state (or assert after a tick) and re-run the full suite to confirm
+- [x] 10.1 Fixed: the tag sheet had no Base UI trigger, so the focus manager guessed the pointer type and forgot it after a short delay; under load a touch open focused the search box. `TagOverlay` now records the pointer type on its own trigger and `initialFocus` reads it (reproduced 4/6 failures under CPU load, 0/14 after; keyboard-open test added)
 - [x] 10.2 Org level above the viewer is now rejected on save in `resolveDefinitionSummariesStrict` (done in 4.4); display still shows the "tidak berlaku" card from 4.2 for old saved views
 - [x] 10.3 (decided in 4.3: the param keeps indexing the displayed cards; a shifted page after a dropped summary is harmless) Card page param `?ringkasan<i>=` indexes the cards after unusable summaries were dropped, so it can shift against the saved order when a tag summary is dropped; decide in 4.3 whether the param should use the saved index instead
 - [ ] 10.4 `pnpm audit:viewport` is clean but never reaches the Ringkasan cards or the menu editor: `/dashboard/tampilan/1` is skipped (HTTP 404, the audit seed has no saved view) and the menu/age-bucket editor is not a click-through flow. Seed a view with summaries (incl. a >12-bucket org level) and add a flow that opens the "Tampilan" menu (covers 8.4)

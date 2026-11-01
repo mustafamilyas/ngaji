@@ -1,6 +1,6 @@
 "use client";
 
-import { cloneElement, type ReactElement } from "react";
+import { cloneElement, useState, type MouseEvent, type PointerEvent, type ReactElement } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useKeyboardInset } from "@/lib/use-keyboard-inset";
@@ -29,12 +29,16 @@ export function TagOverlay({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  trigger: ReactElement<{ onClick?: () => void }>;
+  trigger: ReactElement<{ onClick?: (event: MouseEvent) => void; onPointerDown?: (event: PointerEvent) => void }>;
   title: string;
   description: string;
   children: React.ReactNode;
 }) {
   const wide = useMediaQuery(XL_QUERY);
+  // The sheet has no Base UI trigger to report how it was opened, and the focus manager's own pointer-type guess is
+  // dropped after a short delay (a slow phone or a loaded machine then focuses the search box under the keyboard).
+  // So the trigger records the pointer type itself and `initialFocus` reads it when the sheet mounts.
+  const [openedBy, setOpenedBy] = useState("");
   // The sheet lifts above the on-screen keyboard; choosers size their list from `--kb-inset` (see `TAG_LIST_MAX_H`).
   const inset = useKeyboardInset(open && !wide);
 
@@ -50,12 +54,21 @@ export function TagOverlay({
   }
   return (
     <>
-      {cloneElement(trigger, { onClick: () => onOpenChange(true) })}
+      {cloneElement(trigger, {
+        onPointerDown: (event) => {
+          setOpenedBy(event.pointerType);
+        },
+        onClick: (event) => {
+          // `detail` 0 = activated from the keyboard (Enter/Space), which has no pointer.
+          if (event.detail === 0) setOpenedBy("keyboard");
+          onOpenChange(true);
+        },
+      })}
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="bottom"
           className="gap-0 rounded-t-xl"
-          initialFocus={focusUnlessTouch}
+          initialFocus={() => focusUnlessTouch(openedBy)}
           style={{ bottom: inset, "--kb-inset": `${inset}px` } as React.CSSProperties}
         >
           <SheetHeader>

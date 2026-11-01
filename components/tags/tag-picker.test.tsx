@@ -134,6 +134,15 @@ describe("TagPicker (task 5.2)", () => {
       await waitFor(() => expect(screen.getByRole("combobox")).toHaveFocus());
     });
 
+    it("puts the cursor in the search field when the sheet is opened from the keyboard", async () => {
+      stubBrowser(false);
+      setup();
+      const user = userEvent.setup();
+      screen.getByRole("button", { name: "Atur tag" }).focus();
+      await user.keyboard("{Enter}");
+      await waitFor(() => expect(screen.getByRole("combobox")).toHaveFocus());
+    });
+
     it("leaves the search field unfocused when the sheet is opened by touch, so the keyboard does not cover the list", async () => {
       stubBrowser(false);
       setup();
