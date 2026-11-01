@@ -5,6 +5,7 @@ import {
   formatDateRange,
   parseGroupIds,
   parsePage,
+  breakdownParam,
   parseBreakdown,
   parseSearch,
   parseTagId,
@@ -245,6 +246,14 @@ describe("parseBreakdown", () => {
   it("ignores values outside the allow-list", () => {
     for (const raw of [undefined, "", "status", "SEX", "phone", "tag", "tag:", "tag:0", "tag:-1", "tag:1.5", "tag:abc", "tag:1,2", "tag:7:8", "constructor", "__proto__"]) {
       expect(parseBreakdown(raw), String(raw)).toBeUndefined();
+    }
+  });
+});
+
+describe("breakdownParam", () => {
+  it("is the inverse of parseBreakdown", () => {
+    for (const raw of ["sex", "age", "marital", "work", "tag:7"]) {
+      expect(breakdownParam(parseBreakdown(raw)!)).toBe(raw);
     }
   });
 });

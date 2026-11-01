@@ -46,6 +46,11 @@ export type BreakdownChoice = { kind: "sex" | "age" | "marital" | "work" } | { k
 
 const FIXED_BREAKDOWNS = ["sex", "age", "marital", "work"] as const;
 
+/** The `?rincian=` value for a choice (inverse of `parseBreakdown`). */
+export function breakdownParam(choice: BreakdownChoice): string {
+  return choice.kind === "tag" ? `tag:${choice.tagId}` : choice.kind;
+}
+
 export function parseBreakdown(param: Param): BreakdownChoice | undefined {
   const raw = first(param);
   if (!raw) return undefined;

@@ -37,7 +37,7 @@
 ## 6. Attendance breakdown
 
 - [x] 6.1 Trim member selects and add breakdown tallies to `activityStatistics` and `activityAttendanceSummary` (tag links loaded once per request); tests: rows add up to totals, cancelled excluded, "Tanpa nilai", invisible tag ignored; verify `pnpm test lib/stats`
-- [ ] 6.2 "Rincian menurut" selector + breakdown table (paginated beyond `EMBEDDED_PAGE_SIZE`) on Statistik → Kegiatan and the activity Absensi tab, with the "berdasarkan data anggota saat ini" hint; page tests + `pnpm audit:viewport` clean
+- [x] 6.2 "Rincian menurut" selector + breakdown table (paginated beyond `EMBEDDED_PAGE_SIZE`) on Statistik → Kegiatan and the activity Absensi tab, with the "berdasarkan data anggota saat ini" hint; page tests + `pnpm audit:viewport` clean
 - [ ] 6.3 Mobile/tablet check of the breakdown: "Rincian menurut" selector ≥ 44px and reachable one-handed, wide breakdown table (expected/hadir/izin/tidak hadir/%) stays readable at 375px (scroll with sticky first column or stacked rows), pagination links are touch-sized
 
 ## 7. Server-side pagination
@@ -70,3 +70,6 @@
 - [x] 10.7 (done in 5.2: `keyTagId` seed id, `?tag=` route and "statistik per tag picker" flow; audit clean) `pnpm audit:viewport` is clean with the "Per tag" card but does not measure it: no route loads `/dashboard/statistik?tab=anggota&tag=<id>` and no flow opens the card's picker popover (seed needs a key with values and a simple tag). Add both (covers 5.2 and 8.4)
 - [ ] 10.8 "Per tag" lists every bucket in its table (chart is capped at `SUMMARY_MAX_BARS`); a key with dozens of values makes a long card. Decide whether to page it beyond `EMBEDDED_PAGE_SIZE` (own `?` param) like the Ringkasan cards; the spec only requires the dimension rules
 - [x] 10.9 Found and fixed in 5.2 (375px, real browser pane): a long tag key made the picker trigger as wide as its label, pushing the clear (X) button 15px outside the card. The trigger now has `min-w-0` and truncates. Checked at 375/768/812x375 (no overflow, 44px targets, popover inside the viewport, long value names wrap in the table). Not covered by the audit (seed names are short); real touch/keyboard stays in 8.2
+- [x] 10.11 Found in 6.2 only in the real server (vitest and `renderToStaticMarkup` passed): `FIXED_BREAKDOWN_OPTIONS` exported from the `"use client"` picker reached the server section as a client reference (`.find is not a function`, page crash). Moved to `components/breakdown/options.ts`. Lesson: constants shared between server and client components never live in a client file; check new server-to-client imports in `pnpm dev:scratch`, not just in tests
+- [ ] 10.12 `pnpm audit:viewport` failed once with "Could not sign in as owner (admin)" right after a cold start, then passed unchanged on rerun; look for a missing wait/retry in `scripts/viewport-audit/login.ts` if it recurs
+- [ ] 10.13 The audit has routes for `?rincian=sex` / `?rincian=age` but no flow that opens the "Rincian menurut" picker or a tag breakdown (needs `?rincian=tag:<keyTagId>` and a >`EMBEDDED_PAGE_SIZE` row case for the pager); add with 6.3 (covers 8.4)

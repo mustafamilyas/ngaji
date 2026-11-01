@@ -49,6 +49,33 @@ describe("StatisticsPage", () => {
     expect(html).toContain("Anggota Uji");
   });
 
+  describe("Rincian kehadiran (task 6.2)", () => {
+    const render = async (fixtureLabel: string, searchParams: Record<string, string>) => {
+      const fixture = await buildPageFixture(fixtureLabel);
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "OWNER", fixture.root) });
+      return { fixture, html: renderToStaticMarkup(await StatisticsPage({ searchParams: Promise.resolve({ tab: "kegiatan", ...searchParams }) })) };
+    };
+
+    it("offers the picker and no table by default", async () => {
+      const { html } = await render("statistik-rincian-none", {});
+      expect(html).toContain("Rincian menurut");
+      expect(html).not.toContain("Berdasarkan data anggota saat ini.");
+    });
+
+    it("shows the breakdown table with the as-of-today hint for a fixed dimension", async () => {
+      const { html } = await render("statistik-rincian-sex", { rincian: "sex" });
+      expect(html).toContain("Berdasarkan data anggota saat ini.");
+      expect(html).toContain("Tidak hadir");
+    });
+
+    it("ignores an invisible or unknown rincian without an error", async () => {
+      const { html } = await render("statistik-rincian-bad", { rincian: "tag:999999" });
+      expect(html).not.toContain("Berdasarkan data anggota saat ini.");
+      const junk = await render("statistik-rincian-junk", { rincian: "phone" });
+      expect(junk.html).not.toContain("Berdasarkan data anggota saat ini.");
+    });
+  });
+
   describe("Per tag (task 5.1)", () => {
     const tagOf = (groupId: number, actorId: number, key: string, value: string | null) =>
       db.tag.create({ data: { groupId, key, value, color: "slate", createdById: actorId } });

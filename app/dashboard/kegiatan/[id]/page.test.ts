@@ -139,4 +139,30 @@ describe("ActivityDetailPage", () => {
       ActivityDetailPage({ params: Promise.resolve({ id: "1" }), searchParams: Promise.resolve({}) }),
     ).rejects.toMatchObject({ digest: expect.stringContaining("NEXT_REDIRECT") });
   });
+
+  describe("Rincian kehadiran (task 6.2)", () => {
+    async function render(label: string, searchParams: Record<string, string>) {
+      const fixture = await buildPageFixture(label);
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "OWNER", fixture.leaf) });
+      return renderToStaticMarkup(
+        await ActivityDetailPage({
+          params: Promise.resolve({ id: String(fixture.activityId) }),
+          searchParams: Promise.resolve(searchParams),
+        }),
+      );
+    }
+
+    it("offers the picker on the Absensi tab and shows the table once a dimension is chosen", async () => {
+      const plain = await render("kegiatan-rincian-none", {});
+      expect(plain).toContain("Rincian menurut");
+      expect(plain).not.toContain("Berdasarkan data anggota saat ini.");
+      const chosen = await render("kegiatan-rincian-sex", { rincian: "sex" });
+      expect(chosen).toContain("Berdasarkan data anggota saat ini.");
+    });
+
+    it("ignores an unknown tag without an error", async () => {
+      const html = await render("kegiatan-rincian-bad", { rincian: "tag:999999" });
+      expect(html).not.toContain("Berdasarkan data anggota saat ini.");
+    });
+  });
 });

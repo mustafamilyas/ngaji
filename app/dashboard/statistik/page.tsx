@@ -11,11 +11,13 @@ import { STATS_DATE_RANGE } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { today } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
-import { formatDateRange, parseGroupIds, parseSearch, parseTagId, resolveDateRange } from "@/lib/filters";
+import { breakdownParam, formatDateRange, parseBreakdown, parseGroupIds, parsePage, parseSearch, parseTagId, resolveDateRange } from "@/lib/filters";
+import { resolveBreakdown } from "@/lib/summary/breakdown";
 import { parseTab } from "@/lib/tabs";
 import { tagChoices } from "@/lib/tag/choices";
 import { loadTagOptions } from "@/lib/tag/entity";
 import { activityStatistics, memberStatistics, participationStatistics } from "@/lib/stats";
+import { BreakdownSection } from "@/components/breakdown/breakdown-section";
 import { ActivityCharts } from "./activity-charts";
 import { MemberCharts } from "./member-charts";
 import { ParticipationTable } from "./participation-table";
@@ -71,6 +73,7 @@ export default async function StatisticsPage({
 
   const rangeFiltered = range.mode !== STATS_DATE_RANGE.defaultMode || range.anchor !== now;
 
+  let rincian: string | undefined;
   let data:
     | { tab: "anggota"; stats: Awaited<ReturnType<typeof memberStatistics>> }
     | { tab: "kegiatan"; stats: Awaited<ReturnType<typeof activityStatistics>> }
@@ -79,7 +82,11 @@ export default async function StatisticsPage({
     if (tab === "anggota") {
       data = { tab, stats: await memberStatistics(session.user, grup, { tagId: parseTagId(params.tag) }) };
     } else if (tab === "kegiatan") {
-      data = { tab, stats: await activityStatistics(session.user, { from, to, groupId: grup }) };
+      const choice = parseBreakdown(params.rincian);
+      const breakdown = await resolveBreakdown(session.user, choice);
+      // An unusable choice (invisible tag…) resolves to none: no breakdown, no error.
+      rincian = breakdown && choice ? breakdownParam(choice) : undefined;
+      data = { tab, stats: await activityStatistics(session.user, { from, to, groupId: grup, breakdown }) };
     } else {
       const rows = await participationStatistics(session.user, { from, to, groupId: grup });
       const needle = q?.toLocaleLowerCase("id-ID");
@@ -107,7 +114,17 @@ export default async function StatisticsPage({
         />
       </div>
     ) : data.tab === "kegiatan" ? (
-      <ActivityCharts stats={data.stats} />
+      <div className="flex flex-col gap-6">
+        <ActivityCharts stats={data.stats} />
+        <BreakdownSection
+          choices={tagChoices((await loadTagOptions(session.user)).visible)}
+          breakdown={data.stats.breakdown}
+          selected={rincian}
+          basePath="/dashboard/statistik"
+          searchParams={{ ...params, tab }}
+          page={parsePage(params.rincianhal)}
+        />
+      </div>
     ) : (
       <ParticipationTable rows={data.rows} />
     );
@@ -138,6 +155,8 @@ export default async function StatisticsPage({
             tab,
             // The anggota tab has no date filter; keep the chosen range for the other tabs.
             ...(tab === "anggota" ? rangeParams : {}),
+            // The breakdown choice survives a range or group change.
+            ...(tab === "kegiatan" && rincian ? { rincian } : {}),
           }}
           isFiltered={Boolean(grup || q || (tab !== "anggota" && rangeFiltered))}
           resetHref={`/dashboard/statistik?tab=${tab}`}

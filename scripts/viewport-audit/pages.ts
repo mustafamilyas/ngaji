@@ -49,6 +49,7 @@ export function buildPageList(ids: SeedIds): AuditPage[] {
     "/dashboard/grup",
     "/dashboard/statistik?tab=anggota",
     "/dashboard/statistik?tab=kegiatan",
+    "/dashboard/statistik?tab=kegiatan&rincian=sex",
     "/dashboard/statistik?tab=partisipasi",
     "/dashboard/audit",
     "/dashboard/pengaturan",
@@ -66,7 +67,7 @@ export function buildPageList(ids: SeedIds): AuditPage[] {
   }
   if (ids.activityId !== null) {
     const base = `/dashboard/kegiatan/${ids.activityId}`;
-    paths.push(base, `${base}?tab=jadwal`, `${base}?tab=pengaturan`, `${base}/geser`);
+    paths.push(base, `${base}?rincian=age`, `${base}?tab=jadwal`, `${base}?tab=pengaturan`, `${base}/geser`);
     if (ids.attendanceDate !== null) paths.push(`${base}/${ids.attendanceDate}`);
   }
   if (ids.surveyId !== null) {

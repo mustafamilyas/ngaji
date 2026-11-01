@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { auth } from "@/auth";
 import { DangerZone, DangerZoneItem } from "@/components/danger-zone";
+import { BreakdownSection } from "@/components/breakdown/breakdown-section";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { FilterBar } from "@/components/filters/filter-bar";
 import { MetaItem, PageHeader } from "@/components/page-header";
@@ -35,10 +36,13 @@ import { canEditActivity } from "@/lib/authz";
 import { CONFLICT_HORIZON_DAYS, EMBEDDED_PAGE_SIZE, STATS_DATE_RANGE } from "@/lib/constants";
 import { addDays, today, weekdayOf } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
-import { formatDate, parsePage, resolveDateRange } from "@/lib/filters";
+import { breakdownParam, formatDate, parseBreakdown, parsePage, resolveDateRange } from "@/lib/filters";
 import { pageHref, paginate } from "@/lib/pagination";
 import { resolveActivity } from "@/lib/resolve";
-import { loadEntityTags } from "@/lib/tag/entity";
+import { tagChoices } from "@/lib/tag/choices";
+import { loadEntityTags, loadTagOptions } from "@/lib/tag/entity";
+import { resolveBreakdown } from "@/lib/summary/breakdown";
+import type { SessionUser } from "@/lib/auth/session-user";
 import { isInScope } from "@/lib/scope";
 import { activityAttendanceSummary } from "@/lib/stats";
 import { parseTab, tabHref } from "@/lib/tabs";
@@ -98,7 +102,7 @@ export default async function ActivityDetailPage({
   ];
   const requested = parseTab(query.tab, TABS, "absensi");
   const tab = tabs.some((t) => t.key === requested) ? requested : "absensi";
-  const attendance = tab === "absensi" ? await loadAttendance(activity, query, now, session.user.timeZone) : null;
+  const attendance = tab === "absensi" ? await loadAttendance(activity, query, now, session.user) : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -166,7 +170,7 @@ export default async function ActivityDetailPage({
       <div className="flex flex-col gap-4">
         <TabNav path={path} tabs={tabs} current={tab} defaultTab="absensi" />
 
-        {attendance && <AttendanceTab activityId={activity.id} attendance={attendance} canRecord={canRecord} now={now} />}
+        {attendance && <AttendanceTab activityId={activity.id} attendance={attendance} canRecord={canRecord} now={now} query={query} />}
 
         {tab === "jadwal" && (
           <ScheduleTab
@@ -245,30 +249,38 @@ async function loadAttendance(
   activity: Awaited<ReturnType<typeof resolveActivity>>,
   query: Record<string, string | string[] | undefined>,
   now: string,
-  timeZone: string,
+  user: SessionUser,
 ) {
   const statsRange = resolveDateRange(query, STATS_DATE_RANGE, now);
   // STATS_DATE_RANGE has no open-ended mode, so both bounds are always set.
   const statsFrom = statsRange.from!;
   const statsTo = statsRange.to!;
+  const choice = parseBreakdown(query.rincian);
+  const breakdown = await resolveBreakdown(user, choice);
   const summary = await activityAttendanceSummary(activity.id, toActivityTemplate(activity), activity.group.path, {
     from: statsFrom,
     to: statsTo,
-    timeZone,
+    timeZone: user.timeZone,
+    breakdown,
   });
-  return { statsRange, statsFrom, statsTo, summary };
+  const choices = tagChoices((await loadTagOptions(user)).visible);
+  // An unusable choice (invisible tag…) resolved to none: no breakdown, no error.
+  const rincian = breakdown && choice ? breakdownParam(choice) : undefined;
+  return { statsRange, statsFrom, statsTo, summary, choices, rincian };
 }
 
 function AttendanceTab({
   activityId,
-  attendance: { statsRange, statsFrom, statsTo, summary },
+  attendance: { statsRange, statsFrom, statsTo, summary, choices, rincian },
   canRecord,
   now,
+  query,
 }: {
   activityId: number;
   attendance: Awaited<ReturnType<typeof loadAttendance>>;
   canRecord: boolean;
   now: string;
+  query: Record<string, string | string[] | undefined>;
 }) {
   const path = `/dashboard/kegiatan/${activityId}`;
 
@@ -281,6 +293,7 @@ function AttendanceTab({
       <CardContent className="flex flex-col gap-4">
         <FilterBar
           action={path}
+          preserve={rincian ? { rincian } : undefined}
           isFiltered={statsRange.mode !== STATS_DATE_RANGE.defaultMode || statsRange.anchor !== now}
           resetHref={path}
         >
@@ -292,6 +305,14 @@ function AttendanceTab({
           to={statsTo}
           activityId={activityId}
           canRecord={canRecord}
+        />
+        <BreakdownSection
+          choices={choices}
+          breakdown={summary.breakdown}
+          selected={rincian}
+          basePath={path}
+          searchParams={query}
+          page={parsePage(query.rincianhal)}
         />
       </CardContent>
     </Card>
