@@ -36,7 +36,7 @@
 
 ## 6. Attendance breakdown
 
-- [ ] 6.1 Trim member selects and add breakdown tallies to `activityStatistics` and `activityAttendanceSummary` (tag links loaded once per request); tests: rows add up to totals, cancelled excluded, "Tanpa nilai", invisible tag ignored; verify `pnpm test lib/stats`
+- [x] 6.1 Trim member selects and add breakdown tallies to `activityStatistics` and `activityAttendanceSummary` (tag links loaded once per request); tests: rows add up to totals, cancelled excluded, "Tanpa nilai", invisible tag ignored; verify `pnpm test lib/stats`
 - [ ] 6.2 "Rincian menurut" selector + breakdown table (paginated beyond `EMBEDDED_PAGE_SIZE`) on Statistik → Kegiatan and the activity Absensi tab, with the "berdasarkan data anggota saat ini" hint; page tests + `pnpm audit:viewport` clean
 - [ ] 6.3 Mobile/tablet check of the breakdown: "Rincian menurut" selector ≥ 44px and reachable one-handed, wide breakdown table (expected/hadir/izin/tidak hadir/%) stays readable at 375px (scroll with sticky first column or stacked rows), pagination links are touch-sized
 

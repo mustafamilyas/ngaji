@@ -5,6 +5,7 @@ import { AGE_BRACKETS } from "@/lib/constants";
 import { today } from "@/lib/dates";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { db } from "@/lib/db";
+import { createTally, type AttendanceBreakdown, type Breakdown } from "@/lib/summary/breakdown";
 import { countByAgeBuckets, countByProperty, countByTag, countByTagKey } from "@/lib/summary/count";
 import { resolveVisibleTag } from "@/lib/summary/tags";
 import { resolveGroup } from "@/lib/resolve";
@@ -159,6 +160,43 @@ async function tagBreakdown(
   };
 }
 
+/** The member columns attendance statistics need (design D4): enough for `expected()` and every breakdown dimension. */
+const ATTENDANCE_MEMBER_SELECT = {
+  id: true,
+  name: true,
+  groupId: true,
+  joinedAt: true,
+  status: true,
+  exitedAt: true,
+  deletedAt: true,
+  sex: true,
+  birthDate: true,
+  maritalStatus: true,
+  workStatus: true,
+} as const;
+
+/** Links of the subtree's members to the tags a tag breakdown looks at; empty for any other dimension. */
+async function loadBreakdownTagLinks(breakdown: Breakdown | null | undefined, groupPath: string): Promise<Map<number, Set<number>>> {
+  const links = new Map<number, Set<number>>();
+  if (!breakdown) return links;
+  const { dimension } = breakdown;
+  const tagIds =
+    dimension.kind === "tagKey" ? breakdown.tagValues.map((v) => v.id) : dimension.kind === "tag" ? [dimension.tagId] : [];
+  if (tagIds.length === 0) return links;
+  const rows = await db.memberTag.findMany({
+    where: { tagId: { in: tagIds }, member: { group: { path: { startsWith: groupPath } } } },
+    select: { memberId: true, tagId: true },
+  });
+  for (const { memberId, tagId } of rows) {
+    const set = links.get(memberId) ?? new Set<number>();
+    set.add(tagId);
+    links.set(memberId, set);
+  }
+  return links;
+}
+
+const NO_TAGS: ReadonlySet<number> = new Set();
+
 export type OccurrenceStat = {
   activityId: number;
   activityName: string;
@@ -174,6 +212,8 @@ export type ActivityStatistics = {
   occurrences: OccurrenceStat[];
   trend: { date: string; percentHadir: number }[];
   byDirectSubGroup: { groupId: number; groupName: string; percentHadir: number }[];
+  /** Present only when a breakdown was asked for; rows add up to the occurrences' totals. */
+  breakdown: AttendanceBreakdown | null;
 };
 
 function percent(numerator: number, denominator: number): number {
@@ -188,16 +228,21 @@ function percent(numerator: number, denominator: number): number {
  */
 export async function activityStatistics(
   session: SessionUser,
-  { from, to, groupId }: { from: string; to: string; groupId?: number },
+  { from, to, groupId, breakdown = null }: { from: string; to: string; groupId?: number; breakdown?: Breakdown | null },
 ): Promise<ActivityStatistics> {
   const scope = await resolveScopeGroup(session, groupId);
   const groupIds = await relatedGroupIds(scope.path);
   const activities = await db.activity.findMany({ where: { groupId: { in: groupIds } } });
 
-  const members = await db.member.findMany({ where: { group: { path: { startsWith: scope.path } } } });
+  const members = await db.member.findMany({
+    where: { group: { path: { startsWith: scope.path } } },
+    select: ATTENDANCE_MEMBER_SELECT,
+  });
   const membersTyped = members.map((m) => ({ ...m, status: m.status as MemberStatus }));
+  const tagLinks = await loadBreakdownTagLinks(breakdown, scope.path);
 
   const todayStr = today(session.timeZone);
+  const tally = breakdown ? createTally(breakdown, todayStr) : null;
   const occurrenceStats: OccurrenceStat[] = [];
 
   for (const activity of activities) {
@@ -235,6 +280,10 @@ export async function activityStatistics(
         if (!expectedIds.has(attendance.memberId)) continue;
         if (attendance.status === "HADIR") hadir++;
         else if (attendance.status === "IZIN") izin++;
+      }
+      if (tally) {
+        const statusOf = new Map(attendances.map((a) => [a.memberId, a.status]));
+        for (const member of expectedMembers) tally.add(member, tagLinks.get(member.id) ?? NO_TAGS, statusOf.get(member.id));
       }
 
       occurrenceStats.push({
@@ -281,7 +330,12 @@ export async function activityStatistics(
     return { groupId: child.id, groupName: child.name, percentHadir: percent(hadir, expectedTotal) };
   });
 
-  return { occurrences: occurrenceStats, trend, byDirectSubGroup };
+  return {
+    occurrences: occurrenceStats,
+    trend,
+    byDirectSubGroup,
+    breakdown: breakdown && tally ? { label: breakdown.label, rows: tally.rows() } : null,
+  };
 }
 
 export type ActivityOccurrenceAttendance = {
@@ -303,6 +357,8 @@ export type ActivityAttendanceSummary = {
   percentHadir: number;
   /** Per-member breakdown for the same range — "who is actually attending" drill-down. */
   participation: ParticipationRow[];
+  /** Present only when a breakdown was asked for; rows add up to the totals above. */
+  breakdown: AttendanceBreakdown | null;
 };
 
 /**
@@ -316,7 +372,7 @@ export async function activityAttendanceSummary(
   activityId: number,
   template: ActivityTemplate,
   groupPath: string,
-  { from, to, timeZone }: { from: string; to: string; timeZone: string },
+  { from, to, timeZone, breakdown = null }: { from: string; to: string; timeZone: string; breakdown?: Breakdown | null },
 ): Promise<ActivityAttendanceSummary> {
   const occurrenceRows = await db.activityOccurrence.findMany({
     where: {
@@ -337,10 +393,15 @@ export async function activityAttendanceSummary(
     hasAttendance: r.attendances.length > 0,
   }));
 
-  const members = await db.member.findMany({ where: { group: { path: { startsWith: groupPath } } } });
+  const members = await db.member.findMany({
+    where: { group: { path: { startsWith: groupPath } } },
+    select: ATTENDANCE_MEMBER_SELECT,
+  });
   const membersTyped = members.map((m) => ({ ...m, status: m.status as MemberStatus }));
+  const tagLinks = await loadBreakdownTagLinks(breakdown, groupPath);
 
   const todayStr = today(timeZone);
+  const breakdownTally = breakdown ? createTally(breakdown, todayStr) : null;
   const occurrences: ActivityOccurrenceAttendance[] = [];
   const memberTally = new Map(membersTyped.map((m) => [m.id, { occurrenceCount: 0, hadir: 0, izin: 0 }]));
 
@@ -359,6 +420,7 @@ export async function activityAttendanceSummary(
       const tally = memberTally.get(member.id)!;
       tally.occurrenceCount++;
       const status = attendanceByMember.get(member.id);
+      breakdownTally?.add(member, tagLinks.get(member.id) ?? NO_TAGS, status);
       if (status === "HADIR") {
         hadir++;
         tally.hadir++;
@@ -404,6 +466,7 @@ export async function activityAttendanceSummary(
     totalIzin,
     percentHadir: percent(totalHadir, totalExpected),
     participation,
+    breakdown: breakdown && breakdownTally ? { label: breakdown.label, rows: breakdownTally.rows() } : null,
   };
 }
 

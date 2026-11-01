@@ -6,7 +6,9 @@ import type { SessionUser } from "@/lib/auth/session-user";
 import { db } from "@/lib/db";
 import { buildPageFixture, sessionFor, type PageFixture } from "@/lib/test/fixtures";
 import { addDays, today } from "@/lib/dates";
-import { activityStatistics, memberStatistics, participationStatistics } from "./stats";
+import { toActivityTemplate } from "@/lib/activity/template";
+import { resolveBreakdown } from "@/lib/summary/breakdown";
+import { activityAttendanceSummary, activityStatistics, memberStatistics, participationStatistics } from "./stats";
 import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 let actorId: number;
@@ -245,6 +247,112 @@ describe("lib/stats DB-backed statistics", () => {
       const stat = stats.occurrences.find((o) => o.activityId === activity.id)!;
       expect(stat.expected).toBeGreaterThanOrEqual(stat.hadir);
       expect(stat.percentHadir).toBeLessThanOrEqual(100);
+    });
+  });
+
+  describe("attendance breakdown (task 6.1)", () => {
+    let fx: PageFixture;
+    let viewer: SessionUser;
+    let activityId: number;
+    let tinggiId: number;
+    let siblingTagId: number;
+    const DAY = "2026-01-15";
+
+    async function add(groupId: number, name: string, overrides: Record<string, unknown> = {}) {
+      return db.member.create({
+        data: {
+          groupId, name, birthPlace: "Jakarta", birthDate: "2000-01-01", sex: "L", address: "-", phone: "0800000000",
+          maritalStatus: "BELUM_MENIKAH", workStatus: "BEKERJA", joinedAt: "2020-01-01", createdById: fx.actorId,
+          ...overrides,
+        },
+      });
+    }
+    const once = (name: string, date: string) => ({
+      groupId: fx.leaf.id, name, location: "A", startTime: "19:00", durationMinutes: 60,
+      freq: "ONCE" as const, interval: 1, weekdays: [], startsOn: date, endsOn: date,
+    });
+
+    beforeAll(async () => {
+      fx = await buildPageFixture("stats-breakdown");
+      viewer = sessionFor(fx.actorId, "ADMIN", fx.leaf);
+      // The fixture's own member (L) plus 2 L and 2 P: 5 expected, 3 L and 2 P.
+      const l1 = await add(fx.leaf.id, "L Satu");
+      const l2 = await add(fx.leaf.id, "L Dua");
+      const p1 = await add(fx.leaf.id, "P Satu", { sex: "P" });
+      const p2 = await add(fx.leaf.id, "P Dua", { sex: "P" });
+      const tinggi = await db.tag.create({ data: { groupId: fx.leaf.id, key: "prioritas", value: "tinggi", color: "slate", createdById: fx.actorId } });
+      tinggiId = tinggi.id;
+      await db.memberTag.create({ data: { memberId: l1.id, tagId: tinggi.id, createdById: fx.actorId } });
+      siblingTagId = (await db.tag.create({ data: { groupId: fx.otherLeaf.id, key: "rahasia", value: "x", color: "slate", createdById: fx.actorId } })).id;
+
+      const { activity } = await createActivity(viewer, once("Kajian Rincian", DAY));
+      activityId = activity.id;
+      await saveAttendance(viewer, {
+        activityId, groupId: fx.leaf.id, date: DAY,
+        entries: [
+          { memberId: l1.id, status: "HADIR" },
+          { memberId: l2.id, status: "IZIN" },
+          { memberId: p1.id, status: "HADIR" },
+          { memberId: p2.id, status: "HADIR" },
+        ],
+      });
+      // A cancelled occurrence on another day contributes to no bucket.
+      const { activity: cancelled } = await createActivity(viewer, once("Kajian Batal Rincian", "2026-01-20"));
+      await overrideOccurrence(viewer, { activityId: cancelled.id, date: "2026-01-20", status: "CANCELLED" });
+    });
+
+    const range = { from: "2026-01-01", to: "2026-01-31" };
+
+    it("is null without a breakdown", async () => {
+      const stats = await activityStatistics(viewer, { ...range, groupId: fx.leaf.id });
+      expect(stats.breakdown).toBeNull();
+    });
+
+    it("breaks expected / hadir / izin down by sex and adds up to the totals", async () => {
+      const breakdown = await resolveBreakdown(viewer, { kind: "sex" });
+      const stats = await activityStatistics(viewer, { ...range, groupId: fx.leaf.id, breakdown });
+      const rows = stats.breakdown!.rows;
+      expect(stats.breakdown!.label).toBe("Jenis kelamin");
+      expect(rows.find((r) => r.key === "p:L")).toMatchObject({ expected: 3, hadir: 1, izin: 1, absent: 1 });
+      expect(rows.find((r) => r.key === "p:P")).toMatchObject({ expected: 2, hadir: 2, izin: 0, absent: 0, percentHadir: 100 });
+      const total = (key: "expected" | "hadir" | "izin") => stats.occurrences.reduce((s, o) => s + o[key], 0);
+      for (const key of ["expected", "hadir", "izin"] as const) {
+        expect(rows.reduce((s, r) => s + r[key], 0)).toBe(total(key));
+      }
+    });
+
+    it("puts members without a value of a tag key in Tanpa nilai", async () => {
+      const breakdown = await resolveBreakdown(viewer, { kind: "tag", tagId: tinggiId });
+      const stats = await activityStatistics(viewer, { ...range, groupId: fx.leaf.id, breakdown });
+      expect(stats.breakdown!.rows.map((r) => [r.label, r.expected, r.hadir])).toEqual([
+        ["tinggi", 1, 1],
+        ["Tanpa nilai", 4, 2],
+      ]);
+    });
+
+    it("resolves a tag the viewer cannot see to no breakdown", async () => {
+      expect(await resolveBreakdown(viewer, { kind: "tag", tagId: siblingTagId })).toBeNull();
+      expect(await resolveBreakdown(viewer, { kind: "tag", tagId: 999999 })).toBeNull();
+      expect(await resolveBreakdown(viewer, undefined)).toBeNull();
+    });
+
+    it("only counts members of the selected scope group", async () => {
+      await add(fx.otherLeaf.id, "Di Luar", { sex: "P" });
+      const breakdown = await resolveBreakdown(viewer, { kind: "sex" });
+      const stats = await activityStatistics(viewer, { ...range, groupId: fx.leaf.id, breakdown });
+      expect(stats.breakdown!.rows.find((r) => r.key === "p:P")!.expected).toBe(2);
+    });
+
+    it("breaks one activity's summary down the same way", async () => {
+      const row = await db.activity.findUniqueOrThrow({ where: { id: activityId } });
+      const breakdown = await resolveBreakdown(viewer, { kind: "sex" });
+      const summary = await activityAttendanceSummary(activityId, toActivityTemplate(row), fx.leaf.path, {
+        ...range, timeZone: "Asia/Jakarta", breakdown,
+      });
+      expect(summary.breakdown!.rows.find((r) => r.key === "p:L")).toMatchObject({ expected: 3, hadir: 1, izin: 1 });
+      expect(summary.breakdown!.rows.reduce((s, r) => s + r.expected, 0)).toBe(summary.totalExpected);
+      const none = await activityAttendanceSummary(activityId, toActivityTemplate(row), fx.leaf.path, { ...range, timeZone: "Asia/Jakarta" });
+      expect(none.breakdown).toBeNull();
     });
   });
 
