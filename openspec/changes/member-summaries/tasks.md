@@ -42,7 +42,7 @@
 
 ## 7. Server-side pagination
 
-- [ ] 7.1 Sortable column lists for participation and per-occurrence tables in `lib/sort.ts`; tests for invalid sort and stable tie-breakers; verify `pnpm test lib/sort`
+- [x] 7.1 Sortable column lists for participation and per-occurrence tables in `lib/sort.ts`; tests for invalid sort and stable tie-breakers; verify `pnpm test lib/sort`
 - [ ] 7.2 Statistik → Partisipasi: search, sort, `?page=` on the server, client table renders one page with links; tests that the response holds only `PAGE_SIZE` rows and page clamping works
 - [ ] 7.3 Activity Absensi tab: per-occurrence (`?kejadian=`) and per-member (`?peserta=`) tables paginated and sorted on the server; update `participation-table.layout.test.ts` and attendance-chart tests; `pnpm audit:viewport` clean
 - [ ] 7.4 Mobile/tablet check of the server-paginated tables: search/sort controls and column headers are touch-friendly, page links ≥ 44px, sort/page changes keep scroll position and other list params, tables readable at 375/768px
@@ -75,3 +75,4 @@
 - [ ] 10.13 Partly done in 6.3: the audit now loads `?rincian=tag:<keyTagId>` and has a "statistik rincian picker" flow (clean). Still missing: a seed case with more than `EMBEDDED_PAGE_SIZE` breakdown rows so the pager is measured (covers 8.4)
 - [x] 10.14 Found and fixed in 6.3 (375px, real browser pane): the breakdown table was 17px wider than its card, so the "% hadir" column was clipped ("1,9" visible) with only a thin scrollbar as a hint. Padding tightened below `xl` and the bucket name column made sticky, so it fits at 375px and, at 320px, the name stays put while the numbers scroll (checked). Picker trigger and clear button measured 44px
 - [ ] 10.15 Dev servers: `pnpm dev:scratch`, `pnpm audit:viewport` and `pnpm dev` all fail while another `next dev` runs in this folder (only one dev server per directory). Mention in CLAUDE.md or make the scripts print which PID to stop (hit during 6.3)
+- [ ] 10.16 Decided in 7.1: the activity Absensi tab has two sortable tables on one URL, so `parseSort`/`sortHref`/`sortPreserve` take optional `SortParams` names (default `sort`/`dir`/`page`). 7.3 must use `ksort`/`kdir`/`kejadian` for the per-occurrence table and `psort`/`pdir`/`peserta` for the per-member table; Statistik → Partisipasi keeps `sort`/`dir`/`page`. Add the two name sets as constants where 7.2/7.3 first need them
