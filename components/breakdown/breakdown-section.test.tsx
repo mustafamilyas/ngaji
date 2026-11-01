@@ -76,6 +76,21 @@ describe("BreakdownSection (task 6.2)", () => {
     expect(within(screen.getByRole("row", { name: /Baris 1/ })).getByText("60%")).toBeInTheDocument();
   });
 
+  it("keeps the table compact on phones and pins the bucket name when it still has to scroll (task 8.1)", () => {
+    // 6 columns must fit a 311px card at 375px (the Absensi tab sits inside a card): tight cell padding below xl
+    // and a short minimum name column; a wider table scrolls with the name column fixed.
+    setup({ selected: "sex", breakdown: breakdown(2) });
+    const table = screen.getByRole("table");
+    const cells = [...table.querySelectorAll("th[scope=col]:not(:first-child), tbody td")];
+    expect(cells.length).toBeGreaterThan(0);
+    for (const cell of cells) expect(cell.className).toMatch(/\bpx-1\b|\bpl-1\b/);
+    for (const name of [table.querySelector("th[scope=col]"), table.querySelector("tbody th")]) {
+      expect(name?.className).toContain("sticky");
+      expect(name?.className).toContain("bg-background");
+    }
+    expect(table.querySelector("tbody th")?.className).toContain("min-w-20");
+  });
+
   it("pages the rows beyond EMBEDDED_PAGE_SIZE with its own param", () => {
     setup({ selected: "tag:2", breakdown: breakdown(EMBEDDED_PAGE_SIZE + 3), page: 2 });
     expect(screen.getAllByRole("row")).toHaveLength(1 + 3);

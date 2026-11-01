@@ -5,7 +5,7 @@ import { join } from "node:path";
 import Database from "better-sqlite3";
 import type { Role } from "./args";
 import { freePort, sleep } from "./cdp";
-import { BULK_ACTIVITY_NAME } from "./bulk-activity";
+import { BULK_ACTIVITY_NAME, BULK_VIEW_NAME } from "./bulk-activity";
 import type { SeedIds } from "./pages";
 
 /** Seeded accounts from prisma/seed.ts (test data only). */
@@ -48,7 +48,7 @@ function readSeedIds(dbPath: string): SeedIds {
       activityId: attendance?.activityId ?? null,
       attendanceDate: attendance?.date ?? null,
       surveyId: one("SELECT id FROM Survey WHERE deletedAt IS NULL ORDER BY id LIMIT 1") as number | null,
-      viewId: one("SELECT id FROM MemberView WHERE deletedAt IS NULL ORDER BY id LIMIT 1") as number | null,
+      viewId: one("SELECT id FROM MemberView WHERE name = ? AND deletedAt IS NULL", BULK_VIEW_NAME) as number | null,
       pagedActivityId: one("SELECT id FROM Activity WHERE name = ? AND deletedAt IS NULL", BULK_ACTIVITY_NAME) as number | null,
       keyTagId: one("SELECT id FROM Tag WHERE value IS NOT NULL AND deletedAt IS NULL ORDER BY id LIMIT 1") as number | null,
     };

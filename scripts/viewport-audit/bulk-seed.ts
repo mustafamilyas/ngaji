@@ -6,7 +6,9 @@
 import { db } from "../../lib/db";
 import { addDays, today } from "../../lib/dates";
 import { DEFAULT_TIMEZONE } from "../../lib/validation/enums";
-import { BULK_ACTIVITY_NAME } from "./bulk-activity";
+import type { Prisma } from "../../lib/generated/prisma/client";
+import { definitionSchema, newViewDefinition } from "../../lib/validation/member-view";
+import { BULK_ACTIVITY_NAME, BULK_VIEW_NAME } from "./bulk-activity";
 
 const MEMBER_COUNT = 110;
 const OCCURRENCE_COUNT = 40;
@@ -64,6 +66,37 @@ async function main() {
     });
     await db.attendance.createMany({ data: rows });
   }
+
+  const root = await db.group.findFirstOrThrow({ where: { depth: 0, deletedAt: null }, orderBy: { id: "asc" } });
+  await seedSummaryView({ id: owner.id, groupId: root.id });
+}
+
+/** A saved view with every kind of summary card, one of them with more buckets than a page (`EMBEDDED_PAGE_SIZE`). */
+async function seedSummaryView(owner: { id: number; groupId: number }) {
+  const tag = await db.tag.findFirst({ where: { key: "prioritas", value: null, deletedAt: null } });
+  const tagKey = await db.tag.findFirst({ where: { key: "prioritas", value: { not: null }, deletedAt: null } });
+  const manyAgeBuckets = Array.from({ length: 12 }, (_, i) =>
+    i === 11 ? { label: "55+", min: 55, max: null } : { label: `${i * 5}–${i * 5 + 4} tahun`, min: i * 5, max: i * 5 + 4 },
+  );
+  const definition = definitionSchema.parse({
+    ...newViewDefinition(),
+    summaries: [
+      { dimension: { kind: "property", field: "sex" } },
+      { dimension: { kind: "ageBuckets", buckets: manyAgeBuckets } },
+      { dimension: { kind: "groupLevel", depth: 3 } },
+      ...(tagKey ? [{ dimension: { kind: "tagKey", tagId: tagKey.id } }] : []),
+      ...(tag ? [{ dimension: { kind: "tag", tagId: tag.id } }] : []),
+    ],
+  });
+  await db.memberView.create({
+    data: {
+      groupId: owner.groupId,
+      ownerId: owner.id,
+      createdById: owner.id,
+      name: BULK_VIEW_NAME,
+      definition: definition as unknown as Prisma.InputJsonValue,
+    },
+  });
 }
 
 main()
