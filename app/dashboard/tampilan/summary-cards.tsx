@@ -86,7 +86,7 @@ export function SummaryCards({
 }) {
   if (cards.length === 0) return null;
   return (
-    <section aria-label="Ringkasan" className="grid gap-4 md:grid-cols-2">
+    <section aria-label="Ringkasan" className="grid items-start gap-4 md:grid-cols-2">
       {cards.map((card) => (
         <Card key={card.index} card={card} basePath={basePath} searchParams={searchParams} />
       ))}
