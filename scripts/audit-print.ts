@@ -48,7 +48,8 @@ async function main(): Promise<number> {
   const png = options.png && process.platform === "darwin";
   if (options.png && !png) console.error("--png needs macOS (`sips`); writing PDFs only.");
 
-  const env = await startScratchEnv();
+  // The print budgets assume the plain seed: the bulk-seeded daily activity would add ~60 schedule rows.
+  const env = await startScratchEnv({ bulk: false });
   const profile = mkdtempSync(join(tmpdir(), "dahan-print-chrome-"));
   const cdp = await Cdp.launch(profile);
   const results: Result[] = [];

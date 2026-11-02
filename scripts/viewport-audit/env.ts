@@ -69,7 +69,7 @@ export type ScratchDatabase = {
  * Creates a throwaway database (migrate + seed + bulk rows for paged tables) in a temp folder and clears the forced password change
  * on the seeded accounts. Shared by the viewport audit and `pnpm dev:scratch`; never touches prisma/dev.db.
  */
-export function prepareScratchDatabase(prefix = "dahan-scratch-"): ScratchDatabase {
+export function prepareScratchDatabase(prefix = "dahan-scratch-", { bulk = true }: { bulk?: boolean } = {}): ScratchDatabase {
   const dir = mkdtempSync(join(tmpdir(), prefix));
   const dbPath = join(dir, "scratch.db");
   const databaseUrl = `file:${dbPath}`;
@@ -78,8 +78,9 @@ export function prepareScratchDatabase(prefix = "dahan-scratch-"): ScratchDataba
   console.error("Preparing scratch database (migrate + seed)...");
   run(["prisma", "migrate", "deploy"], env);
   run(["prisma", "db", "seed"], env);
-  // Every server-paginated table needs more than one page to be checked on a phone.
-  run(["tsx", "scripts/viewport-audit/bulk-seed.ts"], env);
+  // Every server-paginated table needs more than one page to be checked on a phone. Audits whose budgets assume the
+  // plain seed (the schedule print: the bulk activity is daily) pass `bulk: false`.
+  if (bulk) run(["tsx", "scripts/viewport-audit/bulk-seed.ts"], env);
 
   const writable = new Database(dbPath);
   writable.prepare("UPDATE User SET mustChangePassword = 0").run();
@@ -90,8 +91,8 @@ export function prepareScratchDatabase(prefix = "dahan-scratch-"): ScratchDataba
 /**
  * Prepares a scratch database and starts `next dev` on a free port against it. Never touches prisma/dev.db.
  */
-export async function startScratchEnv(): Promise<ScratchEnv> {
-  const { dir, dbPath, databaseUrl, env } = prepareScratchDatabase("dahan-audit-");
+export async function startScratchEnv(options: { bulk?: boolean } = {}): Promise<ScratchEnv> {
+  const { dir, dbPath, databaseUrl, env } = prepareScratchDatabase("dahan-audit-", options);
   const ids = readSeedIds(dbPath);
 
   const port = await freePort();

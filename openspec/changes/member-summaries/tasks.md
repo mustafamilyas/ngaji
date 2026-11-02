@@ -50,8 +50,8 @@
 ## 8. Mobile and tablet pass (final)
 
 - [x] 8.1 Walk every touched page (Tampilan with Ringkasan, Statistik → Anggota/Kegiatan/Partisipasi, activity Absensi tab) at 375×812, 768×1024 and landscape phone; fix horizontal scroll, clipped charts, tiny targets, sticky/overlap issues; record findings as extra tasks below
-- [ ] 8.2 Verify with real touch input on the iOS Simulator (selectors, pickers, sheets, on-screen keyboard, pull/scroll in tables); record failures as extra tasks below
-- [ ] 8.3 `pnpm audit:viewport` and `pnpm audit:print` clean (print of activity schedule unaffected)
+- [ ] 8.2 (BLOCKED, see 10.26) Verify with real touch input on the iOS Simulator (selectors, pickers, sheets, on-screen keyboard, pull/scroll in tables); record failures as extra tasks below
+- [x] 8.3 `pnpm audit:viewport` and `pnpm audit:print` clean (print of activity schedule unaffected)
 - [ ] 8.4 Extend `pnpm audit:viewport` routes to cover the new pages/cards if not already covered
 
 ## 9. Docs and gate
@@ -85,3 +85,5 @@
 - [x] 10.23 Walk result of 8.1 (Tampilan with Ringkasan, Statistik → Anggota/Kegiatan/Partisipasi, activity Absensi tab; 375×812, 768×1024, 812×375; probe for page overflow, off-screen elements, controls under 44px, scrollers): no other findings. The Tampilan results table scrolls horizontally on purpose (sticky name column). Empty age buckets are not drawn (matches the spec's "non-empty bucket")
 - [ ] 10.24 The audit allows any horizontally scrolling table, so a table that only just overflows (like 10.22, +16px) passes. Consider reporting scrollers whose overflow is under ~40px as findings (a little more padding trimming is the right fix there, a scroll bar is not)
 - [ ] 10.25 Process note (8.1): after editing a server component, `navigate` to the same URL in the browser pane can serve the stale page (computed widths unchanged); add a cache-busting query (`&_=N`) when re-checking a fix
+- [ ] 10.26 8.2 is blocked: the iOS Simulator integration needs a full Xcode install (only command-line tools are selected on this Mac). To unblock: install Xcode, then run `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer` (needs a password), and retry. Everything 8.2 would check is still unverified with real touch: native select pickers (sort selects), pagers, the Tampilan menu editor with the on-screen keyboard (10.6), tap-and-scroll in 50-row card lists (10.21). Alternative: open the scratch server in Safari on a real iPhone
+- [x] 10.27 Found and fixed in 8.3: `pnpm audit:print` failed ("two-months" 4 pages, budget 3) because the bulk seed added in 7.4 includes a daily activity (~60 schedule rows in two months). Caused by my own seed, not by the schedule print. `prepareScratchDatabase`/`startScratchEnv` now take `{ bulk }` (default true); `audit:print` passes `bulk: false` (37 rows, 2 pages, ok). Any future audit with row/page budgets must do the same
