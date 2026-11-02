@@ -8,7 +8,7 @@ import { addDays, today } from "../../lib/dates";
 import { DEFAULT_TIMEZONE } from "../../lib/validation/enums";
 import type { Prisma } from "../../lib/generated/prisma/client";
 import { definitionSchema, newViewDefinition } from "../../lib/validation/member-view";
-import { BULK_ACTIVITY_NAME, BULK_VIEW_NAME } from "./bulk-activity";
+import { BULK_ACTIVITY_NAME, BULK_VIEW_NAME, WIDE_TAG_KEY, WIDE_TAG_VALUES } from "./bulk-activity";
 
 const MEMBER_COUNT = 110;
 const OCCURRENCE_COUNT = 40;
@@ -69,6 +69,20 @@ async function main() {
 
   const root = await db.group.findFirstOrThrow({ where: { depth: 0, deletedAt: null }, orderBy: { id: "asc" } });
   await seedSummaryView({ id: owner.id, groupId: root.id });
+  await seedWideTagKey({ id: owner.id, groupId: root.id }, members.map((m) => m.id));
+}
+
+/** One tag key with `WIDE_TAG_VALUES` values spread over the bulk members, so a breakdown by it needs a second page. */
+async function seedWideTagKey(owner: { id: number; groupId: number }, memberIds: number[]) {
+  const tags: { id: number }[] = [];
+  for (let i = 1; i <= WIDE_TAG_VALUES; i++) {
+    tags.push(
+      await db.tag.create({ data: { groupId: owner.groupId, createdById: owner.id, key: WIDE_TAG_KEY, value: `Angkatan ${2010 + i}`, color: "blue" } }),
+    );
+  }
+  await db.memberTag.createMany({
+    data: memberIds.map((memberId, i) => ({ memberId, tagId: tags[i % tags.length].id, createdById: owner.id })),
+  });
 }
 
 /** A saved view with every kind of summary card, one of them with more buckets than a page (`EMBEDDED_PAGE_SIZE`). */

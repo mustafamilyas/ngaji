@@ -29,6 +29,8 @@ export type SeedIds = {
   keyTagId: number | null;
   /** The bulk-seeded daily activity (scripts/viewport-audit/bulk-seed.ts): its tables have several pages. */
   pagedActivityId: number | null;
+  /** Id of one value of the bulk-seeded tag key whose breakdown has more rows than a page (`EMBEDDED_PAGE_SIZE`). */
+  wideTagKeyId: number | null;
 };
 
 export type AuditPage = { path: string; anonymous: boolean };
@@ -85,6 +87,13 @@ export function buildPageList(ids: SeedIds): AuditPage[] {
     paths.push(
       `/dashboard/statistik?tab=anggota&tag=${ids.keyTagId}`,
       `/dashboard/statistik?tab=kegiatan&rincian=tag:${ids.keyTagId}`,
+    );
+  }
+
+  if (ids.wideTagKeyId !== null) {
+    paths.push(
+      `/dashboard/statistik?tab=kegiatan&rincian=tag:${ids.wideTagKeyId}`,
+      `/dashboard/statistik?tab=kegiatan&rincian=tag:${ids.wideTagKeyId}&rincianhal=2`,
     );
   }
 

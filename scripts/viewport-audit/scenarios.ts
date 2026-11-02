@@ -114,5 +114,16 @@ export function buildScenarios(ids: SeedIds): Scenario[] {
       ],
     });
   }
+  if (ids.viewId !== null) {
+    scenarios.push({
+      name: "tampilan menu",
+      role: "owner",
+      path: `/dashboard/tampilan/${ids.viewId}`,
+      steps: [
+        { click: { selector: "button", text: "Tampilan" }, measure: "menu open" },
+        { click: { selector: "button", text: "Tambah ringkasan" }, measure: "summary added" },
+      ],
+    });
+  }
   return scenarios;
 }

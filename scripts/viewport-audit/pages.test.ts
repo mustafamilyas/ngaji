@@ -11,6 +11,7 @@ const ids: SeedIds = {
   viewId: 2,
   keyTagId: 9,
   pagedActivityId: 11,
+  wideTagKeyId: 12,
 };
 
 describe("buildPageList", () => {
@@ -64,5 +65,12 @@ describe("viewportsFor", () => {
       "667x375",
       "812x375",
     ]);
+  });
+
+  it("opens both pages of the breakdown whose rows exceed a page", () => {
+    const paths = buildPageList(ids).map((p) => p.path);
+    expect(paths).toContain("/dashboard/statistik?tab=kegiatan&rincian=tag:12");
+    expect(paths).toContain("/dashboard/statistik?tab=kegiatan&rincian=tag:12&rincianhal=2");
+    expect(buildPageList({ ...ids, wideTagKeyId: null }).map((p) => p.path).join()).not.toContain("tag:12");
   });
 });

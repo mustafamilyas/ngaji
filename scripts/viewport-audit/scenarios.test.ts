@@ -13,6 +13,7 @@ const ids: SeedIds = {
   viewId: 2,
   keyTagId: 9,
   pagedActivityId: 11,
+  wideTagKeyId: 12,
 };
 
 describe("buildScenarios", () => {
@@ -37,6 +38,14 @@ describe("buildScenarios", () => {
     expect(names).not.toContain("member detail tag picker");
     expect(names).not.toContain("activity detail tag picker");
     expect(names).not.toContain("group tag tab");
+  });
+
+  it("opens the Tampilan menu on the seeded view and adds a summary card inside it", () => {
+    const scenario = buildScenarios(ids).find((s) => s.name === "tampilan menu");
+    expect(scenario).toMatchObject({ role: "owner", path: "/dashboard/tampilan/2" });
+    const states = scenario?.steps.flatMap((step) => ("measure" in step && step.measure ? [step.measure] : []));
+    expect(states).toEqual(["menu open", "summary added"]);
+    expect(buildScenarios({ ...ids, viewId: null }).map((s) => s.name)).not.toContain("tampilan menu");
   });
 });
 
