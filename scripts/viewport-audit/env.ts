@@ -104,7 +104,7 @@ export async function startScratchEnv(options: { bulk?: boolean } = {}): Promise
   let ready = false;
   for (let attempt = 0; attempt < 120 && !ready; attempt++) {
     if (server.exitCode !== null) {
-      throw new Error("next dev exited early. If another `pnpm dev` is running in this folder, stop it and retry.");
+      throw new Error("next dev exited early. If another `pnpm dev` or `pnpm dev:scratch` is running in this folder (they share `.next`), stop it and retry.");
     }
     try {
       ready = (await fetch(`${baseUrl}/login`)).ok;

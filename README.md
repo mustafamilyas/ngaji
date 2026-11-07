@@ -105,6 +105,7 @@ Membuka tiap halaman di Chrome headless (lewat DevTools Protocol) dan melaporkan
 
 - Mandiri: skrip membuat database sementara (migrate + seed) dan server `next dev` di port bebas, lalu menghapusnya. `prisma/dev.db` tidak disentuh.
 - Perlu Google Chrome (atau set `CHROME_PATH`) dan Node 22+.
+- Hentikan dulu `pnpm dev` atau `pnpm dev:scratch` yang berjalan di folder ini (termasuk dari sesi lain): dua server `next dev` tidak bisa berbagi `.next`, dan skrip berhenti dengan "next dev exited early".
 - Dialog, popover, dan dropdown yang terbuka tidak tercakup karena perlu klik dulu; periksa manual.
 - Pane Browser di aplikasi desktop yang tersembunyi tidak menjalankan `ResizeObserver` atau animasi, jadi hasil ukuran grafik di sana bisa menyesatkan; skrip ini tidak punya masalah itu.
 
@@ -116,7 +117,7 @@ pnpm audit:print --only week
 pnpm audit:print --out ./cetak --png  # PNG per halaman (hanya macOS, memakai sips)
 ```
 
-Mencetak `/dashboard/kegiatan/cetak` ke PDF lewat Chrome sendiri (A4 potret, media cetak) di database sementara: satu minggu (maks. 1 halaman), dua bulan (maks. 3 halaman), dan teks sepanjang batas maksimum (hanya dilaporkan: jadwal cetak memuat teks lengkap, jadi baris yang tinggi menambah halaman). Exit code 1 jika anggaran halaman terlampaui. Buka PDF-nya untuk memeriksa tampilannya; header tabel yang diulang dan baris yang tidak terbelah tidak diperiksa otomatis.
+Mencetak `/dashboard/kegiatan/cetak` ke PDF lewat Chrome sendiri (A4 potret, media cetak) di database sementara: satu minggu (maks. 1 halaman), dua bulan (maks. 3 halaman), dan teks sepanjang batas maksimum (hanya dilaporkan: jadwal cetak memuat teks lengkap, jadi baris yang tinggi menambah halaman). Exit code 1 jika anggaran halaman terlampaui. Buka PDF-nya untuk memeriksa tampilannya; header tabel yang diulang dan baris yang tidak terbelah tidak diperiksa otomatis. Sama seperti audit tampilan, hentikan dulu `pnpm dev` atau `pnpm dev:scratch` di folder ini.
 
 ## Dev server dengan database sementara
 
