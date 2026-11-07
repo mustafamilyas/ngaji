@@ -113,6 +113,18 @@ describe("member import actions", () => {
       expect(new Set(audits.map((a) => (a.meta as { importId: string }).importId))).toEqual(new Set([result.data.importId]));
     });
 
+    it("creates members in each group a grup column names and returns no single group", async () => {
+      const data = new FormData();
+      const body = [`${HEADER},grup`, `${line("Multi Satu")},Leaf`, `${line("Multi Dua", "1991-02-03")},Other Leaf`].join("\n");
+      data.set("file", new File([body], "anggota.csv"));
+
+      const result = await confirmMemberImportAction(data);
+      if (!result.ok || result.data.status !== "done") throw new Error(JSON.stringify(result));
+      expect(result.data).toMatchObject({ created: 2, groupId: null });
+      const members = await db.member.findMany({ where: { name: { startsWith: "Multi " }, group: { organizationId: fx.organizationId } }, orderBy: { name: "asc" } });
+      expect(members.map((member) => member.groupId)).toEqual([fx.otherLeaf.id, fx.leaf.id]);
+    });
+
     it("skips duplicates unless Tetap impor is ticked", async () => {
       const lines = [line("Ulang Satu"), line("Ulang Dua", "1991-02-03")];
       await confirmMemberImportAction(form(fx.leaf.id, lines));

@@ -51,7 +51,7 @@ export async function previewMemberImportAction(formData: FormData): Promise<Act
 
 export type ConfirmImportResult =
   | { status: "invalid"; report: ImportReport }
-  | { status: "done"; created: number; skipped: number; importId: string; groupId: number };
+  | { status: "done"; created: number; skipped: number; importId: string; groupId: number | null; groupIds: number[] };
 
 /** Runs the same pipeline as the preview, then writes only if every row is valid. */
 export async function confirmMemberImportAction(formData: FormData): Promise<ActionResult<ConfirmImportResult>> {
@@ -65,11 +65,20 @@ export async function confirmMemberImportAction(formData: FormData): Promise<Act
     const rows = analysis.rows.filter((row) => force || !row.duplicate);
     if (rows.length === 0) throw new ValidationError("Tidak ada anggota baru untuk diimpor");
     const { created, importId } = await importMembers(session, rows.map((row) => row.data));
-    return { status: "done", created, skipped: analysis.rows.length - rows.length, importId, groupId: rows[0].data.groupId };
+    const groupIds = [...new Set(rows.map((row) => row.data.groupId))];
+    return {
+      status: "done",
+      created,
+      skipped: analysis.rows.length - rows.length,
+      importId,
+      // One group to link to only when the file did not name its own.
+      groupId: analysis.report.usedGroupColumn ? null : groupIds[0],
+      groupIds,
+    };
   });
   if (result.ok && result.data.status === "done") {
     revalidatePath("/dashboard/anggota");
-    revalidatePath(`/dashboard/grup/${result.data.groupId}`);
+    for (const id of result.data.groupIds) revalidatePath(`/dashboard/grup/${id}`);
   }
   return result;
 }
