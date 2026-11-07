@@ -21,10 +21,11 @@
 - [x] 3.1 Implement the scoped duplicate query; verify by test that out-of-scope and soft-deleted members never match
 - [x] 3.2 Implement `importMembers` with per-row groups, one transaction, per-member audit, and a shared `importId`; verify by test that a mid-way failure leaves no members or audit entries
 - [x] 3.3 Measure a 2000-row import against SQLite, set the transaction timeout, and record the result in design.md
-- [ ] 3.4 Implement the preview and confirm actions; verify cross-scope, cross-organization, non-leaf, and unauthenticated cases by test
+- [x] 3.4 Implement the preview and confirm actions; verify cross-scope, cross-organization, non-leaf, and unauthenticated cases by test
 - [ ] 3.5 Verify by test that confirm re-validates and rejects a file with one bad row, and that logs contain no cell values
 - [ ] 3.6 Implement the scoped leaf-group lookup for `grup`; verify by test that out-of-scope, other-organization, soft-deleted, and non-leaf names all report the unknown-group error, and that a file with neither `grup` nor a chosen group is rejected
 - [x] 3.7 Failure found in 3.3: the non-leaf `importMembers` test counted members named `Cabang …`, but `survey/entry.test.ts` creates "Cabang Lain" in the same shared test database, so it failed on some full runs. Prefix every `importMembers` test name with `Imptest`; verify by repeated runs
+- [x] 3.8 Failure found in 3.4: the action tests counted members by name prefix, but `member-view/results.test.ts` creates "Ulang Tahun Hari Ini" in the shared test database, so "Ulang " miscounted on some full runs. Scope the counts to the test's own organizations; verify by repeated full runs
 
 ## 4. UI
 

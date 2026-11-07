@@ -10,7 +10,7 @@ import { resolveGroup, resolveMember } from "@/lib/resolve";
 import type { CreateMemberInput, UpdateMemberInput } from "@/lib/validation/member";
 
 /** DESIGN.md §2 "wajib grup daun": a member's group must be at the org's deepest configured depth. */
-async function assertLeafGroup(group: { organizationId: number; depth: number }): Promise<void> {
+export async function assertLeafGroup(group: { organizationId: number; depth: number }): Promise<void> {
   const maxDepth = await getMaxDepth(group.organizationId);
   if (group.depth !== maxDepth) {
     throw new ValidationError("Anggota hanya boleh berada di grup daun (jenjang terakhir)");
