@@ -20,9 +20,9 @@
 
 ## 4. Audit
 
-- [ ] 4.1 Add `read-text-size` to the collector and findings, with `data-small-text-ok` exemption; verify with cases in `findings.test.ts`
-- [ ] 4.2 Add `first-record` for the five list pages at phone size; verify with cases in `findings.test.ts`
-- [ ] 4.3 Run `pnpm audit:viewport`, fix or mark each finding, and verify it exits 0
+- [x] 4.1 Add `read-text-size` to the collector and findings, with `data-small-text-ok` exemption; verify with cases in `findings.test.ts`
+- [x] 4.2 Add `first-record` for the five list pages at phone size; verify with cases in `findings.test.ts`
+- [x] 4.3 Run `pnpm audit:viewport`, fix or mark each finding, and verify it exits 0
 
 ## 5. Docs and final checks
 
@@ -42,3 +42,8 @@
 - [x] 7.2 The filter panel closes after every filter change on Anggota: `MemberTagProviders` keys `BulkSelectionProvider` by the visible member ids (`components/tags/member-tag-providers.tsx:23`), so the whole table card, `FilterBar` included, remounts when the list changes. Keep the panel open (spec: "the panel stays open") without losing the bulk-selection reset; verify in the browser
 - [x] 7.3 Picking a column in `ColumnToggle` inside the panel navigates the filter form and drops `page`: its form is portaled in the DOM, but React's synthetic `submit` bubbles through the React tree into next/form's `onSubmit`. Stop the event at the column form without blocking its server action; verify by jsdom test and in the browser
 - [x] 7.4 Below `sm`, the search field is `w-full`, so the "Filter" button wraps to its own row; spec says they share one row at 375px. Fix in `SearchFilter`, checking that detail tabs and Statistik, which keep their layout, are not affected
+- [x] 7.5 `read-text-size` reports Recharts' hidden `#recharts_measurement_span` (at `top: -20000px`) on every chart page, 57 false findings: the collector skips only content off-screen horizontally. Also skip text above the document top
+- [x] 7.6 The "member tag filter" and "activity tag filter" audit flows fail with "nothing to click": the tag filter is in the closed filter panel at every scenario size. Open the panel first (this also audits the open panel)
+- [x] 7.7 The weekday label in the Jadwal tab's date badge (`app/dashboard/kegiatan/[id]/page.tsx`, `text-[0.65rem]`) is 10.4px below xl
+- [x] 7.8 Kegiatan's first record starts at 634px at 360×740 (limit 600): the date navigator fills row two, so the "Filter" button wraps to a third row
+- [x] 7.9 The audit still measures Kegiatan's first record at 634px, while a phone-size browser shows 582px: the audit emulates with `mobile: false`, so headless Chrome reserves a ~15px classic scrollbar, and search (min 12rem) + Filter (84px) no longer fit the 281px row. Decide whether to narrow the search minimum or emulate overlay scrollbars

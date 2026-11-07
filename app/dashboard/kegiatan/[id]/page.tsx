@@ -421,7 +421,7 @@ function ScheduleTab({
               return (
                 <li key={occurrence.key} className="flex items-center gap-3 py-2.5">
                   <div className="flex size-11 shrink-0 flex-col items-center justify-center rounded-lg bg-muted leading-none">
-                    <span className="text-[0.65rem] text-muted-foreground uppercase">
+                    <span className="text-xs text-muted-foreground uppercase">
                       {WEEKDAY_LABELS[weekdayOf(occurrence.effectiveDate)].slice(0, 3)}
                     </span>
                     <span className="text-base font-semibold">{Number(occurrence.effectiveDate.slice(8))}</span>

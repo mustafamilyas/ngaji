@@ -30,6 +30,8 @@ export type Scenario = {
 
 const button = (label: string): Target => ({ selector: `button[aria-label="${label}"]` });
 const pickerTrigger: Target = { selector: 'button[aria-label^="Atur tag"]' };
+/** "Filter" button of a list's filter bar; every scenario size is below `lg`, where secondary filters are in its panel. */
+const filterPanelButton: Target = { selector: 'form[role="search"] button[aria-expanded]', text: "Filter" };
 
 export function buildScenarios(ids: SeedIds): Scenario[] {
   const scenarios: Scenario[] = [
@@ -64,7 +66,10 @@ export function buildScenarios(ids: SeedIds): Scenario[] {
       name: "member tag filter",
       role: "admin",
       path: "/dashboard/anggota",
-      steps: [{ click: { selector: '[data-slot="tag-filter"]' }, measure: "filter open" }],
+      steps: [
+        { click: filterPanelButton, measure: "panel open" },
+        { click: { selector: '[data-slot="tag-filter"]' }, measure: "filter open" },
+      ],
     },
     {
       name: "statistik per tag picker",
@@ -88,7 +93,10 @@ export function buildScenarios(ids: SeedIds): Scenario[] {
       name: "activity tag filter",
       role: "admin",
       path: "/dashboard/kegiatan",
-      steps: [{ click: { selector: '[data-slot="tag-filter"]' }, measure: "filter open" }],
+      steps: [
+        { click: filterPanelButton, measure: "panel open" },
+        { click: { selector: '[data-slot="tag-filter"]' }, measure: "filter open" },
+      ],
     },
   ];
 

@@ -6,6 +6,9 @@ const base: Measurement = {
   scrollWidth: 360,
   items: [],
   charts: [],
+  dashboard: true,
+  texts: [],
+  firstRecordTop: null,
 };
 
 const ctx = { page: "/dashboard/anggota", viewport: "360x740" };
@@ -73,6 +76,56 @@ describe("evaluate", () => {
   it("collapses identical findings from repeated elements", () => {
     const item = { tag: "button", type: "button", label: "Hadir", w: 56, h: 32, fontSize: 14 };
     expect(evaluate({ ...base, items: [item, item, item] }, ctx)).toHaveLength(1);
+  });
+});
+
+describe("evaluate: read-only text size (task 4.1)", () => {
+  it("reports visible dashboard text under 14px below xl", () => {
+    const m = { ...base, texts: [{ label: 'span.badge "Aktif"', fontSize: 12 }] };
+    const found = evaluate(m, ctx);
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({ kind: "read-text-size", ...ctx });
+    expect(found[0].detail).toContain('span.badge "Aktif"');
+    expect(found[0].detail).toContain("12px");
+  });
+
+  it("accepts 14px text", () => {
+    expect(evaluate({ ...base, texts: [{ label: 'p "Grup"', fontSize: 14 }] }, ctx)).toEqual([]);
+  });
+
+  it("ignores small text from xl up, where 12px is allowed", () => {
+    const m = { ...base, innerWidth: 1280, scrollWidth: 1280, texts: [{ label: 'p "Grup"', fontSize: 12 }] };
+    expect(evaluate(m, ctx)).toEqual([]);
+  });
+
+  it("ignores pages outside the dashboard, such as the landing page", () => {
+    const m = { ...base, dashboard: false, texts: [{ label: 'p "Ormas"', fontSize: 12 }] };
+    expect(evaluate(m, { ...ctx, page: "/ormas" })).toEqual([]);
+  });
+});
+
+describe("evaluate: first record on a list page (task 4.2)", () => {
+  const listCtx = { ...ctx, checkFirstRecord: true };
+
+  it("reports a first record that starts below 600px", () => {
+    const found = evaluate({ ...base, firstRecordTop: 813 }, listCtx);
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({ kind: "first-record", ...ctx });
+    expect(found[0].detail).toContain("813px");
+  });
+
+  it("accepts a first record at 600px", () => {
+    expect(evaluate({ ...base, firstRecordTop: 600 }, listCtx)).toEqual([]);
+  });
+
+  it("reports a list page with no marked record, so the check cannot pass silently", () => {
+    const found = evaluate({ ...base, firstRecordTop: null }, listCtx);
+    expect(found.map((f) => f.kind)).toEqual(["first-record"]);
+    expect(found[0].detail).toContain("data-records");
+  });
+
+  it("does not check pages or sizes the runner did not flag", () => {
+    expect(evaluate({ ...base, firstRecordTop: 813 }, ctx)).toEqual([]);
   });
 });
 

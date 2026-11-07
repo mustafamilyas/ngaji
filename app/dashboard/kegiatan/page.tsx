@@ -235,8 +235,11 @@ export default async function ActivityListPage({
             }
           >
             <SearchFilter value={q} placeholder="Cari kegiatan…" />
-            {/* The date navigator stays inline: stepping through weeks is frequent. */}
-            <DateRangeFilter range={dateRange} {...rangeConfig} today={now} />
+            {/* The date navigator stays inline (stepping through weeks is frequent); below lg it sits after the
+                Filter button, so search and Filter share the first row. */}
+            <div className="order-1 lg:order-none">
+              <DateRangeFilter range={dateRange} {...rangeConfig} today={now} />
+            </div>
           </FilterBar>
         }
         footer={
@@ -265,7 +268,7 @@ export default async function ActivityListPage({
                   </th>
                 </tr>
               </thead>
-              <tbody className="block md:table-row-group">
+              <tbody data-records className="block md:table-row-group">
                 {listPage.items.map((entry) => {
                   const cancelled = entry.status === "CANCELLED";
                   const attendanceHref = `/dashboard/kegiatan/${entry.activityId}/${entry.key}`;

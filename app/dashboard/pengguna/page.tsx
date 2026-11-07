@@ -137,7 +137,7 @@ export default async function UsersPage({
                   </th>
                 </tr>
               </thead>
-              <tbody className="block md:table-row-group">
+              <tbody data-records className="block md:table-row-group">
                 {roles.map((userRole) => {
                   const role = userRole.role as (typeof ROLES)[number];
                   const { canManage, canReset } = userRowPermissions({

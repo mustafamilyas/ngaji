@@ -229,7 +229,7 @@ export function SearchFilter({
   }
 
   return (
-    <div className="relative min-w-48 flex-1 sm:w-64 sm:flex-none">
+    <div className="relative min-w-44 flex-1 sm:w-64 sm:flex-none">
       <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
       <input
         ref={inputRef}

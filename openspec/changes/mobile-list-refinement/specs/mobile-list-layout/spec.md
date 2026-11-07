@@ -63,10 +63,10 @@ Below `lg`, stat tiles SHALL use a compact layout and SHALL hide their hint line
 - **THEN** the tiles show label and value, without the "Keluar, pindah, meninggal" hint
 
 ### Requirement: First record is reached without scrolling far
-At 375×812 with seed data, the first record on the Anggota, Kegiatan, Survei, Pengguna, and Audit list pages SHALL start no more than 600px from the top of the page, with the filter panel closed.
+At phone size with seed data (the audit measures at 360×740, which is narrower and so stricter than a 375×812 phone), the first record on the Anggota, Kegiatan, Survei, Pengguna, and Audit list pages SHALL start no more than 600px from the top of the page, with the filter panel closed.
 
 #### Scenario: Anggota first row
-- **WHEN** `/dashboard/anggota` loads at 375×812
+- **WHEN** `/dashboard/anggota` loads at 360×740 or 375×812
 - **THEN** the first member row starts at or above 600px
 
 ### Requirement: Read-only dashboard text is legible

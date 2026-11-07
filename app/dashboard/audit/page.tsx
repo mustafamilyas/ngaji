@@ -163,7 +163,7 @@ export default async function AuditPage({
                   </th>
                 </tr>
               </thead>
-              <tbody className="block md:table-row-group">
+              <tbody data-records className="block md:table-row-group">
                 {entries.map((entry) => {
                   const when = formatDateTime(entry.createdAt, session.user.timeZone);
                   const hasDetail = entry.before !== null || entry.after !== null || entry.meta !== null;

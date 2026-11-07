@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPageList, viewportsFor, type SeedIds } from "./pages";
+import { buildPageList, FIRST_RECORD_PAGES, viewportsFor, type SeedIds } from "./pages";
 
 const ids: SeedIds = {
   memberId: 5,
@@ -76,5 +76,19 @@ describe("viewportsFor", () => {
     expect(paths).toContain("/dashboard/statistik?tab=kegiatan&rincian=tag:12");
     expect(paths).toContain("/dashboard/statistik?tab=kegiatan&rincian=tag:12&rincianhal=2");
     expect(buildPageList({ ...ids, wideTagKeyId: null }).map((p) => p.path).join()).not.toContain("tag:12");
+  });
+});
+
+describe("FIRST_RECORD_PAGES (task 4.2)", () => {
+  it("names the five list pages, each of which the audit walks", () => {
+    const paths = buildPageList(ids).map((p) => p.path);
+    expect(FIRST_RECORD_PAGES).toEqual([
+      "/dashboard/anggota",
+      "/dashboard/kegiatan",
+      "/dashboard/survei",
+      "/dashboard/pengguna",
+      "/dashboard/audit",
+    ]);
+    for (const path of FIRST_RECORD_PAGES) expect(paths).toContain(path);
   });
 });

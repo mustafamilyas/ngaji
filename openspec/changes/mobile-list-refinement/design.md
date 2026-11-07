@@ -49,7 +49,7 @@ Editing 137 call sites was rejected: it is noisy and does not stop new ones. If 
 ### 5. Audit additions
 - `collector.js` walks visible text nodes and reports those under 14px. It skips SVG, `.sr-only`, and `[data-small-text-ok]`.
 - New finding kinds are `read-text-size` and `first-record`.
-- `first-record` runs only at phone size on the five list pages, and uses the bulk seed the audit already has.
+- `first-record` runs only at the audit's phone size (360×740) on the five list pages, finds rows through a `data-records` marker on each list's `<tbody>`, and uses the bulk seed the audit already has. The audit's Chrome reserves a classic scrollbar, so it is stricter than a phone.
 
 ## Risks / Trade-offs
 

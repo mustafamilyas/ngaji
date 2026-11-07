@@ -35,6 +35,15 @@ export type SeedIds = {
 
 export type AuditPage = { path: string; anonymous: boolean };
 
+/** List pages whose first record must be near the top at phone size (`first-record`); each marks its rows `data-records`. */
+export const FIRST_RECORD_PAGES = [
+  "/dashboard/anggota",
+  "/dashboard/kegiatan",
+  "/dashboard/survei",
+  "/dashboard/pengguna",
+  "/dashboard/audit",
+];
+
 export function buildPageList(ids: SeedIds): AuditPage[] {
   const anonymous = ["/", "/ormas", "/login", "/daftar"].map((path) => ({ path, anonymous: true }));
   const paths: string[] = [

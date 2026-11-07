@@ -3,6 +3,8 @@
  *   - page-level horizontal overflow
  *   - tap targets under 44px tall
  *   - text fields under 16px (iOS zooms on focus)
+ *   - dashboard text under 14px below xl (mark true exceptions `data-small-text-ok`)
+ *   - list pages whose first record starts below 600px at phone size (rows marked `data-records`)
  *   - charts whose svg did not follow a resize (the pages are resized without a reload, like a rotation)
  *
  * Self-contained: builds a scratch database (migrate + seed) and a throwaway `next dev` server, so it
@@ -26,7 +28,7 @@ import { Cdp, sleep } from "./viewport-audit/cdp";
 import { startScratchEnv } from "./viewport-audit/env";
 import { login } from "./viewport-audit/login";
 import { evaluate, formatReport, type Finding, type Measurement, type SkippedPage } from "./viewport-audit/findings";
-import { buildPageList, viewportsFor, type Viewport } from "./viewport-audit/pages";
+import { buildPageList, FIRST_RECORD_PAGES, viewportsFor, type Viewport } from "./viewport-audit/pages";
 import { runScenario } from "./viewport-audit/scenario-runner";
 import { buildScenarios, SCENARIO_VIEWPORTS } from "./viewport-audit/scenarios";
 
@@ -74,7 +76,9 @@ async function main(): Promise<number> {
       }
       const measurement = await cdp.evaluate<Measurement>(collector);
       controlsMeasured += measurement.items.length;
-      findings.push(...evaluate(measurement, { page: where, viewport: label(viewport) }));
+      // The first viewport is the phone; the page loaded there, so it is still scrolled to the top.
+      const checkFirstRecord = index === 0 && FIRST_RECORD_PAGES.includes(path);
+      findings.push(...evaluate(measurement, { page: where, viewport: label(viewport), checkFirstRecord }));
     }
   };
 

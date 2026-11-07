@@ -4,6 +4,12 @@
 export const MIN_TARGET_PX = 43.5;
 /** Text fields below this size make iOS Safari zoom the page on focus. */
 export const MIN_FIELD_FONT_PX = 16;
+/** Read-only dashboard text below `xl` is at least this size (mobile-list-layout spec). */
+export const MIN_READ_FONT_PX = 14;
+/** On a list page at phone size, the first record starts no lower than this (document y, filter panel closed). */
+export const MAX_FIRST_RECORD_PX = 600;
+/** Tailwind's `xl`: from here 12px `text-xs` is allowed again. */
+const XL_PX = 1280;
 /** Allowed gap between a chart container and its svg (rounding). */
 const CHART_TOLERANCE_PX = 2;
 const OVERFLOW_TOLERANCE_PX = 1;
@@ -22,9 +28,15 @@ export type Measurement = {
   scrollWidth: number;
   items: MeasuredItem[];
   charts: { container: number; svg: number }[];
+  /** The page is inside the dashboard layout (`[data-dashboard]`); the landing pages keep their own sizes. */
+  dashboard: boolean;
+  /** Visible text, one entry per distinct element and size; svg, `.sr-only` and `[data-small-text-ok]` are left out. */
+  texts: { label: string; fontSize: number }[];
+  /** Document y of the first row of `[data-records]`, or null when the page has none. */
+  firstRecordTop: number | null;
 };
 
-export type FindingKind = "overflow" | "target-size" | "text-size" | "chart-width" | "flow";
+export type FindingKind = "overflow" | "target-size" | "text-size" | "read-text-size" | "first-record" | "chart-width" | "flow";
 
 export type Finding = { kind: FindingKind; page: string; viewport: string; detail: string };
 export type SkippedPage = { page: string; reason: string };
@@ -36,7 +48,10 @@ const isTextField = (item: MeasuredItem) =>
 
 const size = (item: MeasuredItem) => `${Math.round(item.w)}x${Math.round(item.h)}`;
 
-export function evaluate(measurement: Measurement, context: { page: string; viewport: string }): Finding[] {
+export function evaluate(
+  measurement: Measurement,
+  { checkFirstRecord = false, ...context }: { page: string; viewport: string; checkFirstRecord?: boolean },
+): Finding[] {
   const found: Finding[] = [];
   const add = (kind: FindingKind, detail: string) => found.push({ kind, ...context, detail });
 
@@ -49,6 +64,18 @@ export function evaluate(measurement: Measurement, context: { page: string; view
     if (isTextField(item) && item.fontSize < MIN_FIELD_FONT_PX) {
       add("text-size", `${item.label || item.tag} has ${item.fontSize}px text (needs ${MIN_FIELD_FONT_PX}px)`);
     }
+  }
+
+  if (measurement.dashboard && measurement.innerWidth < XL_PX) {
+    for (const text of measurement.texts) {
+      if (text.fontSize < MIN_READ_FONT_PX) add("read-text-size", `${text.label} is ${text.fontSize}px (needs ${MIN_READ_FONT_PX}px)`);
+    }
+  }
+
+  if (checkFirstRecord) {
+    const top = measurement.firstRecordTop;
+    if (top === null) add("first-record", "no [data-records] row found");
+    else if (top > MAX_FIRST_RECORD_PX) add("first-record", `first record starts at ${top}px (needs ${MAX_FIRST_RECORD_PX}px or less)`);
   }
 
   for (const chart of measurement.charts) {
@@ -77,7 +104,7 @@ export function formatReport(findings: Finding[], skipped: SkippedPage[]): strin
     lines.push(`${findings.length} defect(s) on ${byPage.size} page(s):`, "");
     for (const [page, list] of byPage) {
       lines.push(page);
-      for (const f of list) lines.push(`  ${f.viewport.padEnd(9)} ${f.kind.padEnd(11)} ${f.detail}`);
+      for (const f of list) lines.push(`  ${f.viewport.padEnd(9)} ${f.kind.padEnd(14)} ${f.detail}`);
     }
   }
   if (skipped.length > 0) {

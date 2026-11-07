@@ -143,7 +143,7 @@ export function MembersTable({
             </th>
           </tr>
         </thead>
-        <tbody className="block md:table-row-group">
+        <tbody data-records className="block md:table-row-group">
           {members.map((member) => (
             <tr
               key={member.id}

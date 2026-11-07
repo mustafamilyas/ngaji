@@ -38,5 +38,42 @@
     })
     .filter(Boolean);
 
-  return { innerWidth, scrollWidth: document.documentElement.scrollWidth, items, charts };
+  // Visible text, one entry per element kind and size (rows repeat the same cell many times).
+  // Chart text (svg), screen-reader text and elements marked `data-small-text-ok` are exempt.
+  const texts = [];
+  const seenText = new Set();
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const text = node.textContent.trim().replace(/\s+/g, ' ');
+    const el = node.parentElement;
+    if (!text || !el) continue;
+    if (el.closest('svg, .sr-only, [data-small-text-ok], nextjs-portal, script, style, noscript, template')) continue;
+    const style = getComputedStyle(el);
+    if (style.visibility === 'hidden') continue;
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) continue;
+    if (rect.right <= 0 || rect.left >= innerWidth) continue;
+    // Parked above the page, e.g. Recharts' #recharts_measurement_span at top: -20000px.
+    if (rect.bottom + scrollY <= 0) continue;
+
+    const fontSize = parseFloat(style.fontSize);
+    const textClasses = (el.getAttribute('class') || '').split(/\s+/).filter((c) => /(^|:)text-/.test(c)).join('.');
+    const key = `${el.tagName}|${textClasses}|${fontSize}`;
+    if (seenText.has(key)) continue;
+    seenText.add(key);
+    const tag = el.tagName.toLowerCase() + (textClasses ? `.${textClasses}` : '');
+    texts.push({ label: `${tag} "${text.slice(0, 30)}"`, fontSize });
+  }
+
+  const firstRecord = document.querySelector('[data-records] > *');
+
+  return {
+    innerWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    items,
+    charts,
+    dashboard: Boolean(document.querySelector('[data-dashboard]')),
+    texts,
+    firstRecordTop: firstRecord ? Math.round(firstRecord.getBoundingClientRect().top + scrollY) : null,
+  };
 })()

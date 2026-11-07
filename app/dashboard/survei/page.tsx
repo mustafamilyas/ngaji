@@ -156,7 +156,7 @@ export default async function SurveyListPage({
                   </th>
                 </tr>
               </thead>
-              <tbody className="block md:table-row-group">
+              <tbody data-records className="block md:table-row-group">
                 {surveys.map((survey) => {
                   const actions: RowAction[] = [
                     { label: "Lihat hasil", href: `/dashboard/survei/${survey.id}`, icon: <Eye /> },
