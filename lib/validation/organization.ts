@@ -5,6 +5,13 @@ import { usernameSchema } from "./username";
 
 const nameSchema = z.string().trim().min(1, "Nama wajib diisi").max(100, "Nama terlalu panjang");
 
+/** Member code prefix (member-code spec): 2–4 letters A–Z, stored uppercase, set once at creation. */
+export const memberCodePrefixSchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z]{2,4}$/, "Prefiks kode anggota harus 2–4 huruf A–Z");
+
 /** Settings form + Server Action (organization-settings spec); never carries an organization id. */
 export const updateOrganizationSchema = z.object({
   name: nameSchema,

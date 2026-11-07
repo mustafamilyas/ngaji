@@ -8,7 +8,7 @@
 ## 2. Pure logic (tests first)
 
 - [x] 2.1 `lib/member/code.ts`: `generateMemberCode(prefix, random)` and `normalizeMemberCode(input)` with tests for shape, alphabet, lowercase, missing dash, `O/I/L` mapping, invalid input → `null`
-- [ ] 2.2 Prefix validation in zod (`^[A-Z]{2,4}$`) with tests for valid, digits, too long, lowercase
+- [x] 2.2 Prefix validation in zod (`^[A-Z]{2,4}$`) with tests for valid, digits, too long, lowercase
 - [ ] 2.3 `lib/member/relations.ts`: `canonicalPair(type, a, b)` and `relationLabel(type, side, relativeSex)`, plus section ordering, with tests covering every row of the spec's type table
 
 ## 3. Member code assignment

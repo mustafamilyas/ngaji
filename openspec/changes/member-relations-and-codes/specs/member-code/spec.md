@@ -7,10 +7,14 @@ Gives every member a short, permanent, human-readable code that fits on a member
 ## ADDED Requirements
 
 ### Requirement: Organization code prefix
-Every organization SHALL have a member code prefix of 2–4 uppercase letters `A–Z`, unique across all organizations. The prefix SHALL be set when the organization is created (`pnpm org:create`, `BOOTSTRAP_MEMBER_CODE_PREFIX`) and SHALL NOT be changeable afterwards through the app. Creating an organization with an invalid or already used prefix SHALL fail without creating anything.
+Every organization SHALL have a member code prefix of 2–4 uppercase letters `A–Z`, unique across all organizations. Input is trimmed and uppercased before validation (`anr` is stored as `ANR`). The prefix SHALL be set when the organization is created (`pnpm org:create`, `BOOTSTRAP_MEMBER_CODE_PREFIX`) and SHALL NOT be changeable afterwards through the app. Creating an organization with an invalid or already used prefix SHALL fail without creating anything.
 
 #### Scenario: Valid prefix
 - **WHEN** an organization is created with prefix `ANR`
+- **THEN** the organization stores `ANR`
+
+#### Scenario: Lowercase prefix
+- **WHEN** an organization is created with prefix `anr`
 - **THEN** the organization stores `ANR`
 
 #### Scenario: Prefix already taken
