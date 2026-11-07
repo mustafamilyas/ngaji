@@ -19,7 +19,7 @@
 ## 3. Server
 
 - [x] 3.1 Implement the scoped duplicate query; verify by test that out-of-scope and soft-deleted members never match
-- [ ] 3.2 Implement `importMembers` with per-row groups, one transaction, per-member audit, and a shared `importId`; verify by test that a mid-way failure leaves no members or audit entries
+- [x] 3.2 Implement `importMembers` with per-row groups, one transaction, per-member audit, and a shared `importId`; verify by test that a mid-way failure leaves no members or audit entries
 - [ ] 3.3 Measure a 2000-row import against SQLite, set the transaction timeout, and record the result in design.md
 - [ ] 3.4 Implement the preview and confirm actions; verify cross-scope, cross-organization, non-leaf, and unauthenticated cases by test
 - [ ] 3.5 Verify by test that confirm re-validates and rejects a file with one bad row, and that logs contain no cell values
