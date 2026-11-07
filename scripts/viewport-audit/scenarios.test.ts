@@ -49,6 +49,25 @@ describe("buildScenarios", () => {
   });
 });
 
+describe("member import flows", () => {
+  const measures = (name: string) =>
+    buildScenarios(ids)
+      .find((s) => s.name === name)
+      ?.steps.flatMap((step) => ("measure" in step && step.measure ? [step.measure] : []));
+
+  it("opens the Anggota header menu holding Impor CSV", () => {
+    const scenario = buildScenarios(ids).find((s) => s.name === "member header menu");
+    expect(scenario).toMatchObject({ role: "admin", path: "/dashboard/anggota" });
+    expect(measures("member header menu")).toEqual(["menu open"]);
+  });
+
+  it("opens the column help on the import page", () => {
+    const scenario = buildScenarios(ids).find((s) => s.name === "import column help");
+    expect(scenario).toMatchObject({ role: "admin", path: "/dashboard/anggota/impor" });
+    expect(measures("import column help")).toEqual(["help open"]);
+  });
+});
+
 describe("locateExpression", () => {
   it("embeds the selector and text as data, not code", () => {
     const expression = locateExpression({ selector: `button[aria-label="x"]`, text: `"); alert(1); ("` });

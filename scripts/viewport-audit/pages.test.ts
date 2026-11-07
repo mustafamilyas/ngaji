@@ -37,6 +37,10 @@ describe("buildPageList", () => {
     expect(paths).toContain("/dashboard/survei/1/isi");
   });
 
+  it("includes the member import page", () => {
+    expect(buildPageList(ids).map((p) => p.path)).toContain("/dashboard/anggota/impor");
+  });
+
   it("opens the second page of every server-paginated table, with its sort params", () => {
     const paths = buildPageList(ids).map((p) => p.path);
     expect(paths).toContain("/dashboard/statistik?tab=partisipasi&sort=nama&dir=asc&page=2");

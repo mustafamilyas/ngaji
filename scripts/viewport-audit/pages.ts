@@ -41,6 +41,7 @@ export function buildPageList(ids: SeedIds): AuditPage[] {
     "/dashboard",
     "/dashboard/anggota",
     "/dashboard/anggota/baru",
+    "/dashboard/anggota/impor",
     "/dashboard/pengguna",
     "/dashboard/survei",
     "/dashboard/survei/baru",

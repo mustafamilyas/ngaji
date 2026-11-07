@@ -49,6 +49,18 @@ export function buildScenarios(ids: SeedIds): Scenario[] {
       ],
     },
     {
+      name: "member header menu",
+      role: "admin",
+      path: "/dashboard/anggota",
+      steps: [{ click: button("Aksi untuk daftar anggota"), measure: "menu open" }],
+    },
+    {
+      name: "import column help",
+      role: "admin",
+      path: "/dashboard/anggota/impor",
+      steps: [{ click: { selector: "summary", text: "Format kolom" }, measure: "help open" }],
+    },
+    {
       name: "member tag filter",
       role: "admin",
       path: "/dashboard/anggota",
