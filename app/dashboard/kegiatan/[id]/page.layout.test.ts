@@ -57,9 +57,10 @@ describe("ActivityDetailPage phone and tablet layout", () => {
     expect(openingTag(html, "button", "Hapus kegiatan")).toContain("h-11");
   });
 
-  it("jadwal tab: Lihat and the edit pencil are 44px below xl", async () => {
+  it("jadwal tab: the row link and the edit pencil are 44px below xl", async () => {
     const html = await render("kegiatan-layout-jadwal", { tab: "jadwal" });
-    expect(openingTag(html, "a", "Lihat")).toContain("h-11");
+    // OWNER may record ahead, so every row link reads "Isi absensi" (task 6.3).
+    expect(openingTag(html, "a", "Isi absensi<svg")).toContain("h-11");
     expect(html.match(/<button [^>]*aria-label="Ubah jadwal[^>]*>/)?.[0] ?? "").toContain("size-11");
   });
 });

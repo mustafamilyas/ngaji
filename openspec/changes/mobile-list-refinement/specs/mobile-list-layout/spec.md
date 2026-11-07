@@ -128,3 +128,18 @@ A user whose primary role is ADMIN or OWNER SHALL be able to record attendance f
 #### Scenario: USER stays at today or earlier
 - **WHEN** a USER checks in, or opens the check-in page, for a future occurrence
 - **THEN** the server rejects the check-in and the page shows the closed message
+
+### Requirement: Isi absensi buttons follow the future-date rule
+On the activity page, the header button SHALL open today's occurrence ("Isi absensi hari ini") when one is not cancelled. Otherwise, for a user whose primary role is ADMIN or OWNER, it SHALL open the next non-cancelled occurrence in the schedule horizon, labelled "Isi absensi · <weekday>, <date>"; a USER SHALL see no header button. The Jadwal tab rows and the Kegiatan list's row action SHALL read "Isi absensi" for every non-cancelled occurrence the user may record under the same date rule, and "Lihat" otherwise; on the Jadwal tab only today's row button is filled, and future ones are outlined. Earlier occurrences SHALL stay editable for every role in scope.
+
+#### Scenario: ADMIN with nothing today
+- **WHEN** an ADMIN opens an activity whose next occurrence is in two days
+- **THEN** the header button reads "Isi absensi · <weekday>, <date>" and opens that occurrence
+
+#### Scenario: USER with nothing today
+- **WHEN** a USER opens the same activity
+- **THEN** no header "Isi absensi" button is shown, and future Jadwal rows read "Lihat"
+
+#### Scenario: Earlier occurrence
+- **WHEN** any role in scope opens an occurrence from last week
+- **THEN** the attendance form is editable

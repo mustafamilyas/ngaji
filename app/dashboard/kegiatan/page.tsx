@@ -32,7 +32,7 @@ import { OccurrenceNotes } from "./occurrence-notes";
 import { WEEKDAY_LABELS } from "@/lib/activity/labels";
 import { listActivityOccurrences } from "@/lib/activity/list";
 import { ACTIVITY_SORT_KEYS, type ActivitySortKey, DEFAULT_ACTIVITY_SORT, sortActivityEntries } from "@/lib/activity/list-sort";
-import { visibleGroupsWhere } from "@/lib/authz";
+import { canRecordDate, visibleGroupsWhere } from "@/lib/authz";
 import { ACTIVITY_CALENDAR_DATE_RANGE, ACTIVITY_LIST_DATE_RANGE, PAGE_SIZE } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { today, weekdayOf } from "@/lib/dates";
@@ -272,7 +272,7 @@ export default async function ActivityListPage({
                 {listPage.items.map((entry) => {
                   const cancelled = entry.status === "CANCELLED";
                   const attendanceHref = `/dashboard/kegiatan/${entry.activityId}/${entry.key}`;
-                  const canRecordNow = entry.canRecord && !cancelled && entry.effectiveDate <= now;
+                  const canRecordNow = entry.canRecord && !cancelled && canRecordDate(session.user, entry.effectiveDate, now);
                   return (
                     <tr
                       key={`${entry.activityId}:${entry.key}`}

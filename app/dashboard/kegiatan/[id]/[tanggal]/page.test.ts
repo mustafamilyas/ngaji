@@ -66,6 +66,20 @@ describe("AttendancePage", () => {
     expect(html).toContain("Sakit demam");
   });
 
+  it("keeps an earlier occurrence editable for every role (task 6.3)", async () => {
+    const fixture = await buildPageFixture("kegiatan-absensi-past");
+    for (const role of ["USER", "ADMIN", "OWNER"] as const) {
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, role, fixture.leaf) });
+      const html = renderToStaticMarkup(
+        await AttendancePage({
+          params: Promise.resolve({ id: String(fixture.activityId), tanggal: addDays(today(DEFAULT_TIMEZONE), -7) }),
+          searchParams: Promise.resolve({}),
+        }),
+      );
+      expect(html).toContain("Tandai Anggota Uji izin");
+    }
+  });
+
   it("lets an ADMIN fill a future date but keeps it read-only for a USER", async () => {
     const fixture = await buildPageFixture("kegiatan-absensi-future");
     const render = async (role: "ADMIN" | "USER") => {

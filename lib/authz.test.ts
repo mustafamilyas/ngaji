@@ -3,6 +3,7 @@ import {
   authorize,
   canEditActivity,
   canRecordAttendance,
+  canRecordDate,
   canViewActivity,
   visibleGroupsWhere,
 } from "./authz";
@@ -722,5 +723,27 @@ describe("authorize — tag.manage / tag.use", () => {
       const withExtra: SessionUser = { ...adminOfDesa, extraRoles: [{ groupId: 4, role: "ADMIN" }] };
       expect(() => authorize(withExtra, "tag.use", { groupPath: KELOMPOK })).toThrow(ForbiddenError);
     });
+  });
+});
+
+describe("canRecordDate (DESIGN.md §3.3 rule 4)", () => {
+  const now = "2026-11-07";
+
+  it("lets every role record today and earlier dates", () => {
+    for (const role of ["USER", "ADMIN", "OWNER"] as const) {
+      expect(canRecordDate(session(role, 4, KELOMPOK), now, now)).toBe(true);
+      expect(canRecordDate(session(role, 4, KELOMPOK), "2026-10-31", now)).toBe(true);
+    }
+  });
+
+  it("lets ADMIN and OWNER record a future date, but not USER", () => {
+    expect(canRecordDate(session("ADMIN", 4, KELOMPOK), "2026-11-14", now)).toBe(true);
+    expect(canRecordDate(session("OWNER", 4, KELOMPOK), "2026-11-14", now)).toBe(true);
+    expect(canRecordDate(session("USER", 4, KELOMPOK), "2026-11-14", now)).toBe(false);
+  });
+
+  it("ignores extra roles: only the primary role allows future dates", () => {
+    const user: SessionUser = { ...session("USER", 4, KELOMPOK), extraRoles: [{ groupId: 4, role: "ADMIN" }] };
+    expect(canRecordDate(user, "2026-11-14", now)).toBe(false);
   });
 });

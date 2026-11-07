@@ -32,7 +32,7 @@ import { scheduleLabel, WEEKDAY_LABELS } from "@/lib/activity/labels";
 import { toActivityTemplate } from "@/lib/activity/template";
 import { occurrencesFor } from "@/lib/activity/occurrences";
 import { loadOccurrenceRows } from "@/lib/activity/rows";
-import { canEditActivity } from "@/lib/authz";
+import { canEditActivity, canRecordDate } from "@/lib/authz";
 import { CONFLICT_HORIZON_DAYS, EMBEDDED_PAGE_SIZE, STATS_DATE_RANGE } from "@/lib/constants";
 import { addDays, today, weekdayOf } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
@@ -106,7 +106,10 @@ export default async function ActivityDetailPage({
     loadEntityTags(session.user, { kind: "activity", id: activity.id }),
   ]);
   const occurrences = occurrencesFor(toActivityTemplate(activity), now, scheduleTo, rows);
-  const todays = occurrences.find((o) => o.effectiveDate === now && o.status !== "CANCELLED");
+  // Today's occurrence, else (ADMIN+, who may record ahead) the next one; `occurrences` is sorted by effective date.
+  const recordTarget = canRecord
+    ? occurrences.find((o) => o.status !== "CANCELLED" && o.effectiveDate >= now && canRecordDate(session.user, o.effectiveDate, now))
+    : undefined;
   const ended = activity.endsOn !== null && activity.endsOn < now;
 
   const tabs: TabItem<Tab>[] = [
@@ -155,10 +158,12 @@ export default async function ActivityDetailPage({
                 Ubah
               </Link>
             )}
-            {canRecord && todays && (
-              <Link href={`${path}/${todays.key}`} className={buttonVariants({ size: "lg" })}>
+            {recordTarget && (
+              <Link href={`${path}/${recordTarget.key}`} className={buttonVariants({ size: "lg" })}>
                 <ClipboardCheck />
-                Isi absensi hari ini
+                {recordTarget.effectiveDate === now
+                  ? "Isi absensi hari ini"
+                  : `Isi absensi · ${WEEKDAY_LABELS[weekdayOf(recordTarget.effectiveDate)].slice(0, 3)}, ${formatDate(recordTarget.effectiveDate)}`}
               </Link>
             )}
           </>
@@ -194,6 +199,7 @@ export default async function ActivityDetailPage({
             query={query}
             canEdit={canEdit}
             canRecord={canRecord}
+            user={session.user}
             now={now}
           />
         )}
@@ -392,6 +398,7 @@ function ScheduleTab({
   query,
   canEdit,
   canRecord,
+  user,
   now,
 }: {
   activityId: number;
@@ -400,6 +407,7 @@ function ScheduleTab({
   query: Record<string, string | string[] | undefined>;
   canEdit: boolean;
   canRecord: boolean;
+  user: SessionUser;
   now: string;
 }) {
   const schedulePage = paginate(occurrences, page, EMBEDDED_PAGE_SIZE);
@@ -418,6 +426,7 @@ function ScheduleTab({
               const cancelled = occurrence.status === "CANCELLED";
               const moved = occurrence.effectiveDate !== occurrence.key;
               const isToday = occurrence.effectiveDate === now;
+              const recordable = canRecord && !cancelled && canRecordDate(user, occurrence.effectiveDate, now);
               return (
                 <li key={occurrence.key} className="flex items-center gap-3 py-2.5">
                   <div className="flex size-11 shrink-0 flex-col items-center justify-center rounded-lg bg-muted leading-none">
@@ -453,9 +462,9 @@ function ScheduleTab({
                     )}
                     <Link
                       href={`${path}/${occurrence.key}`}
-                      className={buttonVariants({ variant: isToday && canRecord && !cancelled ? "default" : "ghost" })}
+                      className={buttonVariants({ variant: recordable ? (isToday ? "default" : "outline") : "ghost" })}
                     >
-                      {isToday && canRecord && !cancelled ? "Isi absensi" : "Lihat"}
+                      {recordable ? "Isi absensi" : "Lihat"}
                       <ChevronRight data-icon="inline-end" />
                     </Link>
                   </div>

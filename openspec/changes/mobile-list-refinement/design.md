@@ -61,6 +61,9 @@ Alternatives:
 ### 7. One future-date rule for every attendance writer
 `loadRecordingContext`, which every writer calls, applies `canRecordFutureAttendance` (primary role ADMIN or OWNER) itself, instead of each caller opting in. The table, check-in, and bulk save then follow one rule. Extra ADMIN roles do not count, matching the existing table rule.
 
+### 8. One date predicate for the Isi absensi buttons
+`canRecordDate(session, date, now)` in `lib/authz.ts` (today or earlier, or any date for ADMIN+) decides the header button, Jadwal rows, and the Kegiatan list action, so the three cannot drift. With no occurrence today the header opens the next one (owner decision), not the latest past one: past dates stay reachable from the Absensi tab table.
+
 ## Risks / Trade-offs
 
 - [Larger text breaks tight layouts such as calendar cells and tiles] → the audit plus a screenshot pass; mark true exceptions `data-small-text-ok`.

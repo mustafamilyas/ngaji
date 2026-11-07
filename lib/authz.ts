@@ -130,6 +130,11 @@ export function canRecordFutureAttendance(session: SessionUser): boolean {
   return atLeast(session.role, "ADMIN");
 }
 
+/** Date rule of §3.3 condition 4 for a caller already allowed to record the activity: today or earlier, or any date for ADMIN+. */
+export function canRecordDate(session: SessionUser, date: string, now: string): boolean {
+  return date <= now || canRecordFutureAttendance(session);
+}
+
 /** Surveys inherit exactly like activities: visible = ancestor-or-scope. */
 export const canViewSurvey = canViewActivity;
 
