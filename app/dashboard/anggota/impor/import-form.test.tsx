@@ -164,6 +164,18 @@ describe("ImportForm", () => {
     expect(confirm.mock.calls[0][0].get("force")).toBe("on");
   });
 
+  it("counts only the rows that will be imported in the preview heading", async () => {
+    preview.mockResolvedValue({ ok: true, data: report({ validCount: 3, duplicateCount: 3 }) });
+    const user = userEvent.setup();
+    render(<ImportForm leafGroups={groups} />);
+    await pickFileAndCheck(user);
+
+    expect(await screen.findByText("0 baris siap diimpor")).toBeInTheDocument();
+    await user.click(screen.getByRole("checkbox", { name: /Tetap impor/ }));
+
+    expect(screen.getByText("3 baris siap diimpor")).toBeInTheDocument();
+  });
+
   it("shows the report again when confirm finds an invalid row", async () => {
     preview.mockResolvedValue({ ok: true, data: report() });
     confirm.mockResolvedValue({

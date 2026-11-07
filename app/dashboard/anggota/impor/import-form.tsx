@@ -170,7 +170,7 @@ export function ImportForm({ leafGroups }: { leafGroups: GroupAutocompleteOption
           {report ? (
             <section aria-label="Hasil pemeriksaan" className="flex flex-col gap-3 rounded-lg border p-4 text-sm">
               <p className="font-medium">
-                {report.invalidCount === 0 ? `${report.validCount} baris siap diimpor` : `${report.validCount} baris valid`}
+                {report.invalidCount === 0 ? `${importable} baris siap diimpor` : `${report.validCount} baris valid`}
               </p>
               {report.invalidCount > 0 ? (
                 <p>{`${report.invalidCount} baris bermasalah. Perbaiki file lalu periksa lagi; tidak ada anggota yang dibuat selama masih ada kesalahan.`}</p>
