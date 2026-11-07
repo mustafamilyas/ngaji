@@ -36,6 +36,13 @@ export type WorkStatus = (typeof WORK_STATUSES)[number];
 export const MEMBER_STATUSES = ["AKTIF", "KELUAR", "PINDAH", "MENINGGAL"] as const;
 export type MemberStatus = (typeof MEMBER_STATUSES)[number];
 
+/**
+ * Member relationship types (DESIGN.md §14). ORANG_TUA and WALI are directed (from = parent/guardian);
+ * PASANGAN and SAUDARA are symmetric (from = smaller member id).
+ */
+export const RELATION_TYPES = ["ORANG_TUA", "WALI", "PASANGAN", "SAUDARA"] as const;
+export type RelationType = (typeof RELATION_TYPES)[number];
+
 export const FREQS = ["ONCE", "DAILY", "WEEKLY", "MONTHLY"] as const;
 export type Freq = (typeof FREQS)[number];
 

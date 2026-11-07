@@ -161,3 +161,13 @@ export const MAX_TAG_FILTER_IDS = 50;
 /** Color of a tag created from the picker; the owner group recolors it from its Tag tab. */
 export const TAG_DEFAULT_COLOR = "slate" as const;
 export const TAG_COLORS = ["slate", "red", "orange", "amber", "green", "teal", "blue", "indigo", "purple", "pink"] as const;
+
+/** Member relationship limits (member-relations spec). Reject, never truncate. */
+export const RELATION_MAX_PER_MEMBER = 20;
+/** Most members offered by the "Tambah keluarga" picker. */
+export const RELATION_PICKER_LIMIT = 10;
+
+/** Random part of `Member.code` (`<PREFIX>-XXXXXX`, Crockford base32); see member-code spec. */
+export const MEMBER_CODE_LENGTH = 6;
+/** Retries when a generated code collides with an existing one (unique index on `Member.code`). */
+export const MEMBER_CODE_MAX_ATTEMPTS = 5;

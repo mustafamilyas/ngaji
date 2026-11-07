@@ -29,14 +29,17 @@ datasource db {
 //                    | "SHORT_TEXT" | "LONG_TEXT"
 
 model Organization {
-  id        Int      @id @default(autoincrement())
-  name      String
-  timezone  String   @default("Asia/Jakarta")
-  logoUrl   String? // reserved; no upload or rendering yet
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  levels    Level[]
-  groups    Group[]
+  id               Int      @id @default(autoincrement())
+  name             String
+  timezone         String   @default("Asia/Jakarta")
+  logoUrl          String? // reserved; no upload or rendering yet
+  /// 2–4 letters A–Z, globally unique, immutable; prefix of every Member.code (DESIGN.md §14).
+  /// Nullable only until `pnpm member-codes:backfill` has run.
+  memberCodePrefix String?  @unique
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  levels           Level[]
+  groups           Group[]
 }
 
 /// Public sign-up interest from a prospective organization. Deliberately has
@@ -118,6 +121,7 @@ model User {
   recordedSurveys    SurveyResponse[] @relation("surveyResponseRecordedBy")
   createdTags        Tag[]            @relation("tagCreatedBy")
   memberTags         MemberTag[]      @relation("memberTagCreatedBy")
+  memberRelations    MemberRelation[] @relation("memberRelationCreatedBy")
   activityTags       ActivityTag[]    @relation("activityTagCreatedBy")
   auditLogs          AuditLog[]
 }
@@ -156,6 +160,9 @@ model Member {
   id            Int       @id @default(autoincrement())
   groupId       Int // must be a leaf group
   name          String
+  /// `<PREFIX>-XXXXXX`, server-assigned, never changes, globally unique (DESIGN.md §14).
+  /// Nullable only until `pnpm member-codes:backfill` has run.
+  code          String?   @unique
   birthPlace    String
   birthDate     String // YYYY-MM-DD
   sex           String // Sex
@@ -177,6 +184,8 @@ model Member {
   attendances     Attendance[]
   surveyResponses SurveyResponse[]
   tags            MemberTag[]
+  relationsFrom   MemberRelation[] @relation("memberRelationFrom")
+  relationsTo     MemberRelation[] @relation("memberRelationTo")
 
   @@index([groupId, status])
   @@index([name])
@@ -401,6 +410,25 @@ model MemberTag {
 
   @@id([memberId, tagId])
   @@index([tagId])
+}
+
+// One row per related pair (DESIGN.md §14). Directed types (ORANG_TUA, WALI): from = parent/guardian.
+// Symmetric types (PASANGAN, SAUDARA): from = the smaller member id. The reverse direction of a pair
+// is rejected in the mutation, not by the unique index. Hard-deleted like MemberTag; every change audited.
+model MemberRelation {
+  id           Int      @id @default(autoincrement())
+  fromMemberId Int
+  toMemberId   Int
+  type         String // RelationType
+  createdById  Int
+  createdAt    DateTime @default(now())
+
+  fromMember Member @relation("memberRelationFrom", fields: [fromMemberId], references: [id])
+  toMember   Member @relation("memberRelationTo", fields: [toMemberId], references: [id])
+  createdBy  User   @relation("memberRelationCreatedBy", fields: [createdById], references: [id])
+
+  @@unique([fromMemberId, toMemberId])
+  @@index([toMemberId])
 }
 
 /// Tag ↔ activity link. Hard-deleted; every attach/detach is audited.
