@@ -37,7 +37,9 @@ export function ColumnToggle({
         Kolom
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[min(16rem,calc(100vw-24px))]">
-        <form action={action} key={visible.join(",")}>
+        {/* Portaled in the DOM, but React bubbles `submit` through the component tree: stop it here so a
+            surrounding filter form (e.g. FilterBar's panel) does not submit too. */}
+        <form action={action} key={visible.join(",")} onSubmit={(event) => event.stopPropagation()}>
           <div className="flex items-center justify-between border-b px-3 py-2">
             <p className="text-xs font-medium text-muted-foreground">Tampilkan kolom</p>
             <SavingIndicator />

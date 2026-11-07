@@ -206,31 +206,37 @@ export default async function ActivityListPage({
             preserve={{ view: view === "calendar" ? "calendar" : undefined }}
             isFiltered={isFiltered}
             resetHref={view === "calendar" ? "/dashboard/kegiatan?view=calendar" : "/dashboard/kegiatan"}
+            activeCount={[groupIds, tagIds].filter(Boolean).length}
+            more={
+              <>
+                <GroupFilter
+                  groups={visibleGroups}
+                  selected={groupIds ?? [session.user.groupId]}
+                  active={Boolean(groupIds)}
+                  withDescendantsAction
+                  hint="Menampilkan kegiatan yang berlaku untuk grup terpilih, termasuk dari grup induknya."
+                />
+                {(tagOptions.visible.length > 0 || tagIds) && (
+                  <TagFilter tags={tagOptions.visible} selected={visibleTagIds(tagOptions.visible, tagIds)} />
+                )}
+                {view === "list" && (
+                  <SortSelect
+                    options={[
+                      { key: "tanggal", label: "Tanggal" },
+                      { key: "kegiatan", label: "Kegiatan" },
+                      { key: "grup", label: "Grup" },
+                      { key: "lokasi", label: "Lokasi" },
+                    ]}
+                    current={sort}
+                    fallback={DEFAULT_ACTIVITY_SORT}
+                  />
+                )}
+              </>
+            }
           >
             <SearchFilter value={q} placeholder="Cari kegiatan…" />
-            <GroupFilter
-              groups={visibleGroups}
-              selected={groupIds ?? [session.user.groupId]}
-              active={Boolean(groupIds)}
-              withDescendantsAction
-              hint="Menampilkan kegiatan yang berlaku untuk grup terpilih, termasuk dari grup induknya."
-            />
-            {(tagOptions.visible.length > 0 || tagIds) && (
-              <TagFilter tags={tagOptions.visible} selected={visibleTagIds(tagOptions.visible, tagIds)} />
-            )}
+            {/* The date navigator stays inline: stepping through weeks is frequent. */}
             <DateRangeFilter range={dateRange} {...rangeConfig} today={now} />
-            {view === "list" && (
-              <SortSelect
-                options={[
-                  { key: "tanggal", label: "Tanggal" },
-                  { key: "kegiatan", label: "Kegiatan" },
-                  { key: "grup", label: "Grup" },
-                  { key: "lokasi", label: "Lokasi" },
-                ]}
-                current={sort}
-                fallback={DEFAULT_ACTIVITY_SORT}
-              />
-            )}
           </FilterBar>
         }
         footer={

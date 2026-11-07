@@ -26,8 +26,9 @@ export function useBulkSelection(): BulkSelection | null {
 }
 
 /**
- * Which rows of the current page are selected. The page gives it a `key` made of the page's member ids, so
- * changing page, filter or sort starts from an empty selection (a selection never spans pages).
+ * Which rows of the current page are selected. Changing page, filter or sort changes `memberIds` and starts
+ * from an empty selection (a selection never spans pages). It resets its own state instead of being remounted
+ * by a `key`, so the toolbar inside it (e.g. an open filter panel) keeps its state.
  */
 export function BulkSelectionProvider({
   memberIds,
@@ -40,6 +41,13 @@ export function BulkSelectionProvider({
 }) {
   const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
   const [message, setMessage] = useState<string | null>(null);
+  const idsKey = memberIds.join(",");
+  const [prevIdsKey, setPrevIdsKey] = useState(idsKey);
+  if (idsKey !== prevIdsKey) {
+    setPrevIdsKey(idsKey);
+    setSelected(new Set());
+    setMessage(null);
+  }
 
   const value: BulkSelection = {
     selectedIds: memberIds.filter((id) => selected.has(id)),

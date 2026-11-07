@@ -105,25 +105,30 @@ export default async function SurveyListPage({
             action="/dashboard/survei"
             isFiltered={isFiltered}
             resetHref="/dashboard/survei"
+            activeCount={groupIds ? 1 : 0}
+            more={
+              <>
+                <GroupFilter
+                  groups={visibleGroups}
+                  selected={groupIds ?? [user.groupId]}
+                  active={Boolean(groupIds)}
+                  withDescendantsAction
+                  hint="Menampilkan survei yang berlaku untuk grup terpilih, termasuk dari grup induknya."
+                />
+                <SortSelect
+                  options={[
+                    { key: "judul", label: "Judul" },
+                    { key: "grup", label: "Grup pemilik" },
+                    { key: "respons", label: "Respons" },
+                    { key: "dibuat", label: "Dibuat" },
+                  ]}
+                  current={sort}
+                  fallback={DEFAULT_SURVEY_SORT}
+                />
+              </>
+            }
           >
             <SearchFilter value={q} placeholder="Cari survei…" />
-            <GroupFilter
-              groups={visibleGroups}
-              selected={groupIds ?? [user.groupId]}
-              active={Boolean(groupIds)}
-              withDescendantsAction
-              hint="Menampilkan survei yang berlaku untuk grup terpilih, termasuk dari grup induknya."
-            />
-            <SortSelect
-              options={[
-                { key: "judul", label: "Judul" },
-                { key: "grup", label: "Grup pemilik" },
-                { key: "respons", label: "Respons" },
-                { key: "dibuat", label: "Dibuat" },
-              ]}
-              current={sort}
-              fallback={DEFAULT_SURVEY_SORT}
-            />
           </FilterBar>
         }
         footer={

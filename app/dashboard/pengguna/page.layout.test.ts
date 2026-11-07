@@ -58,4 +58,14 @@ describe("UsersPage phone and tablet layout", () => {
 
     expect(html).toMatch(/<select[^>]*aria-label="Urutkan"[^>]*>/);
   });
+
+  it("keeps only search inline and puts the group filter and sort in the filter panel", async () => {
+    const html = await render("pengguna-layout-panel");
+    // Below lg only primary controls sit before the panel; everything after its marker is behind "Filter".
+    const [inline, panel] = html.split("data-filter-panel");
+
+    expect(inline).toMatch(/<input[^>]*type="search"/);
+    expect(panel).toContain("Semua grup");
+    expect(panel).toMatch(/<select[^>]*aria-label="Urutkan"/);
+  });
 });

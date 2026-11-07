@@ -5,8 +5,8 @@ import { TagOptionsProvider } from "./tag-options-context";
 
 /**
  * Context of the member list's tag features: the shared picker options and, when bulk tagging is on, the
- * selection of the current page. Remounted per set of member ids (`key`), so a new page, filter or sort starts
- * with nothing selected.
+ * selection of the current page. The selection resets itself when the member ids change, so a new page, filter
+ * or sort starts with nothing selected.
  */
 export function MemberTagProviders({
   options,
@@ -20,7 +20,7 @@ export function MemberTagProviders({
   return (
     <TagOptionsProvider options={options} canCreate={canCreate}>
       {bulk ? (
-        <BulkSelectionProvider key={bulk.memberIds.join(",")} memberIds={bulk.memberIds} memberTags={bulk.memberTags}>
+        <BulkSelectionProvider memberIds={bulk.memberIds} memberTags={bulk.memberTags}>
           {children}
         </BulkSelectionProvider>
       ) : (

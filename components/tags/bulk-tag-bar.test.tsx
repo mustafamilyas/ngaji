@@ -28,12 +28,13 @@ const members = [
 ];
 const memberTags = { 10: [tag(2, "prioritas", "tinggi")], 11: [tag(1, "fokus")], 12: [] };
 
-function Page({ resetKey = "a" }: { resetKey?: string }) {
+function Page({ rows = members }: { rows?: typeof members }) {
   return (
     <TagOptionsProvider options={options} canCreate={false}>
-      <BulkSelectionProvider key={resetKey} memberIds={members.map((m) => m.id)} memberTags={memberTags}>
+      <BulkSelectionProvider memberIds={rows.map((m) => m.id)} memberTags={memberTags}>
+        <input aria-label="Sibling" />
         <SelectAllRow />
-        {members.map((m) => (
+        {rows.map((m) => (
           <RowCheckbox key={m.id} memberId={m.id} name={m.name} />
         ))}
         <BulkTagBar />
@@ -87,12 +88,21 @@ describe("bulk tagging on the member table (task 5.5)", () => {
     expect(screen.queryByRole("button", { name: "Tambah tag" })).not.toBeInTheDocument();
   });
 
-  it("clears the selection when the page's members change", async () => {
-    const { rerender } = render(<Page resetKey="page-1" />);
+  it("clears the selection when the page's members change, without remounting its children", async () => {
+    const { rerender } = render(<Page />);
+    const sibling = screen.getByRole("textbox", { name: "Sibling" });
     await userEvent.setup().click(screen.getByRole("checkbox", { name: "Pilih Ahmad" }));
     expect(screen.getByRole("button", { name: "Tambah tag" })).toBeInTheDocument();
-    rerender(<Page resetKey="page-2" />);
+    rerender(<Page rows={members.slice(0, 2)} />);
     expect(screen.queryByRole("button", { name: "Tambah tag" })).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Sibling" })).toBe(sibling);
+  });
+
+  it("keeps the selection when the page re-renders with the same members", async () => {
+    const { rerender } = render(<Page />);
+    await userEvent.setup().click(screen.getByRole("checkbox", { name: "Pilih Ahmad" }));
+    rerender(<Page rows={[...members]} />);
+    expect(screen.getByRole("status")).toHaveTextContent("1 anggota dipilih");
   });
 
   it("adds a tag only after the user confirms", async () => {

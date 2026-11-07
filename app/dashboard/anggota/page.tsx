@@ -116,35 +116,39 @@ export default async function MembersPage({
           </>
         }
         toolbar={
-          <>
-            <FilterBar
-              action="/dashboard/anggota"
-              isFiltered={isFiltered}
-              resetHref="/dashboard/anggota"
-            >
-              <SearchFilter value={q} placeholder="Cari nama anggota…" />
-              <GroupFilter groups={groups} selected={groupIds ?? []} hint="Termasuk semua grup di bawahnya." />
-              {(tagOptions.visible.length > 0 || tagIds) && (
-                <TagFilter tags={tagOptions.visible} selected={visibleTagIds(tagOptions.visible, tagIds)} />
-              )}
-              <SelectFilter
-                name="status"
-                value={status}
-                label="Status"
-                allLabel="Semua status"
-                options={MEMBER_STATUSES.map((value) => ({ value, label: MEMBER_STATUS_LABELS[value] }))}
-              />
-              <SortSelect
-                options={sortable.map((key) => ({
-                  key,
-                  label: key === "nama" ? "Nama" : (MEMBER_COLUMNS.find((c) => c.key === key)?.label ?? key),
-                }))}
-                current={sort}
-                fallback={DEFAULT_MEMBER_SORT}
-              />
-            </FilterBar>
-            <ColumnToggle columns={MEMBER_COLUMNS} visible={columns} action={setMemberColumnsAction} />
-          </>
+          <FilterBar
+            action="/dashboard/anggota"
+            isFiltered={isFiltered}
+            resetHref="/dashboard/anggota"
+            activeCount={[groupIds, tagIds, status].filter(Boolean).length}
+            more={
+              <>
+                <GroupFilter groups={groups} selected={groupIds ?? []} hint="Termasuk semua grup di bawahnya." />
+                {(tagOptions.visible.length > 0 || tagIds) && (
+                  <TagFilter tags={tagOptions.visible} selected={visibleTagIds(tagOptions.visible, tagIds)} />
+                )}
+                <SelectFilter
+                  name="status"
+                  value={status}
+                  label="Status"
+                  allLabel="Semua status"
+                  options={MEMBER_STATUSES.map((value) => ({ value, label: MEMBER_STATUS_LABELS[value] }))}
+                />
+                <SortSelect
+                  options={sortable.map((key) => ({
+                    key,
+                    label: key === "nama" ? "Nama" : (MEMBER_COLUMNS.find((c) => c.key === key)?.label ?? key),
+                  }))}
+                  current={sort}
+                  fallback={DEFAULT_MEMBER_SORT}
+                />
+                {/* Its own form is portaled, so the DOM has no nested form. */}
+                <ColumnToggle columns={MEMBER_COLUMNS} visible={columns} action={setMemberColumnsAction} />
+              </>
+            }
+          >
+            <SearchFilter value={q} placeholder="Cari nama anggota…" />
+          </FilterBar>
         }
         footer={
           total > pageSize ? (

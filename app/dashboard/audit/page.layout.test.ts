@@ -63,4 +63,17 @@ describe("AuditPage phone and tablet layout", () => {
 
     expect(html).toMatch(/<select[^>]*aria-label="Urutkan"[^>]*>/);
   });
+
+  it("puts every filter, the date range included, in the filter panel", async () => {
+    const html = await render("audit-layout-panel");
+    // Below lg only primary controls sit before the panel; everything after its marker is behind "Filter".
+    const [inline, panel] = html.split("data-filter-panel");
+
+    expect(inline).not.toMatch(/<(select|input)[^>]*name=/);
+    expect(panel).toContain("Semua grup");
+    expect(panel).toMatch(/<input[^>]*type="hidden"[^>]*name="range"/);
+    expect(panel).toMatch(/<select[^>]*aria-label="Aksi"/);
+    expect(panel).toMatch(/<select[^>]*aria-label="Aktor"/);
+    expect(panel).toMatch(/<select[^>]*aria-label="Urutkan"/);
+  });
 });

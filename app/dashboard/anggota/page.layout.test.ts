@@ -77,4 +77,16 @@ describe("MembersPage phone and tablet layout", () => {
 
     expect(html).toMatch(/<select[^>]*aria-label="Urutkan"[^>]*>/);
   });
+
+  it("keeps only search inline and puts the other filters, sort and Kolom in the filter panel", async () => {
+    const html = await render("anggota-layout-panel");
+    // Below lg only primary controls sit before the panel; everything after its marker is behind "Filter".
+    const [inline, panel] = html.split("data-filter-panel");
+
+    expect(inline).toMatch(/<input[^>]*type="search"/);
+    expect(inline).toMatch(/<button[^>]*aria-expanded="false"[^>]*>.*?Filter<\/button>/);
+    expect(panel).toMatch(/<select[^>]*aria-label="Status"/);
+    expect(panel).toMatch(/<select[^>]*aria-label="Urutkan"/);
+    expect(panel).toContain("Kolom");
+  });
 });

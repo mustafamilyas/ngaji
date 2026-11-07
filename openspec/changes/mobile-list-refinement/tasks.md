@@ -8,11 +8,11 @@
 
 ## 2. Filter panel
 
-- [ ] 2.1 Write jsdom tests for the panel: count display, Escape and backdrop close, focus return, and no button without `more`
-- [ ] 2.2 Add `more` and `activeCount` to `FilterBar`, with the panel below `lg` and `lg:contents` above; verify the tests pass
-- [ ] 2.3 Verify in the browser that changing a filter in the panel updates the URL, drops `page`, and keeps the panel open, and that Group, Tag, and date popovers open above the panel
-- [ ] 2.4 Move Anggota's secondary controls, including `ColumnToggle`, into `more`; verify there is no nesting warning and that picking a column does not submit the filter form
-- [ ] 2.5 Move secondary controls on Survei, Pengguna, and Audit into `more`, and on Kegiatan keep the date navigator inline; verify `page.layout.test.ts` files pass after updating them
+- [x] 2.1 Write jsdom tests for the panel: count display, Escape and backdrop close, focus return, and no button without `more`
+- [x] 2.2 Add `more` and `activeCount` to `FilterBar`, with the panel below `lg` and `lg:contents` above; verify the tests pass
+- [x] 2.3 Verify in the browser that changing a filter in the panel updates the URL, drops `page`, and keeps the panel open, and that Group, Tag, and date popovers open above the panel
+- [x] 2.4 Move Anggota's secondary controls, including `ColumnToggle`, into `more`; verify there is no nesting warning and that picking a column does not submit the filter form
+- [x] 2.5 Move secondary controls on Survei, Pengguna, and Audit into `more`, and on Kegiatan keep the date navigator inline; verify `page.layout.test.ts` files pass after updating them
 
 ## 3. Stat tiles
 
@@ -39,3 +39,6 @@
 ## 7. Failures found during implementation
 
 - [ ] 7.1 `pnpm audit:print` (and `pnpm audit:viewport`, same `startScratchEnv`) exits 1 with "next dev exited early" while any other `next dev` runs in this folder, including `pnpm dev:scratch` on port 3100; decide with the owner whether to support running alongside a dev server (e.g. a separate `distDir`) or keep the documented limitation
+- [x] 7.2 The filter panel closes after every filter change on Anggota: `MemberTagProviders` keys `BulkSelectionProvider` by the visible member ids (`components/tags/member-tag-providers.tsx:23`), so the whole table card, `FilterBar` included, remounts when the list changes. Keep the panel open (spec: "the panel stays open") without losing the bulk-selection reset; verify in the browser
+- [x] 7.3 Picking a column in `ColumnToggle` inside the panel navigates the filter form and drops `page`: its form is portaled in the DOM, but React's synthetic `submit` bubbles through the React tree into next/form's `onSubmit`. Stop the event at the column form without blocking its server action; verify by jsdom test and in the browser
+- [x] 7.4 Below `sm`, the search field is `w-full`, so the "Filter" button wraps to its own row; spec says they share one row at 375px. Fix in `SearchFilter`, checking that detail tabs and Statistik, which keep their layout, are not affected

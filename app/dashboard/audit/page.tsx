@@ -101,38 +101,42 @@ export default async function AuditPage({
             action="/dashboard/audit"
             isFiltered={isFiltered}
             resetHref="/dashboard/audit"
-          >
-            <GroupFilter
-              groups={groups}
-              selected={groupIds ?? []}
-              hint="Termasuk semua grup di bawahnya. Entri login/logout tanpa grup tidak ikut."
-            />
-            <DateRangeFilter range={dateRange} {...AUDIT_DATE_RANGE} today={now} />
-            <SelectFilter
-              name="action"
-              value={action}
-              label="Aksi"
-              allLabel="Semua aksi"
-              options={AUDIT_ACTIONS.map((value) => ({ value, label: value }))}
-            />
-            <SelectFilter
-              name="aktor"
-              value={actorId ? String(actorId) : undefined}
-              label="Aktor"
-              allLabel="Semua aktor"
-              options={actors.map((role) => ({ value: String(role.user.id), label: role.user.name }))}
-            />
-            <SortSelect
-              options={[
-                { key: "waktu", label: "Waktu" },
-                { key: "aksi", label: "Aksi" },
-                { key: "aktor", label: "Aktor" },
-                { key: "entitas", label: "Entitas" },
-              ]}
-              current={sort}
-              fallback={DEFAULT_AUDIT_SORT}
-            />
-          </FilterBar>
+            activeCount={[groupIds, dateRange.mode !== AUDIT_DATE_RANGE.defaultMode, action, actorId].filter(Boolean).length}
+            more={
+              <>
+                <GroupFilter
+                  groups={groups}
+                  selected={groupIds ?? []}
+                  hint="Termasuk semua grup di bawahnya. Entri login/logout tanpa grup tidak ikut."
+                />
+                <DateRangeFilter range={dateRange} {...AUDIT_DATE_RANGE} today={now} />
+                <SelectFilter
+                  name="action"
+                  value={action}
+                  label="Aksi"
+                  allLabel="Semua aksi"
+                  options={AUDIT_ACTIONS.map((value) => ({ value, label: value }))}
+                />
+                <SelectFilter
+                  name="aktor"
+                  value={actorId ? String(actorId) : undefined}
+                  label="Aktor"
+                  allLabel="Semua aktor"
+                  options={actors.map((role) => ({ value: String(role.user.id), label: role.user.name }))}
+                />
+                <SortSelect
+                  options={[
+                    { key: "waktu", label: "Waktu" },
+                    { key: "aksi", label: "Aksi" },
+                    { key: "aktor", label: "Aktor" },
+                    { key: "entitas", label: "Entitas" },
+                  ]}
+                  current={sort}
+                  fallback={DEFAULT_AUDIT_SORT}
+                />
+              </>
+            }
+          />
         }
         footer={
           total > pageSize ? (

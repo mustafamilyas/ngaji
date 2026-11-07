@@ -76,4 +76,16 @@ describe("ActivityListPage toolbar phone and tablet sizes", () => {
     expect(html).toMatch(/<div class="[^"]*\bp-1\b[^"]*\bsm:p-4\b[^"]*"><div class="flex flex-col gap-1">/);
     expect(html).toMatch(/<p[^>]*data-calendar-legend[^>]*class="[^"]*\bsm:hidden\b/);
   });
+
+  it("keeps search and the date navigator inline and puts the group filter and sort in the filter panel", async () => {
+    const html = await render("kegiatan-layout-panel");
+    // Below lg only primary controls sit before the panel; everything after its marker is behind "Filter".
+    const [inline, panel] = html.split("data-filter-panel");
+
+    expect(inline).toMatch(/<input[^>]*type="search"/);
+    expect(inline).toContain('aria-label="Rentang sebelumnya"');
+    expect(inline).toContain('aria-label="Rentang berikutnya"');
+    expect(panel).not.toContain("Rentang sebelumnya");
+    expect(panel).toMatch(/<select[^>]*aria-label="Urutkan"/);
+  });
 });

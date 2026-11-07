@@ -99,14 +99,19 @@ export default async function UsersPage({
             action="/dashboard/pengguna"
             isFiltered={isFiltered}
             resetHref="/dashboard/pengguna"
+            activeCount={groupIds ? 1 : 0}
+            more={
+              <>
+                <GroupFilter groups={groups} selected={groupIds ?? []} hint="Termasuk semua grup di bawahnya." />
+                <SortSelect
+                  options={[{ key: "nama", label: "Nama" }, ...COLUMNS]}
+                  current={sort}
+                  fallback={DEFAULT_USER_SORT}
+                />
+              </>
+            }
           >
             <SearchFilter value={q} placeholder="Cari nama atau username…" />
-            <GroupFilter groups={groups} selected={groupIds ?? []} hint="Termasuk semua grup di bawahnya." />
-            <SortSelect
-              options={[{ key: "nama", label: "Nama" }, ...COLUMNS]}
-              current={sort}
-              fallback={DEFAULT_USER_SORT}
-            />
           </FilterBar>
         }
         footer={
