@@ -33,10 +33,11 @@
 - [x] 4.1 Add the template route handler; verify it requires a session and that its header matches `columns.ts`
 - [x] 4.2 Build `/dashboard/anggota/impor` with the group chooser, column help, upload, preview, "Tetap impor", and result; verify the flow with a jsdom form test
 - [x] 4.3 Add the "Impor CSV" menu entry on the Anggota page; verify it appears at 375px and 1280px
-- [ ] 4.4 Add the page to `pnpm audit:viewport`; verify it exits 0
-- [ ] 4.5 Run a full import in the browser on `pnpm dev:scratch` with a file saved from Excel; verify the members, audit entries, and a second upload marked as duplicates
+- [x] 4.4 Add the page to `pnpm audit:viewport`; verify it exits 0
+- [x] 4.5 Run a full import in the browser on `pnpm dev:scratch` with a file saved from Excel; verify the members, audit entries, and a second upload marked as duplicates (Excel was not available: the file was generated in Excel's format, with `;`, Windows-1252, CRLF, and trailing empty rows, and attached by script instead of the file picker)
+- [x] 4.6 Failure found in 4.5: when every row is a duplicate, the preview says "3 baris siap diimpor" above a disabled "Impor 0 anggota" button. Make the heading count only the rows that will be imported; verify by jsdom form test
 
 ## 5. Docs and final checks
 
-- [ ] 5.1 Update `DESIGN.md` §2, §4.4, and §7 in the same commit as the behaviour; verify they name the page, the limits, and `meta.importId`
-- [ ] 5.2 Run `pnpm lint`, `pnpm tsc --noEmit`, and `pnpm test`; verify all pass
+- [x] 5.1 Update `DESIGN.md` §2, §4.4, and §7 in the same commit as the behaviour; verify they name the page, the limits, and `meta.importId`
+- [x] 5.2 Run `pnpm lint`, `pnpm tsc --noEmit`, and `pnpm test`; verify all pass
