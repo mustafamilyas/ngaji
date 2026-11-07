@@ -10,7 +10,7 @@ See proposal.md - Why. `FilterBar` is one GET form whose controls submit on chan
 
 **Goals:** fix the three shared causes centrally, and make regressions fail the audit.
 
-**Non-Goals:** changing URL parameters or filter meaning; redesigning detail pages, absensi, or the landing page; changing touch sizes in `components/ui`.
+**Non-Goals:** changing URL parameters or filter meaning; redesigning detail pages or the landing page; changing touch sizes in `components/ui`. Section 6 of tasks.md (follow-ups from the member-csv-import review) adds the Tampilan apply step and admin check-in on future dates; their decisions are below.
 
 ## Decisions
 
@@ -50,6 +50,13 @@ Editing 137 call sites was rejected: it is noisy and does not stop new ones. If 
 - `collector.js` walks visible text nodes and reports those under 14px. It skips SVG, `.sr-only`, and `[data-small-text-ok]`.
 - New finding kinds are `read-text-size` and `first-record`.
 - `first-record` runs only at the audit's phone size (360×740) on the five list pages, finds rows through a `data-records` marker on each list's `<tbody>`, and uses the bulk seed the audit already has. The audit's Chrome reserves a classic scrollbar, so it is stricter than a phone.
+
+### 6. Tampilan: one local draft per open panel
+A small `useDraft` hook copies the definition when a panel opens; edits change only that copy, and closing or "Terapkan" applies it in one navigation (`?d=`), so the server re-validates once instead of per edit. The toolbar keeps the last applied definition in `useOptimistic`, so a chip-row click right after a panel closes builds on the change just applied, not on the props of the previous render.
+
+Alternatives:
+- **Apply only on "Terapkan" and discard on close:** rejected by the owner; closing is the common way out on phones.
+- **Keep apply-on-change and debounce:** the result would still change while editing, which is the complaint.
 
 ## Risks / Trade-offs
 

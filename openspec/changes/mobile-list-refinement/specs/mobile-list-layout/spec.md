@@ -94,3 +94,22 @@ Below `xl`, visible read-only text in the dashboard SHALL be at least 14px, incl
 #### Scenario: Exempt text
 - **WHEN** small text is marked exempt
 - **THEN** the audit reports no finding for it
+
+### Requirement: Tampilan edits apply when the panel closes
+On the Tampilan page, edits made inside a panel (a filter chip's popover, the phone "Filter" sheet, or the "Tampilan" menu) SHALL NOT change the result while the panel is open. They SHALL apply, as one change to the result, when the user presses "Terapkan" or closes the panel. "Terapkan" SHALL close the panel. Single-click controls outside a panel (a chip's remove button, the DAN/ATAU toggle between chips, and "Tambah filter") SHALL apply at once; "Tambah filter" opens the new filter's popover, and the new filter applies when that popover closes. "Hapus filter" inside a chip's popover SHALL remove the filter and close the popover. Applying SHALL NOT save the view; saving stays with "Simpan".
+
+#### Scenario: Editing a rule does not change the result
+- **WHEN** a user changes a rule's value in a filter chip's popover
+- **THEN** the URL and the result stay the same until "Terapkan" is pressed or the popover closes
+
+#### Scenario: Terapkan applies and closes
+- **WHEN** a user presses "Terapkan" after editing
+- **THEN** the URL gains the new `d`, the result updates, the popover closes, and the view still shows "Belum disimpan"
+
+#### Scenario: Closing applies
+- **WHEN** a user edits sorting in the "Tampilan" menu and closes it with Escape
+- **THEN** the new sort applies
+
+#### Scenario: Remove chip applies at once
+- **WHEN** a user presses a chip's remove button
+- **THEN** that filter is removed from the result at once

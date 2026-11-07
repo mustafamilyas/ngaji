@@ -22,7 +22,8 @@ import {
 import { GROUPABLE_FIELDS, MEMBER_VIEW_FIELDS, SORT_FIELD_KEYS, type SortField } from "@/lib/member-view/fields";
 import { MEMBER_COLUMNS, type MemberColumnKey } from "@/lib/member/columns";
 import { columnsSchema, groupBySchema, type Definition, type GroupBy } from "@/lib/validation/member-view";
-import { nativeSelectClass } from "./rule-editor";
+import { ApplyFooter, nativeSelectClass } from "./rule-editor";
+import { useDraft } from "./use-draft";
 
 type Buckets = Extract<GroupBy, { kind: "ageBuckets" }>["buckets"];
 
@@ -123,18 +124,25 @@ function AgeBucketEditor({ buckets, onCommit }: { buckets: Buckets; onCommit: (b
   );
 }
 
-/** "Tampilan" menu: group-by (incl. age buckets), sort and columns. Every confirmed change calls `onChange`. */
+/**
+ * "Tampilan" menu: group-by (incl. age buckets), sort and columns. Edits stay
+ * in a local draft; `onChange` is called once, on "Terapkan" or when the menu
+ * closes, and only if something changed (task 6.1).
+ */
 export function ViewMenu({
-  definition,
+  definition: appliedDefinition,
   levels,
   tags = [],
-  onChange,
+  onChange: apply,
 }: {
   definition: Definition;
   levels: LevelOption[];
   tags?: TagOption[];
   onChange: (definition: Definition) => void;
 }) {
+  const draft = useDraft(appliedDefinition, apply);
+  const definition = draft.value;
+  const onChange = draft.edit;
   const { groupBy, sort, columns } = definition;
   const summaries = definition.summaries ?? [];
   const choices = summaryChoices(levels, tags);
@@ -152,13 +160,13 @@ export function ViewMenu({
   }
 
   return (
-    <Popover>
+    <Popover open={draft.isOpen} onOpenChange={(open) => (open ? draft.begin() : draft.commit())}>
       <PopoverTrigger className={filterTriggerClass()}>
         <SlidersHorizontal className="size-4 text-muted-foreground" />
         Tampilan
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[min(25rem,calc(100vw-24px))] overflow-y-auto">
-        <div className="flex max-h-[min(32rem,var(--available-height))] flex-col gap-4 overflow-y-auto p-3">
+      <PopoverContent align="end" className="flex max-h-[min(32rem,var(--available-height))] w-[min(25rem,calc(100vw-24px))] flex-col">
+        <div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-3">
           <label className="flex flex-col gap-1 text-base xl:text-sm">
             <span className="text-xs font-medium text-muted-foreground">Kelompokkan menurut</span>
             <select className={nativeSelectClass} value={groupByValue(groupBy)} onChange={(e) => setGroupBy(e.target.value)}>
@@ -272,6 +280,7 @@ export function ViewMenu({
             </div>
           </fieldset>
         </div>
+        <ApplyFooter onApply={draft.commit} />
       </PopoverContent>
     </Popover>
   );

@@ -15,6 +15,17 @@ import { ruleSchema, type Conjunction, type Rule, type RuleGroup } from "@/lib/v
 export const nativeSelectClass =
   "h-11 min-w-0 rounded-lg border border-input bg-background px-2 text-base outline-none xl:h-8 xl:text-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
+/** "Terapkan" footer of the Tampilan panels: applies the panel's draft and closes it (task 6.1). */
+export function ApplyFooter({ onApply }: { onApply: () => void }) {
+  return (
+    <div className="flex justify-end border-t p-2">
+      <Button type="button" onClick={onApply}>
+        Terapkan
+      </Button>
+    </div>
+  );
+}
+
 /** Uncontrolled input that reports its value on blur or Enter, so typing never re-renders the page per keystroke. */
 function CommitInput({
   defaultValue,

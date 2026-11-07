@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Filter, Plus, X } from "lucide-react";
 import { filterTriggerClass } from "@/components/filters/filter-bar";
@@ -13,7 +13,8 @@ import { encodeDraft } from "@/lib/member-view/draft";
 import { addRuleGroup, describeRule, removeRuleGroup, replaceRuleGroup, setFilterOp } from "@/lib/member-view/edit";
 import type { EditorOptions } from "@/lib/member-view/editor-options";
 import type { Definition, RuleGroup } from "@/lib/validation/member-view";
-import { RuleGroupEditor, nativeSelectClass } from "./rule-editor";
+import { ApplyFooter, RuleGroupEditor, nativeSelectClass } from "./rule-editor";
+import { useDraft } from "./use-draft";
 import { ViewMenu } from "./view-menu";
 
 const NEW_RULE = { field: "status", operator: "isAnyOf", value: ["AKTIF"] } as const;
@@ -24,11 +25,13 @@ function summarize(group: RuleGroup, groupLabels: ReadonlyMap<number, string>, t
 }
 
 /**
- * Filter bar and "Tampilan" menu. Edits never touch the database: each
- * confirmed change re-encodes the whole definition into `?d=` and navigates,
- * so the server re-validates and re-renders (design §6). Desktop shows rule
- * groups as chips with a popover editor; phones get one "Filter" button that
- * opens a bottom sheet with every group.
+ * Filter bar and "Tampilan" menu. Edits never touch the database: an applied
+ * change re-encodes the whole definition into `?d=` and navigates, so the
+ * server re-validates and re-renders (design §6). Edits inside a panel (chip
+ * popover, phone sheet, Tampilan menu) stay in a local draft and apply once,
+ * on "Terapkan" or when the panel closes; single clicks on the chip row apply
+ * at once. Desktop shows rule groups as chips with a popover editor; phones
+ * get one "Filter" button that opens a bottom sheet with every group.
  */
 export function ViewToolbar({
   definition,
@@ -41,13 +44,14 @@ export function ViewToolbar({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  // The last applied definition, ahead of the server's re-render, so a click right after a panel closes builds on it.
+  const [applied, setApplied] = useOptimistic(definition);
   const [error, setError] = useState<string | null>(null);
   const [openChip, setOpenChip] = useState<number | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const groupLabels = new Map(options.groups.map((g) => [g.id, g.label]));
   const tagLabels = new Map(options.tags.map((t) => [t.id, t.label]));
-  const { groups, op } = definition.filter;
 
   function apply(next: Definition) {
     const encoded = encodeDraft(next);
@@ -56,12 +60,26 @@ export function ViewToolbar({
       return;
     }
     setError(null);
-    startTransition(() => router.replace(`${basePath}?d=${encoded}`, { scroll: false }));
+    startTransition(() => {
+      setApplied(next);
+      router.replace(`${basePath}?d=${encoded}`, { scroll: false });
+    });
   }
 
-  const addGroup = () => {
-    apply(addRuleGroup(definition, { ...NEW_RULE, value: [...NEW_RULE.value] }));
-    setOpenChip(groups.length);
+  const draft = useDraft(applied, apply);
+  const shown = draft.value;
+  const { groups, op } = shown.filter;
+  const newGroup = () => addRuleGroup(shown, { ...NEW_RULE, value: [...NEW_RULE.value] });
+
+  const openChipAt = (index: number | null, start?: Definition) => {
+    if (index === null) draft.commit();
+    else draft.begin(start);
+    setOpenChip(index);
+  };
+  const openSheet = (open: boolean) => {
+    if (open) draft.begin();
+    else draft.commit();
+    setSheetOpen(open);
   };
 
   const editor = (group: RuleGroup, index: number, onDone?: () => void) => (
@@ -70,11 +88,8 @@ export function ViewToolbar({
       group={group}
       groups={options.groups}
       tags={options.tags}
-      onChange={(next) => apply(replaceRuleGroup(definition, index, next))}
-      onRemove={() => {
-        apply(removeRuleGroup(definition, index));
-        onDone?.();
-      }}
+      onChange={(next) => draft.edit(replaceRuleGroup(shown, index, next))}
+      onRemove={() => (onDone ? onDone() : draft.edit(removeRuleGroup(shown, index)))}
     />
   );
 
@@ -83,7 +98,7 @@ export function ViewToolbar({
       aria-label="Gabungkan filter"
       className={nativeSelectClass}
       value={op}
-      onChange={(e) => apply(setFilterOp(definition, e.target.value as "AND" | "OR"))}
+      onChange={(e) => draft.edit(setFilterOp(shown, e.target.value as "AND" | "OR"))}
     >
       <option value="AND">Semua filter berlaku (DAN)</option>
       <option value="OR">Salah satu filter berlaku (ATAU)</option>
@@ -101,20 +116,26 @@ export function ViewToolbar({
                 <button
                   type="button"
                   className="min-h-11 min-w-11 rounded-md px-1.5 py-0.5 text-sm font-medium text-muted-foreground hover:bg-muted xl:min-h-0 xl:min-w-0 xl:text-xs"
-                  onClick={() => apply(setFilterOp(definition, op === "AND" ? "OR" : "AND"))}
+                  onClick={() => apply(setFilterOp(applied, op === "AND" ? "OR" : "AND"))}
                   aria-label={`Gabungan filter: ${op === "AND" ? "DAN" : "ATAU"}. Klik untuk mengganti`}
                 >
                   {op === "AND" ? "DAN" : "ATAU"}
                 </button>
               )}
-              <Popover open={openChip === index} onOpenChange={(open) => setOpenChip(open ? index : null)}>
+              <Popover open={openChip === index} onOpenChange={(open) => openChipAt(open ? index : null)}>
                 <PopoverTrigger className={`${filterTriggerClass(true)} max-w-xs`}>
                   <span className="truncate">{summarize(group, groupLabels, tagLabels)}</span>
                 </PopoverTrigger>
-                <PopoverContent className="w-[min(26rem,calc(100vw-24px))]">
-                  <div className="max-h-[min(30rem,var(--available-height))] overflow-y-auto p-3">
-                    {editor(group, index, () => setOpenChip(null))}
+                <PopoverContent className="flex max-h-[min(30rem,var(--available-height))] w-[min(26rem,calc(100vw-24px))] flex-col">
+                  <div className="min-h-0 overflow-y-auto p-3">
+                    {editor(group, index, () => {
+                      // "Hapus filter": drop the draft and remove this filter from what is applied (if it was applied yet).
+                      draft.cancel();
+                      setOpenChip(null);
+                      if (index < applied.filter.groups.length) apply(removeRuleGroup(applied, index));
+                    })}
                   </div>
+                  <ApplyFooter onApply={() => openChipAt(null)} />
                 </PopoverContent>
               </Popover>
               <Button
@@ -122,7 +143,7 @@ export function ViewToolbar({
                 variant="ghost"
                 size="icon-sm"
                 aria-label="Hapus filter"
-                onClick={() => apply(removeRuleGroup(definition, index))}
+                onClick={() => apply(removeRuleGroup(applied, index))}
               >
                 <X />
               </Button>
@@ -133,7 +154,7 @@ export function ViewToolbar({
             variant="outline"
             size="lg"
             disabled={groups.length >= VIEW_MAX_RULE_GROUPS}
-            onClick={addGroup}
+            onClick={() => openChipAt(groups.length, newGroup())}
           >
             <Plus />
             Tambah filter
@@ -141,22 +162,22 @@ export function ViewToolbar({
         </div>
 
         {/* Mobile: one button, bottom sheet */}
-        <Button type="button" variant="outline" size="lg" className="sm:hidden" onClick={() => setSheetOpen(true)}>
+        <Button type="button" variant="outline" size="lg" className="sm:hidden" onClick={() => openSheet(true)}>
           <Filter />
           Filter{groups.length > 0 ? ` (${groups.length})` : ""}
         </Button>
 
         <div className="ml-auto">
-          <ViewMenu definition={definition} levels={options.levels} tags={options.tags} onChange={apply} />
+          <ViewMenu definition={applied} levels={options.levels} tags={options.tags} onChange={apply} />
         </div>
       </div>
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent side="bottom" className="max-h-[85dvh] overflow-y-auto">
+      <Sheet open={sheetOpen} onOpenChange={openSheet}>
+        <SheetContent side="bottom" className="max-h-[85dvh]">
           <SheetHeader>
             <SheetTitle>Filter</SheetTitle>
           </SheetHeader>
-          <div className="flex flex-col gap-4 px-4 pb-4">
+          <div className="flex min-h-0 flex-col gap-4 overflow-y-auto px-4 pb-4">
             {groups.length > 1 && topOpSelect}
             {groups.map((group, index) => (
               <div key={`${groups.length}-${index}`} className="rounded-lg border p-2.5">
@@ -164,11 +185,12 @@ export function ViewToolbar({
                 {editor(group, index)}
               </div>
             ))}
-            <Button type="button" variant="outline" disabled={groups.length >= VIEW_MAX_RULE_GROUPS} onClick={() => apply(addRuleGroup(definition, { ...NEW_RULE, value: [...NEW_RULE.value] }))}>
+            <Button type="button" variant="outline" disabled={groups.length >= VIEW_MAX_RULE_GROUPS} onClick={() => draft.edit(newGroup())}>
               <Plus />
               Tambah filter
             </Button>
           </div>
+          <ApplyFooter onApply={() => openSheet(false)} />
         </SheetContent>
       </Sheet>
 

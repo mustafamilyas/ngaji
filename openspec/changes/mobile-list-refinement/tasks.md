@@ -32,7 +32,7 @@
 
 ## 6. Follow-ups requested during member-csv-import review
 
-- [ ] 6.1 Add a "Terapkan" button to the Tampilan page, so edits to a view's rules apply only when it is pressed instead of changing the view unpredictably while editing; verify by jsdom test that the result does not change before "Terapkan" and does after
+- [x] 6.1 Add a "Terapkan" button to the Tampilan page, so edits to a view's rules apply only when it is pressed instead of changing the view unpredictably while editing; verify by jsdom test that the result does not change before "Terapkan" and does after (owner decisions: edits in any panel — chip popover, phone sheet, "Tampilan" menu — apply on "Terapkan" or on close, never while open; single clicks on the chip row apply at once; applying never saves. Spec: "Tampilan edits apply when the panel closes"; design §6)
 - [ ] 6.2 Let ADMIN/OWNER open the check-in page (`/dashboard/kegiatan/[id]/[tanggal]/absen`) for future dates, which today says "Tanggal ini belum terjadi; absensi belum bisa diisi"; USER stays at today or earlier. Update DESIGN.md §1 and §3.3 rule 4 and the CLAUDE.md invariant in the same commit; verify by test for ADMIN, OWNER, and USER
 - [ ] 6.3 Show the "Isi absensi" button on the activity page to ADMIN/OWNER on every day, not only when an occurrence falls today. Decide with the owner which occurrence it opens when there is none today, then verify by test
 
@@ -48,3 +48,4 @@
 - [x] 7.8 Kegiatan's first record starts at 634px at 360×740 (limit 600): the date navigator fills row two, so the "Filter" button wraps to a third row
 - [x] 7.9 The audit still measures Kegiatan's first record at 634px, while a phone-size browser shows 582px: the audit emulates with `mobile: false`, so headless Chrome reserves a ~15px classic scrollbar, and search (min 12rem) + Filter (84px) no longer fit the 281px row. Decide whether to narrow the search minimum or emulate overlay scrollbars
 - [x] 7.10 The month calendar on Kegiatan (`app/dashboard/kegiatan/activity-calendar.tsx`) shows activity names at 10px and notes at 9px from `sm` to below `xl`, and the audit misses it: it visits `?view=calendar` only with the default range, which renders no month grid. Add the month view to the audit page list and fix or mark the cell text
+- [x] 7.11 With the "Terapkan" footer, the "Tampilan" menu at 375×812 pushed the button below the popup (popup bottom 775px, button 784–826px): the height cap sat on the scrolling body, not the popup. Cap the popup (chip popover and menu) and scroll only the body; verified in the browser (button 725–766px)
