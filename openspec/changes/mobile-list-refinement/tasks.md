@@ -16,7 +16,7 @@
 
 ## 3. Stat tiles
 
-- [ ] 3.1 Make `StatTile` compact below `lg` and hide hints; verify at 375px and that the 1280px layout is unchanged
+- [x] 3.1 Make `StatTile` compact below `lg` and hide hints; verify at 375px and that the 1280px layout is unchanged
 
 ## 4. Audit
 

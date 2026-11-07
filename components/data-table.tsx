@@ -98,14 +98,15 @@ export function StatTile({
   value: React.ReactNode;
   hint?: React.ReactNode;
 }) {
+  // Below lg: compact (one-line label, smaller value, no hint) so the list starts on the first screen.
   return (
-    <div className="flex flex-col gap-1 bg-card p-4">
-      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Icon className="size-4" />
-        {label}
+    <div className="flex min-w-0 flex-col gap-0.5 bg-card p-3 lg:gap-1 lg:p-4">
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground" title={label}>
+        <Icon className="size-4 shrink-0" />
+        <span className="truncate lg:whitespace-normal">{label}</span>
       </p>
-      <p className="text-2xl font-semibold tabular-nums">{value}</p>
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      <p className="text-xl font-semibold tabular-nums lg:text-2xl">{value}</p>
+      {hint && <p className="hidden text-xs text-muted-foreground lg:block">{hint}</p>}
     </div>
   );
 }
