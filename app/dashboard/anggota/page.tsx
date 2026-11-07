@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { UserCheck, UserPlus, Users, UsersRound } from "lucide-react";
@@ -11,7 +10,6 @@ import { TagFilter } from "@/components/filters/tag-filter";
 import { SortSelect } from "@/components/filters/sort-select";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
-import { buttonVariants } from "@/components/ui/button";
 import { visibleGroupsWhere } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { monthStartOf, today } from "@/lib/dates";
@@ -20,11 +18,11 @@ import { parseGroupIds, parsePage, parseSearch, parseTagIds } from "@/lib/filter
 import { MEMBER_COLUMNS_COOKIE, MEMBER_COLUMNS, parseMemberColumns } from "@/lib/member/columns";
 import { MEMBER_STATUS_LABELS } from "@/lib/member/labels";
 import { DEFAULT_MEMBER_SORT, listMembers, MEMBER_SORT_KEYS } from "@/lib/member/queries";
-import { cn } from "@/lib/utils";
 import { pageHref } from "@/lib/pagination";
 import { parseSort, sortHref } from "@/lib/sort";
 import { MEMBER_STATUSES, type MemberStatus } from "@/lib/validation/enums";
 import { setMemberColumnsAction } from "./actions";
+import { MemberHeaderActions } from "./member-header-actions";
 import { BulkTagBar } from "@/components/tags/bulk-tag-bar";
 import { MemberTagProviders } from "@/components/tags/member-tag-providers";
 import { canPickTags, loadTagOptions, visibleTagIds } from "@/lib/tag/entity";
@@ -84,12 +82,7 @@ export default async function MembersPage({
       <PageHeader
         title="Anggota"
         meta="Data anggota di semua grup dalam scope Anda."
-        actions={
-          <Link href="/dashboard/anggota/baru" className={cn(buttonVariants({ size: "lg" }), "h-11 w-full text-base sm:w-auto xl:h-9 xl:text-sm")}>
-            <UserPlus />
-            Tambah anggota
-          </Link>
-        }
+        actions={<MemberHeaderActions />}
       />
 
       <StatTiles>
