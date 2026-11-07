@@ -84,6 +84,8 @@ describe("ActivityDetailPage", () => {
       expect(rowLink(today(DEFAULT_TIMEZONE))).toContain("bg-primary");
       expect(rowLink(addDays(today(DEFAULT_TIMEZONE), 7))).not.toContain("bg-primary");
       expect(rowLink(addDays(today(DEFAULT_TIMEZONE), 7))).toContain("border-border bg-background");
+      // Raw buttonVariants keeps the base border-transparent, which hides the outline (task 7.12).
+      expect(rowLink(addDays(today(DEFAULT_TIMEZONE), 7))).not.toContain("border-transparent");
     });
   });
 
