@@ -31,7 +31,7 @@
 ## 4. UI
 
 - [x] 4.1 Add the template route handler; verify it requires a session and that its header matches `columns.ts`
-- [ ] 4.2 Build `/dashboard/anggota/impor` with the group chooser, column help, upload, preview, "Tetap impor", and result; verify the flow with a jsdom form test
+- [x] 4.2 Build `/dashboard/anggota/impor` with the group chooser, column help, upload, preview, "Tetap impor", and result; verify the flow with a jsdom form test
 - [ ] 4.3 Add the "Impor CSV" menu entry on the Anggota page; verify it appears at 375px and 1280px
 - [ ] 4.4 Add the page to `pnpm audit:viewport`; verify it exits 0
 - [ ] 4.5 Run a full import in the browser on `pnpm dev:scratch` with a file saved from Excel; verify the members, audit entries, and a second upload marked as duplicates
