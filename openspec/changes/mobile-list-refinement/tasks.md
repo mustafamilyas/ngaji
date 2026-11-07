@@ -1,0 +1,37 @@
+# Tasks
+
+## 1. Text size
+
+- [ ] 1.1 Add `data-dashboard` to the dashboard layout and the `--text-xs` override in `app/globals.css`; verify in the browser that card labels and a portaled popup are 14px at 375px, and 12px at 1280px
+- [ ] 1.2 If the override does not apply, switch to the `text-label` fallback from design.md and verify the same checks
+- [ ] 1.3 Run `pnpm audit:print` and verify it exits 0
+
+## 2. Filter panel
+
+- [ ] 2.1 Write jsdom tests for the panel: count display, Escape and backdrop close, focus return, and no button without `more`
+- [ ] 2.2 Add `more` and `activeCount` to `FilterBar`, with the panel below `lg` and `lg:contents` above; verify the tests pass
+- [ ] 2.3 Verify in the browser that changing a filter in the panel updates the URL, drops `page`, and keeps the panel open, and that Group, Tag, and date popovers open above the panel
+- [ ] 2.4 Move Anggota's secondary controls, including `ColumnToggle`, into `more`; verify there is no nesting warning and that picking a column does not submit the filter form
+- [ ] 2.5 Move secondary controls on Survei, Pengguna, and Audit into `more`, and on Kegiatan keep the date navigator inline; verify `page.layout.test.ts` files pass after updating them
+
+## 3. Stat tiles
+
+- [ ] 3.1 Make `StatTile` compact below `lg` and hide hints; verify at 375px and that the 1280px layout is unchanged
+
+## 4. Audit
+
+- [ ] 4.1 Add `read-text-size` to the collector and findings, with `data-small-text-ok` exemption; verify with cases in `findings.test.ts`
+- [ ] 4.2 Add `first-record` for the five list pages at phone size; verify with cases in `findings.test.ts`
+- [ ] 4.3 Run `pnpm audit:viewport`, fix or mark each finding, and verify it exits 0
+
+## 5. Docs and final checks
+
+- [ ] 5.1 Update `DESIGN.md` §7.1 and §7.2 and the `CLAUDE.md` conventions in the same commit as the behaviour; verify they name the panel, the 14px rule, and the exemption attribute
+- [ ] 5.2 Run `pnpm lint`, `pnpm tsc --noEmit`, and `pnpm test`; verify all pass
+- [ ] 5.3 Capture before and after screenshots of the five list pages at 375×812 and verify each first record is at or above 600px
+
+## 6. Follow-ups requested during member-csv-import review
+
+- [ ] 6.1 Add a "Terapkan" button to the Tampilan page, so edits to a view's rules apply only when it is pressed instead of changing the view unpredictably while editing; verify by jsdom test that the result does not change before "Terapkan" and does after
+- [ ] 6.2 Let ADMIN/OWNER open the check-in page (`/dashboard/kegiatan/[id]/[tanggal]/absen`) for future dates, which today says "Tanggal ini belum terjadi; absensi belum bisa diisi"; USER stays at today or earlier. Update DESIGN.md §1 and §3.3 rule 4 and the CLAUDE.md invariant in the same commit; verify by test for ADMIN, OWNER, and USER
+- [ ] 6.3 Show the "Isi absensi" button on the activity page to ADMIN/OWNER on every day, not only when an occurrence falls today. Decide with the owner which occurrence it opens when there is none today, then verify by test
