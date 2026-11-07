@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/auth/require-session";
-import { type ActionResult, runAction, ValidationError } from "@/lib/errors";
+import { type ActionResult, ForbiddenError, NotFoundError, runAction, ValidationError } from "@/lib/errors";
 import { analyzeImport, type ImportReport } from "@/lib/member/import/analyze";
 import { importMembers } from "@/lib/member/mutations";
 import { idSchema } from "@/lib/validation/common";
@@ -22,10 +22,26 @@ function readForm(formData: FormData) {
   return { file, groupId, force: formData.get("force") === "on" };
 }
 
+/**
+ * `runAction` logs an unexpected error whole, and a Prisma error quotes the arguments of the failed call,
+ * which here are member data. So unexpected errors are reduced to their name before they reach it.
+ */
+async function withoutCellData<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (error instanceof ValidationError || error instanceof ForbiddenError || error instanceof NotFoundError) throw error;
+    console.error("[member-import] failed:", error instanceof Error ? error.name : typeof error);
+    throw new ValidationError("Impor gagal. Coba lagi.");
+  }
+}
+
+const runImport = <T>(fn: () => Promise<T>) => runAction(() => withoutCellData(fn));
+
 /** Reads and validates the file; creates nothing and stores nothing. */
 export async function previewMemberImportAction(formData: FormData): Promise<ActionResult<ImportReport>> {
   const session = await requireSession();
-  return runAction(async () => {
+  return runImport(async () => {
     const { file, groupId } = readForm(formData);
     const analysis = await analyzeImport(session, file, groupId);
     if (!analysis.ok) throw new ValidationError(analysis.error);
@@ -40,7 +56,7 @@ export type ConfirmImportResult =
 /** Runs the same pipeline as the preview, then writes only if every row is valid. */
 export async function confirmMemberImportAction(formData: FormData): Promise<ActionResult<ConfirmImportResult>> {
   const session = await requireSession();
-  const result = await runAction<ConfirmImportResult>(async () => {
+  const result = await runImport<ConfirmImportResult>(async () => {
     const { file, groupId, force } = readForm(formData);
     const analysis = await analyzeImport(session, file, groupId);
     if (!analysis.ok) throw new ValidationError(analysis.error);

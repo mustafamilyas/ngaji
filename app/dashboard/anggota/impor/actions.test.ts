@@ -126,4 +126,58 @@ describe("member import actions", () => {
       expect(await countNamed("Ulang ")).toBe(4);
     });
   });
+
+  describe("confirm re-validates", () => {
+    it("creates nothing when one of 100 rows is invalid, even without a preview", async () => {
+      const lines = Array.from({ length: 100 }, (_, i) =>
+        line(`Seratus ${i}`, i === 49 ? "31/02/1990" : "05/03/1990"),
+      );
+      const result = await confirmMemberImportAction(form(fx.leaf.id, lines));
+
+      expect(result).toMatchObject({
+        ok: true,
+        data: { status: "invalid", report: { validCount: 99, invalidCount: 1, errors: [{ rowNumber: 51, column: "tanggal_lahir" }] } },
+      });
+      expect(await countNamed("Seratus ")).toBe(0);
+    });
+  });
+
+  describe("logging", () => {
+    const channels = ["log", "info", "warn", "error", "debug"] as const;
+    const spies = channels.map((channel) => vi.spyOn(console, channel).mockImplementation(() => {}));
+    // JSON.stringify turns an Error into "{}", so render errors by message and stack.
+    const render = (arg: unknown) => (arg instanceof Error ? `${arg.message}\n${arg.stack}` : JSON.stringify(arg));
+    const logged = () => spies.flatMap((spy) => spy.mock.calls.flat().map(render)).join("\n").toLowerCase();
+
+    beforeEach(() => spies.forEach((spy) => spy.mockClear()));
+    afterAll(() => spies.forEach((spy) => spy.mockRestore()));
+
+    it("keeps cell values out of the logs for valid, invalid, and rejected requests", async () => {
+      await previewMemberImportAction(form(fx.leaf.id, [line("Rahasia Valid")]));
+      await confirmMemberImportAction(form(fx.leaf.id, [line("Rahasia Konfirmasi", "1991-04-05")]));
+      await previewMemberImportAction(form(fx.leaf.id, [line("Rahasia Salah", "tanggal-rahasia")]));
+      await confirmMemberImportAction(form(fx.leaf.id, [line("Rahasia Salah", "tanggal-rahasia")]));
+      await previewMemberImportAction(form(fx.branch.id, [line("Rahasia Cabang")]));
+      const bad = new FormData();
+      bad.set("file", new File([`${HEADER}\n"Rahasia Kutip,x`], "anggota.csv"));
+      bad.set("groupId", String(fx.leaf.id));
+      await previewMemberImportAction(bad);
+
+      expect(logged()).not.toContain("rahasia");
+    });
+
+    it("keeps cell values out of the logs when the write fails unexpectedly", async () => {
+      // Prisma's own messages quote the arguments of the failed call, which hold member data.
+      vi.spyOn(db, "$transaction").mockRejectedValueOnce(
+        new Error('Invalid `prisma.member.create()` invocation: { data: { name: "Rahasia Gagal" } }'),
+      );
+
+      // The failure must really happen, or the log assertion below proves nothing.
+      const result = await confirmMemberImportAction(form(fx.leaf.id, [line("Rahasia Gagal", "1992-06-07")]));
+      expect(result).toEqual({ ok: false, error: "Impor gagal. Coba lagi." });
+      expect(await countNamed("Rahasia Gagal")).toBe(0);
+
+      expect(logged()).not.toContain("rahasia");
+    });
+  });
 });
