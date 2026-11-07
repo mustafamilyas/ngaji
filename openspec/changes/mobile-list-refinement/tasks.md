@@ -2,9 +2,9 @@
 
 ## 1. Text size
 
-- [ ] 1.1 Add `data-dashboard` to the dashboard layout and the `--text-xs` override in `app/globals.css`; verify in the browser that card labels and a portaled popup are 14px at 375px, and 12px at 1280px
-- [ ] 1.2 If the override does not apply, switch to the `text-label` fallback from design.md and verify the same checks
-- [ ] 1.3 Run `pnpm audit:print` and verify it exits 0
+- [x] 1.1 Add `data-dashboard` to the dashboard layout and the `--text-xs` override in `app/globals.css`; verify in the browser that card labels and a portaled popup are 14px at 375px, and 12px at 1280px
+- [x] 1.2 If the override does not apply, switch to the `text-label` fallback from design.md and verify the same checks (not needed: the override applied, including portaled popovers)
+- [x] 1.3 Run `pnpm audit:print` and verify it exits 0
 
 ## 2. Filter panel
 
@@ -35,3 +35,7 @@
 - [ ] 6.1 Add a "Terapkan" button to the Tampilan page, so edits to a view's rules apply only when it is pressed instead of changing the view unpredictably while editing; verify by jsdom test that the result does not change before "Terapkan" and does after
 - [ ] 6.2 Let ADMIN/OWNER open the check-in page (`/dashboard/kegiatan/[id]/[tanggal]/absen`) for future dates, which today says "Tanggal ini belum terjadi; absensi belum bisa diisi"; USER stays at today or earlier. Update DESIGN.md §1 and §3.3 rule 4 and the CLAUDE.md invariant in the same commit; verify by test for ADMIN, OWNER, and USER
 - [ ] 6.3 Show the "Isi absensi" button on the activity page to ADMIN/OWNER on every day, not only when an occurrence falls today. Decide with the owner which occurrence it opens when there is none today, then verify by test
+
+## 7. Failures found during implementation
+
+- [ ] 7.1 `pnpm audit:print` (and `pnpm audit:viewport`, same `startScratchEnv`) exits 1 with "next dev exited early" while any other `next dev` runs in this folder, including `pnpm dev:scratch` on port 3100; decide with the owner whether to support running alongside a dev server (e.g. a separate `distDir`) or keep the documented limitation

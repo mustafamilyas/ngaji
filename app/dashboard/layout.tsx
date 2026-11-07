@@ -10,9 +10,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const sidebarCollapsed = cookieStore.get(SIDEBAR_COLLAPSED_COOKIE)?.value === "1";
   const organizationName = session ? (await getOrganization(session)).name : undefined;
 
+  // `data-dashboard` scopes the phone text-size override in globals.css (kiosk included); `contents` keeps layout unchanged.
   return (
-    <NavShell user={session?.user} organizationName={organizationName} initialCollapsed={sidebarCollapsed}>
-      {children}
-    </NavShell>
+    <div data-dashboard className="contents">
+      <NavShell user={session?.user} organizationName={organizationName} initialCollapsed={sidebarCollapsed}>
+        {children}
+      </NavShell>
+    </div>
   );
 }
