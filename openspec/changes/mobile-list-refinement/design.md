@@ -58,6 +58,9 @@ Alternatives:
 - **Apply only on "Terapkan" and discard on close:** rejected by the owner; closing is the common way out on phones.
 - **Keep apply-on-change and debounce:** the result would still change while editing, which is the complaint.
 
+### 7. One future-date rule for every attendance writer
+`loadRecordingContext`, which every writer calls, applies `canRecordFutureAttendance` (primary role ADMIN or OWNER) itself, instead of each caller opting in. The table, check-in, and bulk save then follow one rule. Extra ADMIN roles do not count, matching the existing table rule.
+
 ## Risks / Trade-offs
 
 - [Larger text breaks tight layouts such as calendar cells and tiles] → the audit plus a screenshot pass; mark true exceptions `data-small-text-ok`.

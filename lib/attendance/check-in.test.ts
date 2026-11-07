@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
-import { today } from "@/lib/dates";
+import { addDays, today } from "@/lib/dates";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 import { buildPageFixture, sessionFor } from "@/lib/test/fixtures";
 import { checkInMember, listCheckInMembers } from "./check-in";
@@ -60,15 +60,43 @@ describe("lib/attendance/check-in", () => {
     ).rejects.toBeInstanceOf(ValidationError);
   });
 
-  it("rejects future dates and non-leaf groups", async () => {
+  it("rejects non-leaf groups", async () => {
     const f = await buildPageFixture("check-in-guards");
     const session = sessionFor(f.actorId, "OWNER", f.leaf);
     await expect(
       checkInMember(session, { activityId: f.activityId, groupId: f.branch.id, date: today(DEFAULT_TIMEZONE), memberId: f.memberId }),
     ).rejects.toThrow();
-    await expect(
-      checkInMember(session, { activityId: f.activityId, groupId: f.leaf.id, date: "2999-01-01", memberId: f.memberId }),
-    ).rejects.toThrow();
+  });
+
+  describe("future dates (task 6.2)", () => {
+    const future = () => addDays(today(DEFAULT_TIMEZONE), 7);
+
+    it.each(["ADMIN", "OWNER"] as const)("lets an %s list and check in members for a future occurrence", async (role) => {
+      const f = await buildPageFixture(`check-in-future-${role}`);
+      const session = sessionFor(f.actorId, role, f.leaf);
+      const input = { activityId: f.activityId, groupId: f.leaf.id, date: future() };
+
+      const listed = await listCheckInMembers(session, input);
+      expect(listed.members.map((m) => m.id)).toContain(f.memberId);
+      await expect(checkInMember(session, { ...input, memberId: f.memberId })).resolves.toMatchObject({ alreadyCheckedIn: false });
+      const row = await db.activityOccurrence.findUnique({
+        where: { activityId_date: { activityId: f.activityId, date: future() } },
+        include: { attendances: true },
+      });
+      expect(row?.attendances).toEqual([expect.objectContaining({ memberId: f.memberId, status: "HADIR" })]);
+    });
+
+    it("keeps a USER at today or earlier, even with an extra ADMIN role on the owning group", async () => {
+      const f = await buildPageFixture("check-in-future-user");
+      const input = { activityId: f.activityId, groupId: f.leaf.id, date: future() };
+      const user = sessionFor(f.actorId, "USER", f.leaf);
+      const userWithExtraAdmin = { ...user, extraRoles: [{ groupId: f.leaf.id, role: "ADMIN" as const }] };
+
+      for (const session of [user, userWithExtraAdmin]) {
+        await expect(listCheckInMembers(session, input)).rejects.toBeInstanceOf(ValidationError);
+        await expect(checkInMember(session, { ...input, memberId: f.memberId })).rejects.toBeInstanceOf(ValidationError);
+      }
+    });
   });
 
   it("404s for groups outside the caller's scope and forbids users above the activity's group", async () => {

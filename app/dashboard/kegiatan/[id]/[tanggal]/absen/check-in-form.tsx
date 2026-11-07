@@ -23,6 +23,7 @@ export function CheckInForm({
   today,
   startTime,
   closedReason,
+  notice,
   leafGroups,
   breadcrumb,
   initialGroupId,
@@ -37,6 +38,8 @@ export function CheckInForm({
   today: string;
   startTime: string;
   closedReason?: string;
+  /** Shown above the open form, e.g. that an admin is recording a future date. */
+  notice?: string;
   /** Every group the user may check people into; `isDefault` ones (under the owning group) are suggested first. */
   leafGroups: LeafGroupOption[];
   /** Owning group's ancestry, outermost first, shown before the group field. */
@@ -172,6 +175,12 @@ export function CheckInForm({
             {date} · {startTime}
           </p>
         </header>
+
+        {notice && (
+          <p role="note" className="rounded-xl border bg-muted/40 px-4 py-3 text-center text-sm text-muted-foreground">
+            {notice}
+          </p>
+        )}
 
         {closedReason ? (
           <p className="rounded-xl border bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">

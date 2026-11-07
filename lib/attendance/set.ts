@@ -1,6 +1,5 @@
 import { audit } from "@/lib/audit";
 import type { SessionUser } from "@/lib/auth/session-user";
-import { canRecordFutureAttendance } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { ValidationError } from "@/lib/errors";
 import { resolveMember } from "@/lib/resolve";
@@ -12,16 +11,13 @@ import { loadRecordingContext } from "./save";
  * anyone else's: HADIR, IZIN (with an optional reason) or `null` to clear.
  * The leaf group is the member's own — resolved here, never taken from the
  * client — and goes through the same `loadRecordingContext` checks as the
- * bulk save, except that ADMIN+ may also record a future date (an IZIN known
- * in advance). Check-in and bulk save stay limited to today or earlier.
- * A no-op (same status and note) writes nothing.
+ * bulk save and check-in, including the future-date rule. A no-op (same status and note) writes nothing.
  */
 export async function setMemberAttendance(session: SessionUser, input: AttendanceSetInput) {
   const resolved = await resolveMember(session, input.memberId);
   const { activity, leafGroup, expectedMembers } = await loadRecordingContext(
     session,
     { activityId: input.activityId, groupId: resolved.groupId, date: input.date },
-    { allowFuture: canRecordFutureAttendance(session) },
   );
 
   const member = expectedMembers.find((m) => m.id === resolved.id);

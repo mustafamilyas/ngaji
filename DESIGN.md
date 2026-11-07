@@ -24,7 +24,7 @@ Data anggota bersifat **sensitif** (PII). Keamanan dan jejak audit adalah syarat
 | Kegiatan | Aturan berulang sederhana; baris occurrence dibuat **lazy** hanya saat absensi diisi / occurrence diubah. |
 | Edit kegiatan | Hanya user (peran ≥ ADMIN) yang **tepat di grup pemilik** kegiatan. Grup di atas maupun di bawah tidak bisa mengubah. |
 | Konflik | Peringatan jika jam bertabrakan; tetap boleh disimpan. Perlu `durationMinutes`. |
-| Absensi | `HADIR` / `IZIN` (+ alasan opsional untuk `IZIN`); tidak ada baris = tidak hadir. Hanya untuk grup **daun** dan tanggal ≤ hari ini — kecuali ADMIN/OWNER boleh mengisi tanggal mendatang lewat tabel absensi (mis. izin yang sudah diketahui). |
+| Absensi | `HADIR` / `IZIN` (+ alasan opsional untuk `IZIN`); tidak ada baris = tidak hadir. Hanya untuk grup **daun** dan tanggal ≤ hari ini — kecuali ADMIN/OWNER (peran utama) boleh mengisi tanggal mendatang lewat tabel absensi, check-in, maupun simpan massal (mis. izin yang sudah diketahui). |
 | Audit | Setiap mutasi menulis `AuditLog` di transaksi yang sama. Login sukses/gagal juga dicatat. |
 | Minggu | Dimulai hari **Minggu** (`0`). |
 
@@ -527,7 +527,7 @@ Misal kegiatan A milik grup X, user U di grup G, absensi diisi untuk grup daun Y
   1. `X ∈ ancestors(G) ∪ {G}` — A berlaku untuk grup user (user berada **di X atau di bawah X**).
   2. `Y ∈ scope(U)` dan Y adalah grup **daun**.
   3. A berlaku untuk Y (`X ∈ ancestors(Y) ∪ {Y}`).
-  4. Tanggal adalah occurrence sah A (§5.2) dan ≤ hari ini (zona waktu organisasi). Pengecualian: user ≥ ADMIN boleh mengisi tanggal mendatang lewat tabel absensi (`setMemberAttendance`); check-in dan simpan massal tetap ≤ hari ini.
+  4. Tanggal adalah occurrence sah A (§5.2) dan ≤ hari ini (zona waktu organisasi). Pengecualian: user dengan peran utama ≥ ADMIN (`canRecordFutureAttendance`) boleh mengisi tanggal mendatang lewat semua penulis absensi — tabel (`setMemberAttendance`), check-in (`checkInMember`), dan simpan massal (`saveAttendance`); peran tambahan tidak dihitung. USER tetap ≤ hari ini.
   5. Setiap `memberId` yang dikirim ada di subtree Y, belum dihapus, dan *expected* pada tanggal itu (§6).
   Konsekuensi: user di **atas** X (mis. admin daerah untuk kegiatan milik kelompok) bisa melihat, tetapi tidak bisa mengisi absensi.
 - **Ubah** (`canEditActivity`): X ada di `adminGroupIds(U)` — `G === X` dengan peran ≥ ADMIN, atau U punya peran tambahan ADMIN di X (§3.2a). Berlaku untuk ubah template, hapus, batal/geser occurrence, dan "geser ini & seterusnya". OWNER root pun **tidak** bisa mengubah kegiatan milik kelompok — ia harus punya akun di grup itu, atau meminta admin grup tersebut.
@@ -719,7 +719,7 @@ Baris `ActivityOccurrence` hanya bisa dibuat untuk tanggal kunci yang sah menuru
 - Halaman `/dashboard/kegiatan/[id]/[tanggal]` menampilkan **tabel** anggota *expected* pada tanggal itu (§6) di semua grup daun dalam scope user yang kegiatan ini berlaku padanya (user di atas grup pemilik: seluruh subtree pemilik, baca saja). `[tanggal]` adalah tanggal kunci (bukan `overrideDate`). `?grup=Y` hanya memilih filter grup awal.
 - Kolom: nama (+ nama grup bila > 1 grup), status (Hadir / Izin / Belum absen), alasan (bisa diisi bila Izin), aksi (tombol Hadir / Izin; menekan yang aktif = hapus tanda). Urut nama atau status; filter cari nama, status, grup — semuanya di klien, tanpa paginasi.
 - Setiap klik langsung disimpan per anggota (`setMemberAttendance`): resolve anggota → grup daunnya → cek §3.3 → transaksi upsert `ActivityOccurrence` → upsert/delete satu `Attendance` → `audit('attendance.save')` (tidak ditulis bila tidak ada perubahan). Alasan hanya disimpan untuk `IZIN`; berganti ke `HADIR` menghapusnya.
-- Simpan massal (`saveAttendance`) dan check-in tetap tersedia dengan aturan yang sama (tanpa pengecualian tanggal mendatang).
+- Simpan massal (`saveAttendance`) dan check-in tetap tersedia dengan aturan yang sama, termasuk pengecualian tanggal mendatang untuk ADMIN/OWNER. Halaman check-in pada tanggal mendatang: ADMIN/OWNER melihat form dengan catatan "Tanggal ini belum terjadi…"; USER melihat pesan tertutup.
 - Occurrence `CANCELLED` → read-only untuk semua, Server Action menolak. Tanggal > hari ini → read-only untuk USER; ADMIN/OWNER (di grup pemilik atau di bawahnya) tetap bisa mengisi.
 
 ---
@@ -843,7 +843,7 @@ Semua halaman aplikasi (wajib login) ada di bawah `/dashboard` dan memakai app s
 11. Reset password: OWNER untuk siapa pun dalam scope; ADMIN hanya USER di grupnya sendiri.
 12. Tidak ada hard delete; semua perubahan tercatat di `AuditLog` dalam transaksi yang sama.
 13. Minggu dimulai hari Minggu.
-14. Absensi hanya untuk grup daun dan tanggal ≤ hari ini; ADMIN/OWNER boleh mengisi tanggal mendatang lewat tabel absensi.
+14. Absensi hanya untuk grup daun dan tanggal ≤ hari ini; ADMIN/OWNER (peran utama) boleh mengisi tanggal mendatang lewat tabel, check-in, dan simpan massal.
 15. `expected` memperhitungkan `joinedAt` / `exitedAt` agar % kehadiran tidak melenceng karena anggota baru/keluar.
 16. User di **atas** grup pemilik kegiatan (mis. admin daerah untuk kegiatan kelompok) hanya bisa melihat — tidak bisa mengisi absensi.
 17. OWNER root **tidak** punya jalur darurat untuk mengubah kegiatan grup di bawahnya.

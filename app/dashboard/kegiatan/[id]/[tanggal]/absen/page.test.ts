@@ -85,6 +85,32 @@ describe("CheckInPage", () => {
     ).rejects.toMatchObject({ digest: expect.stringContaining("NEXT_REDIRECT") });
   });
 
+  describe("future dates (task 6.2)", () => {
+    async function renderFuture(role: "USER" | "ADMIN" | "OWNER") {
+      const fixture = await buildPageFixture(`kegiatan-absen-future-${role}`);
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, role, fixture.leaf) });
+      return renderToStaticMarkup(
+        await CheckInPage({
+          params: Promise.resolve({ id: String(fixture.activityId), tanggal: addDays(today(DEFAULT_TIMEZONE), 7) }),
+          searchParams: Promise.resolve({}),
+        }),
+      );
+    }
+
+    it.each(["ADMIN", "OWNER"] as const)("shows an %s the form with a not-yet notice", async (role) => {
+      const html = await renderFuture(role);
+      expect(html).toContain("check-in-name");
+      expect(html).toContain("Tanggal ini belum terjadi. Sebagai admin Anda tetap bisa mengisi absensi");
+      expect(html).not.toContain("absensi belum bisa diisi");
+    });
+
+    it("shows a USER the closed message without the form", async () => {
+      const html = await renderFuture("USER");
+      expect(html).toContain("Tanggal ini belum terjadi; absensi belum bisa diisi.");
+      expect(html).not.toContain("check-in-name");
+    });
+  });
+
   it("redirects to /login when there is no session", async () => {
     mockAuthSession(auth, null);
     await expect(

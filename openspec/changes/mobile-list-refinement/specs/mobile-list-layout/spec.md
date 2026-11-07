@@ -113,3 +113,18 @@ On the Tampilan page, edits made inside a panel (a filter chip's popover, the ph
 #### Scenario: Remove chip applies at once
 - **WHEN** a user presses a chip's remove button
 - **THEN** that filter is removed from the result at once
+
+### Requirement: ADMIN and OWNER can record attendance for future dates everywhere
+A user whose primary role is ADMIN or OWNER SHALL be able to record attendance for a valid future occurrence through every attendance writer: the attendance table, the check-in page (`/dashboard/kegiatan/[id]/[tanggal]/absen`), and the bulk save. All other rules (scope, leaf group, expected members, not cancelled) SHALL still apply. A USER, including one with an extra ADMIN role, SHALL stay limited to today or earlier. On a future date the check-in page SHALL show ADMIN and OWNER the form with a notice that the date has not happened yet, and SHALL show a USER the closed message "Tanggal ini belum terjadi; absensi belum bisa diisi."
+
+#### Scenario: ADMIN checks in for next week
+- **WHEN** an ADMIN in the owning group checks in a member for a valid occurrence seven days ahead
+- **THEN** the member is recorded HADIR and the action is audited
+
+#### Scenario: OWNER opens a future check-in page
+- **WHEN** an OWNER opens the check-in page for a future occurrence
+- **THEN** the form is shown with the "belum terjadi" notice
+
+#### Scenario: USER stays at today or earlier
+- **WHEN** a USER checks in, or opens the check-in page, for a future occurrence
+- **THEN** the server rejects the check-in and the page shows the closed message

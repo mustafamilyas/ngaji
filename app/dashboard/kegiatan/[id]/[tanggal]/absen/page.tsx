@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { occurrencesFor } from "@/lib/activity/occurrences";
 import { loadOccurrenceRows } from "@/lib/activity/rows";
 import { toActivityTemplate } from "@/lib/activity/template";
-import { visibleGroupsWhere } from "@/lib/authz";
+import { canRecordFutureAttendance, visibleGroupsWhere } from "@/lib/authz";
 import { today } from "@/lib/dates";
 import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
@@ -55,12 +55,19 @@ export default async function CheckInPage({
   // Users above the owning group can only view (DESIGN.md §3.3) — the full page shows that read-only.
   if (!isInScope(session.user.groupPath, activity.group.path)) redirect(`/dashboard/kegiatan/${activity.id}/${tanggal}`);
 
+  // ADMIN/OWNER may record future dates (DESIGN.md §3.3 rule 4); the server re-checks on every call.
+  const isFuture = occurrence.effectiveDate > today(session.user.timeZone);
+  const canRecordFuture = canRecordFutureAttendance(session.user);
   const closedReason =
     occurrence.status === "CANCELLED"
       ? "Kegiatan ini dibatalkan pada tanggal ini."
-      : occurrence.effectiveDate > today(session.user.timeZone)
+      : isFuture && !canRecordFuture
         ? "Tanggal ini belum terjadi; absensi belum bisa diisi."
         : undefined;
+  const notice =
+    isFuture && canRecordFuture
+      ? "Tanggal ini belum terjadi. Sebagai admin Anda tetap bisa mengisi absensi, misalnya izin yang sudah diketahui."
+      : undefined;
 
   const [groups, maxDepth, query, ancestors] = await Promise.all([
     db.group.findMany({
@@ -112,6 +119,7 @@ export default async function CheckInPage({
       today={today(session.user.timeZone)}
       startTime={occurrence.effectiveStartTime}
       closedReason={closedReason}
+      notice={notice}
       leafGroups={leafGroups}
       breadcrumb={breadcrumb}
       initialGroupId={initialGroupId}

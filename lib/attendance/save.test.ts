@@ -197,6 +197,31 @@ describe("lib/attendance/save saveAttendance", () => {
     ).rejects.toBeInstanceOf(ValidationError);
   });
 
+  it("lets an ADMIN save a future date (task 6.2)", async () => {
+    const admin = sessionAt("ADMIN", kelompok.id, kelompok.path);
+    const { activity } = await createActivity(admin, {
+      groupId: kelompok.id,
+      name: "Kajian Izin Awal",
+      location: "A",
+      startTime: "19:00",
+      durationMinutes: 60,
+      freq: "WEEKLY",
+      interval: 1,
+      weekdays: [1],
+      startsOn: "2020-01-06",
+    });
+    const member = await makeMember(kelompok.id, "Anggota Izin Awal");
+
+    await expect(
+      saveAttendance(admin, {
+        activityId: activity.id,
+        groupId: kelompok.id,
+        date: futureMonday(),
+        entries: [{ memberId: member.id, status: "IZIN" }],
+      }),
+    ).resolves.toMatchObject({ set: [expect.objectContaining({ memberId: member.id, status: "IZIN" })] });
+  });
+
   describe("organization timezone decides what 'today' is", () => {
     // 2026-10-18T16:30Z is Sunday 23:30 in WIB but already Monday 01:30 in WIT.
     const MONDAY = "2026-10-19";
@@ -208,6 +233,8 @@ describe("lib/attendance/save saveAttendance", () => {
     async function recordOnMonday(timeZone: string) {
       vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-18T16:30:00Z") });
       const admin = { ...sessionAt("ADMIN", kelompok.id, kelompok.path), timeZone };
+      // A USER, because ADMIN may record future dates (task 6.2).
+      const user = { ...sessionAt("USER", kelompok.id, kelompok.path), timeZone };
       const { activity } = await createActivity(admin, {
         groupId: kelompok.id,
         name: `Kajian ${timeZone}`,
@@ -220,7 +247,7 @@ describe("lib/attendance/save saveAttendance", () => {
         startsOn: "2020-01-06",
       });
       const member = await makeMember(kelompok.id, `Anggota ${timeZone}`);
-      return saveAttendance(admin, {
+      return saveAttendance(user, {
         activityId: activity.id,
         groupId: kelompok.id,
         date: MONDAY,
