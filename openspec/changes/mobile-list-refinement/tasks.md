@@ -26,9 +26,9 @@
 
 ## 5. Docs and final checks
 
-- [ ] 5.1 Update `DESIGN.md` §7.1 and §7.2 and the `CLAUDE.md` conventions in the same commit as the behaviour; verify they name the panel, the 14px rule, and the exemption attribute
-- [ ] 5.2 Run `pnpm lint`, `pnpm tsc --noEmit`, and `pnpm test`; verify all pass
-- [ ] 5.3 Capture before and after screenshots of the five list pages at 375×812 and verify each first record is at or above 600px
+- [x] 5.1 Update `DESIGN.md` §7.1 and §7.2 and the `CLAUDE.md` conventions in the same commit as the behaviour; verify they name the panel, the 14px rule, and the exemption attribute (landed as a separate docs commit, because slices 1–4 were committed one at a time for review)
+- [x] 5.2 Run `pnpm lint`, `pnpm tsc --noEmit`, and `pnpm test`; verify all pass
+- [x] 5.3 Capture before and after screenshots of the five list pages at 375×812 and verify each first record is at or above 600px (before → after: Anggota 813 → 545, Kegiatan 726 → 582, Survei 680 → 500, Pengguna 451 → 347, Audit 499 → 291)
 
 ## 6. Follow-ups requested during member-csv-import review
 
@@ -47,3 +47,4 @@
 - [x] 7.7 The weekday label in the Jadwal tab's date badge (`app/dashboard/kegiatan/[id]/page.tsx`, `text-[0.65rem]`) is 10.4px below xl
 - [x] 7.8 Kegiatan's first record starts at 634px at 360×740 (limit 600): the date navigator fills row two, so the "Filter" button wraps to a third row
 - [x] 7.9 The audit still measures Kegiatan's first record at 634px, while a phone-size browser shows 582px: the audit emulates with `mobile: false`, so headless Chrome reserves a ~15px classic scrollbar, and search (min 12rem) + Filter (84px) no longer fit the 281px row. Decide whether to narrow the search minimum or emulate overlay scrollbars
+- [x] 7.10 The month calendar on Kegiatan (`app/dashboard/kegiatan/activity-calendar.tsx`) shows activity names at 10px and notes at 9px from `sm` to below `xl`, and the audit misses it: it visits `?view=calendar` only with the default range, which renders no month grid. Add the month view to the audit page list and fix or mark the cell text

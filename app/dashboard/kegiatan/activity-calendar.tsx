@@ -183,7 +183,8 @@ export function ActivityCalendar({
                 </span>
               )}
               {visible.map((entry) => (
-                <div key={`${entry.activityId}:${entry.key}`} className="hidden flex-col gap-0.5 sm:flex">
+                // Dense month grid: tapping the cell opens the day's full list, so the cell text may stay small.
+                <div key={`${entry.activityId}:${entry.key}`} data-small-text-ok className="hidden flex-col gap-0.5 sm:flex">
                   <span className="truncate text-[10px] leading-tight">
                     {entry.effectiveStartTime} {entry.activityName}
                   </span>

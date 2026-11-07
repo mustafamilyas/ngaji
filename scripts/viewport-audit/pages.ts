@@ -58,6 +58,7 @@ export function buildPageList(ids: SeedIds): AuditPage[] {
     "/dashboard/tampilan/baru",
     "/dashboard/kegiatan",
     "/dashboard/kegiatan?view=calendar",
+    "/dashboard/kegiatan?view=calendar&range=bulan",
     "/dashboard/kegiatan/baru",
     "/dashboard/kegiatan/cetak",
     "/dashboard/grup",

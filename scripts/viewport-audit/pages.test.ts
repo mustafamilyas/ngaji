@@ -91,4 +91,8 @@ describe("FIRST_RECORD_PAGES (task 4.2)", () => {
     ]);
     for (const path of FIRST_RECORD_PAGES) expect(paths).toContain(path);
   });
+
+  it("measures the month calendar, whose cells only render with range=bulan (task 7.10)", () => {
+    expect(buildPageList(ids).map((p) => p.path)).toContain("/dashboard/kegiatan?view=calendar&range=bulan");
+  });
 });

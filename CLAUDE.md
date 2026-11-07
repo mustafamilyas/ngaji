@@ -48,6 +48,7 @@ pnpm lint && pnpm tsc --noEmit
 - Fungsi murni (`expandDates`, `occurrencesFor`, konflik, `expected`, `authorize`) ditulis dengan tes lebih dulu.
 - Log aplikasi tidak memuat PII/password/token. Pesan error ke user generik.
 - Mobile-first; halaman absensi harus nyaman dipakai di HP.
+- Teks baca di dashboard minimal 14px di bawah `xl` (`text-xs` sudah di-override di `app/globals.css`); jangan memakai ukuran arbitrer lebih kecil (`text-[10px]`, `text-[0.65rem]`) kecuali ditandai `data-small-text-ok`. Daftar dengan filter sekunder memakai `more`/`activeCount` di `FilterBar` (panel di HP) dan menandai baris dengan `data-records`. `pnpm audit:viewport` memeriksa keduanya.
 - Ukuran sentuh ada di primitif (`Button`, `Input`, `Textarea`, `Select` di `components/ui`): 44px dan teks 16px di bawah `xl`, ringkas dari `xl`. Jangan menimpa tinggi/teksnya di pemakai; elemen native (`<input>`, `<select>`) memakai `touchField` (`components/ui/touch.ts`). `pnpm audit:viewport` memeriksanya.
 - Form dengan Server Action (`useActionState`) dan field tak-terkontrol: kirim lewat `onSubmit={useKeepValues(formAction)}` (`lib/forms/use-keep-values.ts`), bukan `action={formAction}`; React 19 mengosongkan field setelah action, termasuk saat galat, sehingga isian user hilang. Form password sengaja memakai `action` (field dikosongkan).
 
