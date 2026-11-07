@@ -1,7 +1,12 @@
-/** Name and birth date compared across members; trimmed, spaces collapsed, case ignored. Phone is deliberately left out. */
+/** Trimmed, spaces collapsed, case ignored; shared by member and group name matching. */
+export function normalizeName(name: string): string {
+  return name.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/** Name and birth date compared across members. Phone is deliberately left out. */
 export function duplicateKey(name: string, birthDate: string): string {
   // Birth date is fixed-width and first, so a "|" in a name cannot make two keys collide.
-  return `${birthDate}|${name.trim().replace(/\s+/g, " ").toLowerCase()}`;
+  return `${birthDate}|${normalizeName(name)}`;
 }
 
 /**

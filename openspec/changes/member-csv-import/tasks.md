@@ -14,7 +14,7 @@
 - [x] 2.1 Write tests, then implement date conversion, covering day-first dates, impossible dates, two-digit years, and serial numbers; verify they pass
 - [x] 2.2 Write tests, then implement `rows.ts` for enum labels, defaults by organization time zone, exit date, and scientific-notation phones, using `createMemberSchema`; verify they pass
 - [x] 2.3 Write tests, then implement duplicate key normalization and in-file matching; verify they pass
-- [ ] 2.4 Write tests, then implement `grup` cell resolution against a list of leaf groups, covering a unique match, blank cell, unknown name, and ambiguous name; verify they pass
+- [x] 2.4 Write tests, then implement `grup` cell resolution against a list of leaf groups, covering a unique match, blank cell, unknown name, and ambiguous name; verify they pass
 
 ## 3. Server
 
