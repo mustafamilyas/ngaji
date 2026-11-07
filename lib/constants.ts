@@ -84,6 +84,11 @@ export const VIEW_MAX_SUMMARIES = 6;
 /** Buckets drawn in a summary chart; a summary with more buckets also gets a paginated table. */
 export const SUMMARY_MAX_BARS = 12;
 
+/** Member CSV import limits (member-csv-import spec). The file size stays under the 1MB Server Action body limit. */
+export const MAX_IMPORT_FILE_BYTES = 900_000;
+export const MAX_IMPORT_ROWS = 2000;
+export const MAX_IMPORT_ERRORS_SHOWN = 100;
+
 /** bcrypt work factor for password hashing (DESIGN.md §4.1). */
 export const BCRYPT_COST = 12;
 
