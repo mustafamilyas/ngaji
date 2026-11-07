@@ -182,34 +182,34 @@ describe("lib/member/mutations", () => {
     it("creates every row in the group it names", async () => {
       const session = sessionAt("ADMIN", branch.id, branch.path);
       const result = await importMembers(session, [
-        row("Impor Satu", leaf.id),
-        row("Impor Dua", otherLeaf.id),
-        row("Impor Tiga", leaf.id),
+        row("Imptest Impor Satu", leaf.id),
+        row("Imptest Impor Dua", otherLeaf.id),
+        row("Imptest Impor Tiga", leaf.id),
       ]);
 
       expect(result.created).toBe(3);
-      const members = await db.member.findMany({ where: { name: { startsWith: "Impor " } }, orderBy: { name: "asc" } });
+      const members = await db.member.findMany({ where: { name: { startsWith: "Imptest Impor " } }, orderBy: { name: "asc" } });
       expect(members.map((m) => [m.name, m.groupId])).toEqual([
-        ["Impor Dua", otherLeaf.id],
-        ["Impor Satu", leaf.id],
-        ["Impor Tiga", leaf.id],
+        ["Imptest Impor Dua", otherLeaf.id],
+        ["Imptest Impor Satu", leaf.id],
+        ["Imptest Impor Tiga", leaf.id],
       ]);
     });
 
     it("lets a USER import into their own leaf group", async () => {
       const session = sessionAt("USER", leaf.id, leaf.path);
-      const result = await importMembers(session, [row("Impor User", leaf.id)]);
+      const result = await importMembers(session, [row("Imptest Impor User", leaf.id)]);
       expect(result.created).toBe(1);
     });
 
     it("writes one member.create audit entry per member, all sharing the returned importId", async () => {
       const session = sessionAt("ADMIN", branch.id, branch.path);
-      const { importId } = await importMembers(session, [row("Audit Satu", leaf.id), row("Audit Dua", leaf.id)]);
+      const { importId } = await importMembers(session, [row("Imptest Audit Satu", leaf.id), row("Imptest Audit Dua", leaf.id)]);
 
       const entries = (await importAudits()).filter((entry) => (entry.meta as { importId: string }).importId === importId);
       expect(entries).toHaveLength(2);
       expect(entries.every((entry) => entry.entity === "Member" && entry.after !== null)).toBe(true);
-      const created = await db.member.findMany({ where: { name: { startsWith: "Audit " } } });
+      const created = await db.member.findMany({ where: { name: { startsWith: "Imptest Audit " } } });
       expect(entries.map((entry) => entry.entityId).sort()).toEqual(created.map((m) => m.id).sort());
     });
 
@@ -217,10 +217,10 @@ describe("lib/member/mutations", () => {
       const session = sessionAt("ADMIN", branch.id, branch.path);
       const membersBefore = await db.member.count();
       const auditsBefore = (await importAudits()).length;
-      const broken = { ...row("Rollback Tiga", leaf.id), birthPlace: undefined } as unknown as ReturnType<typeof row>;
+      const broken = { ...row("Imptest Rollback Tiga", leaf.id), birthPlace: undefined } as unknown as ReturnType<typeof row>;
 
       await expect(
-        importMembers(session, [row("Rollback Satu", leaf.id), row("Rollback Dua", leaf.id), broken]),
+        importMembers(session, [row("Imptest Rollback Satu", leaf.id), row("Imptest Rollback Dua", leaf.id), broken]),
       ).rejects.toThrow();
 
       expect(await db.member.count()).toBe(membersBefore);
@@ -230,23 +230,23 @@ describe("lib/member/mutations", () => {
     it("throws NotFoundError and creates nothing when any row targets a group outside scope", async () => {
       const session = sessionAt("USER", leaf.id, leaf.path);
       await expect(
-        importMembers(session, [row("Luar Satu", leaf.id), row("Luar Dua", otherLeaf.id)]),
+        importMembers(session, [row("Imptest Luar Satu", leaf.id), row("Imptest Luar Dua", otherLeaf.id)]),
       ).rejects.toBeInstanceOf(NotFoundError);
-      expect(await db.member.count({ where: { name: { startsWith: "Luar " } } })).toBe(0);
+      expect(await db.member.count({ where: { name: { startsWith: "Imptest Luar " } } })).toBe(0);
     });
 
     it("rejects a non-leaf group and creates nothing", async () => {
       const session = sessionAt("ADMIN", branch.id, branch.path);
       await expect(
-        importMembers(session, [row("Cabang Satu", leaf.id), row("Cabang Dua", branch.id)]),
+        importMembers(session, [row("Imptest Cabang Satu", leaf.id), row("Imptest Cabang Dua", branch.id)]),
       ).rejects.toBeInstanceOf(ValidationError);
-      expect(await db.member.count({ where: { name: { startsWith: "Cabang " } } })).toBe(0);
+      expect(await db.member.count({ where: { name: { startsWith: "Imptest Cabang " } } })).toBe(0);
     });
 
     it("rejects an empty list and a list over the row limit", async () => {
       const session = sessionAt("ADMIN", branch.id, branch.path);
       await expect(importMembers(session, [])).rejects.toBeInstanceOf(ValidationError);
-      const tooMany = Array.from({ length: MAX_IMPORT_ROWS + 1 }, (_, i) => row(`Banyak ${i}`, leaf.id));
+      const tooMany = Array.from({ length: MAX_IMPORT_ROWS + 1 }, (_, i) => row(`Imptest Banyak ${i}`, leaf.id));
       await expect(importMembers(session, tooMany)).rejects.toBeInstanceOf(ValidationError);
     });
   });

@@ -34,7 +34,7 @@ Everything except the duplicate query is pure and written test-first. `papaparse
 ### 4. Write path
 `importMembers(session, rows)` in `lib/member/mutations.ts`, where each row carries its `groupId`, reuses `resolveGroup`, `authorize(session, "member.create", …)`, and `assertLeafGroup` once per distinct group. It uses one `db.$transaction` with an explicit `timeout`, calling `tx.member.create` and `audit(tx, …)` per row.
 
-`createManyAndReturn` was rejected for now because `audit()` writes one row at a time, and the per-row path keeps redaction in one place. Measure 2000 rows; if it takes more than a few seconds, batch while still going through the redaction.
+`createManyAndReturn` was rejected for now because `audit()` writes one row at a time, and the per-row path keeps redaction in one place. Measured: 2000 rows through `importMembers` on a local SQLite file took 332-373 ms over five runs (2026-11-07, development machine), so per-row writes stay and no batching is needed. `IMPORT_TRANSACTION_TIMEOUT_MS` is 2 s, about 5x the slowest run. Re-measure on the production disk at the first real release; the Docker volume may fsync slower, and the constant is the only thing to change.
 
 ### 5. Audit per member, tied by `importId`
 Per-member entries keep each member's history the same as a manual add. This differs from bulk tagging's single entry, because `member.create` carries a full snapshot. `meta.importId` is a UUID, which also makes a later manual cleanup possible.

@@ -88,8 +88,8 @@ export const SUMMARY_MAX_BARS = 12;
 export const MAX_IMPORT_FILE_BYTES = 900_000;
 export const MAX_IMPORT_ROWS = 2000;
 export const MAX_IMPORT_ERRORS_SHOWN = 100;
-/** Generous placeholder over Prisma's 5s default; task 3.3 measures and tightens it. */
-export const IMPORT_TRANSACTION_TIMEOUT_MS = 30_000;
+/** About 5x the slowest measured 2000-row import (373 ms); see member-csv-import design.md decision 4. */
+export const IMPORT_TRANSACTION_TIMEOUT_MS = 2_000;
 
 /** bcrypt work factor for password hashing (DESIGN.md §4.1). */
 export const BCRYPT_COST = 12;
