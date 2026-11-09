@@ -10,9 +10,17 @@ function uniqueSuffix(): string {
   return `${Date.now().toString(36)}${counter}`;
 }
 
+/** `P` + the counter as 3 letters: unique per run (fixture prefixes start with `Z`). */
+function uniquePrefix(): string {
+  let letters = "";
+  for (let n = counter, i = 0; i < 3; i++, n = Math.floor(n / 26)) letters = String.fromCharCode(65 + (n % 26)) + letters;
+  return `P${letters}`;
+}
+
 function validInput(overrides: Record<string, unknown> = {}) {
   const suffix = uniqueSuffix();
   return {
+    memberCodePrefix: uniquePrefix(),
     organizationName: `Provision Org ${suffix}`,
     rootGroupName: `Pusat ${suffix}`,
     levelNames: ["pusat", "daerah", "desa", "kelompok"],
@@ -66,6 +74,16 @@ describe("provisionOrganization", () => {
     });
     expect(owner.role).toMatchObject({ groupId: root.id, role: "OWNER" });
     expect(await bcrypt.compare(input.ownerPassword, owner.passwordHash)).toBe(true);
+  });
+
+  it("stores the member code prefix uppercase and records it in the organization.create audit", async () => {
+    const input = validInput();
+    const result = await provision({ ...input, memberCodePrefix: ` ${input.memberCodePrefix.toLowerCase()} ` });
+
+    const organization = await db.organization.findUniqueOrThrow({ where: { id: result.organizationId } });
+    expect(organization.memberCodePrefix).toBe(input.memberCodePrefix);
+    const entry = await db.auditLog.findFirstOrThrow({ where: { action: "organization.create", entityId: result.organizationId } });
+    expect(entry.after).toMatchObject({ memberCodePrefix: input.memberCodePrefix });
   });
 
   it("defaults the timezone to Asia/Jakarta when none is given", async () => {
@@ -158,6 +176,22 @@ describe("provisionOrganization", () => {
       const first = validInput();
       await provision(first);
       await expectRejected(validInput({ ownerUsername: first.ownerUsername.toUpperCase() }), /sudah dipakai/);
+    });
+
+    it("rejects a member code prefix another organization uses, in any case", async () => {
+      const first = validInput();
+      await provision(first);
+      await expectRejected(validInput({ memberCodePrefix: first.memberCodePrefix.toLowerCase() }), /sudah dipakai/);
+    });
+
+    it.each(["A1", "ABCDE", "A", ""])("rejects the invalid member code prefix %j", async (memberCodePrefix) => {
+      await expectRejected(validInput({ memberCodePrefix }), /Prefiks kode anggota/);
+    });
+
+    it("rejects a missing member code prefix", async () => {
+      const input: Record<string, unknown> = validInput();
+      delete input.memberCodePrefix;
+      await expectRejected(input, /Prefiks kode anggota wajib diisi/);
     });
 
     it("rejects an unsupported timezone", async () => {

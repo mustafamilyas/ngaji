@@ -32,10 +32,11 @@ The container listens on `127.0.0.1:3000`, so Nginx proxies to it exactly as bef
    BOOTSTRAP_OWNER_USERNAME='owner'
    BOOTSTRAP_OWNER_NAME='Owner Full Name'
    BOOTSTRAP_OWNER_PASSWORD='<strong password, min 8 chars>'
+   BOOTSTRAP_MEMBER_CODE_PREFIX='ANR'
    EOF
    sudo docker compose exec -T app sh -c 'set -a && . /dev/stdin && set +a && pnpm org:create' < /tmp/bootstrap.env; rm -f /tmp/bootstrap.env
    ```
-   The same rules as DEPLOYMENT.md §4 apply (single quotes, optional `BOOTSTRAP_TIMEZONE` and `BOOTSTRAP_LEVEL_NAMES`). Because the image sets `DATABASE_URL`, you no longer need to load `.env` before the CLIs.
+   The same rules as DEPLOYMENT.md §4 apply (single quotes, optional `BOOTSTRAP_TIMEZONE` and `BOOTSTRAP_LEVEL_NAMES`, required permanent `BOOTSTRAP_MEMBER_CODE_PREFIX`). Because the image sets `DATABASE_URL`, you no longer need to load `.env` before the CLIs.
 
 ## Upgrade (replaces §9 step 5)
 
@@ -48,6 +49,14 @@ sudo docker compose logs --tail 30 app     # "migrations ... applied", then "Rea
 curl -I https://<domain>/login
 ```
 
+If the release adds member codes, run the backfill right after the new container is up (migrations run at start, so members cannot be created in an organization without a prefix until it finishes; creation fails loudly, it never makes code-less members). One `<organizationId>=<PREFIX>` per existing organization (2-4 letters A-Z, unique, permanent):
+
+```bash
+sudo docker compose exec -T app pnpm member-codes:backfill 1=ANR 2=BDG
+```
+
+It refuses, changing nothing, if an organization would stay without a prefix or an existing prefix would change; a second run changes nothing (DEPLOYMENT.md §9).
+
 The old container keeps serving until the new image is built; the switch takes a few seconds. Rollback is as in §9: restore the snapshot or backup and send the previous tag.
 
 ## Operating
@@ -59,6 +68,8 @@ sudo docker compose exec app pnpm leads [--csv]                            # int
 sudo docker compose exec app pnpm reset-owner-password <username> [--activate]   # DEPLOYMENT.md §10
 sudo docker compose exec app sqlite3 /data/production.db '.tables'
 ```
+
+Restore (DEPLOYMENT.md §8): `restore.sh` drives the systemd unit, which does not exist here. Run `sudo docker compose stop app`, then the script with `SKIP_SERVICE=1` in front of it, then `sudo docker compose up -d` (full commands in [docs/migrate-to-docker.md](docs/migrate-to-docker.md) §6).
 
 Old images pile up: `sudo docker image prune -f` after a successful upgrade.
 

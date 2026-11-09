@@ -1,6 +1,7 @@
 import type { SessionUser } from "@/lib/auth/session-user";
 import { PAGE_SIZE } from "@/lib/constants";
 import { db } from "@/lib/db";
+import { normalizeMemberCode } from "@/lib/member/code";
 import { clampPage } from "@/lib/pagination";
 import { resolveGroups, resolveVisibleTags } from "@/lib/resolve";
 import type { SortState } from "@/lib/sort";
@@ -44,11 +45,13 @@ export async function listMembers(session: SessionUser, filter: ListMembersFilte
 
   const tagIds = filter.tagIds?.length ? (await resolveVisibleTags(session, filter.tagIds)).map((t) => t.id) : [];
 
+  // A search that looks like a full member code also matches that code (member-code spec "Search by code").
+  const code = filter.search ? normalizeMemberCode(filter.search) : null;
   const where = {
     OR: groupPaths.map((path) => ({ group: { path: { startsWith: path } } })),
     ...(filter.status ? { status: filter.status } : {}),
     ...(tagIds.length > 0 ? { tags: { some: { tagId: { in: tagIds } } } } : {}),
-    ...(filter.search ? { name: { contains: filter.search } } : {}),
+    ...(filter.search ? { AND: [{ OR: [{ name: { contains: filter.search } }, ...(code ? [{ code }] : [])] }] } : {}),
   };
 
   const total = await db.member.count({ where });

@@ -31,5 +31,6 @@ export function provisionInputFromEnv(env: Env): RawProvisionInput {
     ownerUsername: required(env, "BOOTSTRAP_OWNER_USERNAME"),
     ownerName: required(env, "BOOTSTRAP_OWNER_NAME"),
     ownerPassword: required(env, "BOOTSTRAP_OWNER_PASSWORD"),
+    memberCodePrefix: required(env, "BOOTSTRAP_MEMBER_CODE_PREFIX"),
   };
 }

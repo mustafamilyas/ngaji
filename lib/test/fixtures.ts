@@ -3,6 +3,7 @@ import type { Mock } from "vitest";
 import type { SessionUser } from "@/lib/auth/session-user";
 import { db } from "@/lib/db";
 import { addDays, today, weekdayOf } from "@/lib/dates";
+import { generateMemberCode } from "@/lib/member/code";
 import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 /** A group as tests pass it around: enough to build a session for an actor who sits in it. */
@@ -39,6 +40,18 @@ export function mockAuthSession(authFn: unknown, session: { user: SessionUser } 
   (authFn as Mock<() => Promise<Session | null>>).mockResolvedValue(value);
 }
 
+/**
+ * Unique member code prefix for a fixture organization: `Z` + the id as 3 base-26 letters (id 5 → `ZAAF`).
+ * Hand-picked test prefixes never start with `Z`, so they cannot collide in the shared `test.db`.
+ */
+export function fixtureCodePrefix(organizationId: number): string {
+  let letters = "";
+  for (let n = organizationId, i = 0; i < 3; i++, n = Math.floor(n / 26)) {
+    letters = String.fromCharCode(65 + (n % 26)) + letters;
+  }
+  return `Z${letters}`;
+}
+
 export type PageFixture = {
   organizationId: number;
   root: FixtureGroup;
@@ -62,7 +75,12 @@ export async function buildPageFixture(label: string): Promise<PageFixture> {
     data: { username: `${label}-actor`, passwordHash: "x", name: "Actor" },
   });
 
-  const organization = await db.organization.create({ data: { name: `${label} Org` } });
+  const created = await db.organization.create({ data: { name: `${label} Org` } });
+  const codePrefix = fixtureCodePrefix(created.id);
+  const organization = await db.organization.update({
+    where: { id: created.id },
+    data: { memberCodePrefix: codePrefix },
+  });
   for (const [depth, name] of ["Root", "Branch", "Leaf"].entries()) {
     await db.level.create({ data: { organizationId: organization.id, depth, name } });
   }
@@ -99,6 +117,7 @@ export async function buildPageFixture(label: string): Promise<PageFixture> {
   const member = await db.member.create({
     data: {
       groupId: leaf.id,
+      code: generateMemberCode(codePrefix),
       name: "Anggota Uji",
       birthPlace: "Jakarta",
       birthDate: "2000-01-01",

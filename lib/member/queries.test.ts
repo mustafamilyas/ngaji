@@ -100,6 +100,50 @@ describe("lib/member/queries listMembers", () => {
     expect(members[0].name).toBe("Scope A");
   });
 
+  describe("search by member code", () => {
+    it("matches a code typed lowercase and without the dash", async () => {
+      await makeMember(leafA.id, { name: "Kode Satu", code: "MQT-7K3MQ9" });
+
+      const { members } = await listMembers(sessionAt(leafA.id, leafA.path), { search: "mqt7k3mq9" });
+
+      expect(members.map((m) => m.name)).toEqual(["Kode Satu"]);
+    });
+
+    it("maps O to 0 and I/L to 1 in the random part", async () => {
+      await makeMember(leafA.id, { name: "Kode Dua", code: "MQT-7K3M10" });
+
+      const { members } = await listMembers(sessionAt(leafA.id, leafA.path), { search: "MQT-7K3MLO" });
+
+      expect(members.map((m) => m.name)).toEqual(["Kode Dua"]);
+    });
+
+    it("does not show a member of a sibling leaf group by code", async () => {
+      await makeMember(leafB.id, { name: "Kode Sebelah", code: "MQT-8K3MQ9" });
+
+      const { total } = await listMembers(sessionAt(leafA.id, leafA.path), { search: "MQT-8K3MQ9" });
+
+      expect(total).toBe(0);
+    });
+
+    it("lists code and name matches together, each once", async () => {
+      await makeMember(leafA.id, { name: "Gabung", code: "MQT-9K3MQ9" });
+      await makeMember(leafA.id, { name: "Gabung MQT-9K3MQ9", code: "MQT-9K3MQ8" });
+
+      const { members, total } = await listMembers(sessionAt(leafA.id, leafA.path), { search: "MQT-9K3MQ9" });
+
+      expect(total).toBe(2);
+      expect(members.map((m) => m.name)).toEqual(["Gabung", "Gabung MQT-9K3MQ9"]);
+    });
+
+    it("treats a partial code as a name search only", async () => {
+      await makeMember(leafA.id, { name: "Kode Sebagian", code: "MQT-AK3MQ9" });
+
+      const { total } = await listMembers(sessionAt(leafA.id, leafA.path), { search: "MQT-AK3M" });
+
+      expect(total).toBe(0);
+    });
+  });
+
   it("filters by status", async () => {
     await makeMember(leafA.id, { name: "Filter Active", status: "AKTIF" });
     await makeMember(leafA.id, { name: "Filter Exited", status: "KELUAR", exitedAt: "2025-01-01" });

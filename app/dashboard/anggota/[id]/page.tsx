@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { CalendarCheck, CalendarDays, Network, Pencil, Phone, User } from "lucide-react";
+import { CalendarCheck, CalendarDays, IdCard, Network, Pencil, Phone, User } from "lucide-react";
 import { auth } from "@/auth";
 import { DangerZone, DangerZoneItem } from "@/components/danger-zone";
 import { MemberStatusBadge } from "@/components/member-status-badge";
@@ -19,6 +19,7 @@ import { formatDate, parsePage } from "@/lib/filters";
 import { groupTrail } from "@/lib/group/trail";
 import { formatEnumLabel, SEX_LABELS } from "@/lib/member/labels";
 import { pageHref } from "@/lib/pagination";
+import { getMemberRelatives } from "@/lib/member/relation-queries";
 import { loadEntityTags } from "@/lib/tag/entity";
 import { resolveMember } from "@/lib/resolve";
 import { parseTab, tabHref } from "@/lib/tabs";
@@ -27,6 +28,7 @@ import type { Sex } from "@/lib/validation/enums";
 import type { MemberFormValues } from "@/lib/validation/member";
 import { DeleteMemberForm } from "./delete-member-form";
 import { MemberForm } from "../member-form";
+import { FamilySection } from "./family-section";
 
 const TABS = ["profil", "kehadiran", "ubah"] as const;
 
@@ -64,10 +66,11 @@ export default async function MemberDetailPage({
 
   const tab = parseTab(query.tab, TABS, "profil");
   const path = `/dashboard/anggota/${member.id}`;
-  const [history, trail, entityTags] = await Promise.all([
+  const [history, trail, entityTags, relatives] = await Promise.all([
     attendanceHistoryForMember(member.id, parsePage(query.riwayat)),
     groupTrail(session.user.groupPath, member.group.path),
     loadEntityTags(session.user, { kind: "member", id: member.id }),
+    getMemberRelatives(session.user, member.id),
   ]);
   // The leaf and its parent are enough to place a member; the full chain is on the group page.
   const groupCrumbs = trail.slice(-2);
@@ -109,6 +112,14 @@ export default async function MemberDetailPage({
                 </span>
               ))}
             </MetaItem>
+            {member.code && (
+              <MetaItem icon={IdCard}>
+                {/* One tap or click selects the whole code for copying (member-code spec "Display"). */}
+                <span title="Kode anggota" className="font-mono select-all">
+                  {member.code}
+                </span>
+              </MetaItem>
+            )}
             {member.phone && <MetaItem icon={Phone}>{member.phone}</MetaItem>}
             <MetaItem icon={CalendarDays}>Masuk {formatDate(member.joinedAt)}</MetaItem>
           </>
@@ -141,6 +152,7 @@ export default async function MemberDetailPage({
         />
 
         {tab === "profil" && (
+          <>
           <Card>
             <CardContent>
               <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
@@ -161,6 +173,8 @@ export default async function MemberDetailPage({
               </dl>
             </CardContent>
           </Card>
+          <FamilySection memberId={member.id} memberName={member.name} relatives={relatives} />
+          </>
         )}
 
         {tab === "kehadiran" && (

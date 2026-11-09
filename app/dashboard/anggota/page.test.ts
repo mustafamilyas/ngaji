@@ -168,6 +168,24 @@ describe("MembersPage", () => {
     }
   });
 
+  it("shows the member code only when the Kode column is chosen", async () => {
+    const fixture = await buildPageFixture("anggota-kode");
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "OWNER", fixture.root) });
+    const { code } = await db.member.findUniqueOrThrow({ where: { id: fixture.memberId }, select: { code: true } });
+    if (!code) throw new Error("fixture member has no code");
+
+    expect(renderToStaticMarkup(await MembersPage({ searchParams: Promise.resolve({}) }))).not.toContain(code);
+
+    cookieValue.current = "kode";
+    try {
+      const html = renderToStaticMarkup(await MembersPage({ searchParams: Promise.resolve({}) }));
+      expect(html).toContain("Kode");
+      expect(html).toContain(code);
+    } finally {
+      cookieValue.current = undefined;
+    }
+  });
+
   it("sorts by a visible column from the URL, and ignores a sort on a hidden column", async () => {
     const fixture = await buildPageFixture("anggota-sort");
     const session = sessionFor(fixture.actorId, "OWNER", fixture.root);

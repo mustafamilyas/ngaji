@@ -32,6 +32,34 @@ describe("MemberDetailPage", () => {
     expect(html).not.toContain("Hapus anggota");
   });
 
+  it("shows the member code in the header as one selectable unit, on every tab", async () => {
+    const fixture = await buildPageFixture("anggota-detail-kode");
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "OWNER", fixture.root) });
+    const { code } = await db.member.findUniqueOrThrow({ where: { id: fixture.memberId }, select: { code: true } });
+    if (!code) throw new Error("fixture member has no code");
+
+    for (const tab of ["profil", "kehadiran", "ubah"]) {
+      const html = renderToStaticMarkup(
+        await MemberDetailPage({ params: Promise.resolve({ id: String(fixture.memberId) }), searchParams: Promise.resolve({ tab }) }),
+      );
+      expect(html).toMatch(new RegExp(`<span[^>]*title="Kode anggota"[^>]*class="[^"]*select-all[^"]*"[^>]*>${code}</span>`));
+    }
+  });
+
+  it("shows the Keluarga section on Profil only", async () => {
+    const fixture = await buildPageFixture("anggota-detail-keluarga");
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "OWNER", fixture.root) });
+    const htmlFor = async (tab?: string) =>
+      renderToStaticMarkup(
+        await MemberDetailPage({ params: Promise.resolve({ id: String(fixture.memberId) }), searchParams: Promise.resolve(tab ? { tab } : {}) }),
+      );
+
+    const profil = await htmlFor();
+    expect(profil).toContain("Keluarga");
+    expect(profil).toContain("Belum ada data keluarga");
+    expect(await htmlFor("kehadiran")).not.toContain("Belum ada data keluarga");
+  });
+
   describe("tags (task 5.3)", () => {
     const tagData = (groupId: number, key: string, actorId: number, extra: { deletedAt?: Date } = {}) => ({
       groupId,

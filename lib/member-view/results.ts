@@ -20,6 +20,7 @@ const COLUMN_SELECT = {
   jenisKelamin: { sex: true },
   tanggalLahir: { birthDate: true },
   status: { status: true },
+  kode: { code: true },
   whatsapp: { phone: true },
   hp: { phone: true },
   tempatLahir: { birthPlace: true },

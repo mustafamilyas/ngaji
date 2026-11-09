@@ -27,9 +27,14 @@ export async function provisionOrganization(tx: Tx, rawInput: unknown): Promise<
 
   const taken = await tx.user.findUnique({ where: { username: input.ownerUsername }, select: { id: true } });
   if (taken) throw new ValidationError(`Username "${input.ownerUsername}" sudah dipakai`);
+  const prefixTaken = await tx.organization.findUnique({
+    where: { memberCodePrefix: input.memberCodePrefix },
+    select: { id: true },
+  });
+  if (prefixTaken) throw new ValidationError(`Prefiks kode anggota "${input.memberCodePrefix}" sudah dipakai`);
 
   const organization = await tx.organization.create({
-    data: { name: input.organizationName, timezone: input.timezone },
+    data: { name: input.organizationName, timezone: input.timezone, memberCodePrefix: input.memberCodePrefix },
   });
   await tx.level.createMany({
     data: input.levelNames.map((name, depth) => ({ organizationId: organization.id, depth, name })),
@@ -56,6 +61,7 @@ export async function provisionOrganization(tx: Tx, rawInput: unknown): Promise<
     after: {
       name: organization.name,
       timezone: organization.timezone,
+      memberCodePrefix: organization.memberCodePrefix,
       levels: input.levelNames,
       rootGroupId: rootGroup.id,
     },

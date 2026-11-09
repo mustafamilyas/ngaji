@@ -29,3 +29,13 @@ describe("ViewMembersTable tag column (task 5.4)", () => {
     expect(html).not.toContain("rahasia");
   });
 });
+
+describe("ViewMembersTable kode column (member-code spec \"Display\")", () => {
+  it("shows the member code under a Kode header", () => {
+    const html = renderToStaticMarkup(
+      <ViewMembersTable members={[{ id: 1, name: "Ahmad Fauzi", code: "ANR-7K3MQ9" }]} columns={["kode"]} asOf="2026-10-31" />,
+    );
+    expect(html).toContain(">Kode<");
+    expect(html).toContain("ANR-7K3MQ9");
+  });
+});

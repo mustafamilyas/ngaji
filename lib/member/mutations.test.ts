@@ -1,9 +1,18 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { SessionUser } from "@/lib/auth/session-user";
 import { db } from "@/lib/db";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { MAX_IMPORT_ROWS } from "@/lib/constants";
+import { generateMemberCode } from "./code";
 import { createMember, deleteMember, importMembers, updateMember } from "./mutations";
+
+// Real generator by default; a test forces a duplicate with `mockReturnValueOnce`.
+vi.mock("./code", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./code")>();
+  return { ...actual, generateMemberCode: vi.fn(actual.generateMemberCode) };
+});
+
+const CODE = /^MMT-[0-9A-HJKMNP-TV-Z]{6}$/;
 
 let actorId: number;
 
@@ -46,7 +55,9 @@ describe("lib/member/mutations", () => {
     });
     actorId = actor.id;
 
-    const organization = await db.organization.create({ data: { name: "Member Mutations Test Org" } });
+    const organization = await db.organization.create({
+      data: { name: "Member Mutations Test Org", memberCodePrefix: "MMT" },
+    });
     for (const [depth, name] of ["Root", "Branch", "Leaf"].entries()) {
       await db.level.create({ data: { organizationId: organization.id, depth, name } });
     }
@@ -94,6 +105,51 @@ describe("lib/member/mutations", () => {
       expect(created.status).toBe("AKTIF");
     });
 
+    it("assigns a code with the organization prefix", async () => {
+      const session = sessionAt("USER", leaf.id, leaf.path);
+      const created = await createMember(session, { ...validInput, groupId: leaf.id });
+      expect(created.code).toMatch(CODE);
+    });
+
+    it("generates a new code when the first one is already taken", async () => {
+      const session = sessionAt("USER", leaf.id, leaf.path);
+      const first = await createMember(session, { ...validInput, groupId: leaf.id });
+      vi.mocked(generateMemberCode).mockReturnValueOnce(first.code!);
+
+      const second = await createMember(session, { ...validInput, groupId: leaf.id });
+      expect(second.code).toMatch(CODE);
+      expect(second.code).not.toBe(first.code);
+    });
+
+    it("never reuses the code of a soft-deleted member", async () => {
+      const session = sessionAt("USER", leaf.id, leaf.path);
+      const deleted = await createMember(session, { ...validInput, groupId: leaf.id });
+      await deleteMember(session, deleted.id);
+      vi.mocked(generateMemberCode).mockReturnValueOnce(deleted.code!);
+
+      const created = await createMember(session, { ...validInput, groupId: leaf.id });
+      expect(created.code).not.toBe(deleted.code);
+    });
+
+    it("ignores a code sent by the client", async () => {
+      const session = sessionAt("USER", leaf.id, leaf.path);
+      const input = { ...validInput, groupId: leaf.id, code: "MMT-000000" } as typeof validInput & { groupId: number };
+      const created = await createMember(session, input);
+      expect(created.code).toMatch(CODE);
+      expect(created.code).not.toBe("MMT-000000");
+    });
+
+    it("fails and creates nothing when the organization has no code prefix", async () => {
+      const organization = await db.organization.create({ data: { name: "Member Mutations No Prefix Org" } });
+      await db.level.create({ data: { organizationId: organization.id, depth: 0, name: "Only" } });
+      const row = await db.group.create({ data: { organizationId: organization.id, depth: 0, name: "Only", path: "" } });
+      const group = await db.group.update({ where: { id: row.id }, data: { path: `${row.id}/` } });
+
+      const session = sessionAt("USER", group.id, group.path);
+      await expect(createMember(session, { ...validInput, groupId: group.id })).rejects.toThrow(/prefix/);
+      expect(await db.member.count({ where: { groupId: group.id } })).toBe(0);
+    });
+
     it("writes a member.create audit entry with a full snapshot", async () => {
       const session = sessionAt("USER", leaf.id, leaf.path);
       const created = await createMember(session, { ...validInput, groupId: leaf.id, name: "Audited" });
@@ -102,7 +158,7 @@ describe("lib/member/mutations", () => {
         where: { action: "member.create", entityId: created.id },
       });
       expect(entry).toMatchObject({ actorId, entity: "Member", groupId: leaf.id });
-      expect(entry?.after).toMatchObject({ name: "Audited" });
+      expect(entry?.after).toMatchObject({ name: "Audited", code: created.code });
     });
 
     it("rejects creating a member in a non-leaf group", async () => {
@@ -137,6 +193,15 @@ describe("lib/member/mutations", () => {
       });
       expect(entry?.before).toMatchObject({ name: "Before Update" });
       expect(entry?.after).toMatchObject({ name: "After Update" });
+    });
+
+    it("keeps the code, even when the client sends another one", async () => {
+      const session = sessionAt("USER", leaf.id, leaf.path);
+      const created = await createMember(session, { ...validInput, groupId: leaf.id });
+
+      const input = { ...validInput, memberId: created.id, name: "Renamed", code: "MMT-000000" };
+      const updated = await updateMember(session, input as typeof input & { memberId: number });
+      expect(updated.code).toBe(created.code);
     });
 
     it("throws NotFoundError for a member outside the caller's scope", async () => {

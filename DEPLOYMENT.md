@@ -321,6 +321,7 @@ BOOTSTRAP_TIMEZONE='Asia/Jakarta'
 BOOTSTRAP_OWNER_USERNAME='owner'
 BOOTSTRAP_OWNER_NAME='Owner Full Name'
 BOOTSTRAP_OWNER_PASSWORD='<strong password, min 8 chars>'
+BOOTSTRAP_MEMBER_CODE_PREFIX='ANR'
 EOF
 sudo -u dahan bash -c 'cd /opt/dahan && set -a && . ./.env && . /tmp/bootstrap.env && set +a && pnpm org:create; rm -f /tmp/bootstrap.env'
 ```
@@ -329,7 +330,8 @@ sudo -u dahan bash -c 'cd /opt/dahan && set -a && . ./.env && . /tmp/bootstrap.e
 
 - Keep the **single quotes** around every value. bash reads this file, so an unquoted value with a space breaks it: `BOOTSTRAP_OWNER_NAME=Owner Full Name` runs `Full` as a command and the script then reports a missing variable. A password must not itself contain a single quote. `umask 077` keeps the temporary file private to `dahan` while it holds the password.
 
-- The script aborts, writing nothing, if the owner username is already taken by any organization (usernames are unique across all organizations and stored in lowercase), if the timezone is invalid or if the password is shorter than 8 characters. The password is never printed.
+- The script aborts, writing nothing, if the owner username is already taken by any organization (usernames are unique across all organizations and stored in lowercase), if the timezone is invalid, if the password is shorter than 8 characters, or if the member code prefix is invalid or already used. The password is never printed.
+- `BOOTSTRAP_MEMBER_CODE_PREFIX` is required: 2–4 letters A–Z (lowercase is uppercased), unique across all organizations. It starts every member code (`ANR-7K3MQ9`) and **cannot be changed later**, so choose it with care.
 - `BOOTSTRAP_TIMEZONE` is optional: `Asia/Jakarta` (WIB, default), `Asia/Makassar` (WITA) or `Asia/Jayapura` (WIT). The OWNER can change it later under `/dashboard/pengaturan`.
 - `BOOTSTRAP_LEVEL_NAMES` is optional (default `pusat,daerah,desa,kelompok`); the OWNER can rename levels later under `/dashboard/pengaturan`.
 - The OWNER is created with `mustChangePassword = true` and must change it on first login (DESIGN.md §3.4).
@@ -531,6 +533,12 @@ Every release gets its own document in [docs/releases/](docs/releases/README.md)
    sudo -u dahan pnpm build
    sudo systemctl restart dahan
    ```
+   If the release adds member codes (`docs/releases/` says so), run the backfill **after `migrate deploy` and before `systemctl restart`**: `Member.code` and `Organization.memberCodePrefix` are nullable until it runs, and creating a member in an organization without a prefix fails.
+   ```bash
+   # one <organizationId>=<PREFIX> per existing organization; PREFIX is 2-4 letters A-Z, unique, permanent
+   sudo -u dahan bash -c 'cd /opt/dahan && set -a && . ./.env && set +a && pnpm member-codes:backfill 1=ANR 2=BDG'
+   ```
+   It refuses, changing nothing, if an organization would stay without a prefix or an existing prefix would change; repeating a prefix is fine, and a second run changes nothing. Sanity check: `sqlite3 /var/lib/dahan/production.db "SELECT count(*) FROM Member WHERE code IS NULL"` returns `0`.
 6. Check `curl -I https://<domain>/login` and log in.
 
 **Rollback:** if a migration fails or the app misbehaves, restore the VPS snapshot, or run `scripts/restore.sh` with the pre-upgrade backup (§8) and redeploy the previous version by sending its tag the same way. New columns are ignored by older code.

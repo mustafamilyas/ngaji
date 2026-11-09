@@ -12,5 +12,6 @@ One document per production release, kept here and committed with the code.
 | Version | Date | Environment | Status | Document |
 |---|---|---|---|---|
 | v0.1.0 | 2026-10-25 | https://dahan.ilyasmustafa.com | Draft | [2026-10-25-v0.1.0.md](2026-10-25-v0.1.0.md) |
+| v0.2.0 | 2026-11-09 | https://dahan.ilyasmustafa.com | Draft | [2026-11-09-v0.2.0.md](2026-11-09-v0.2.0.md) |
 
 Add a row for every new release (newest last).

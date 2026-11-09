@@ -246,6 +246,15 @@ describe("listViewMembers", () => {
       for (const hidden of ["phone", "address", "email", "birthDate"]) expect(row).not.toHaveProperty(hidden);
     });
 
+    it("selects the code only when the Kode column is chosen", async () => {
+      const withCode = await listViewMembers(leafSession, { ...emptyDefinition(), columns: ["kode"] }, { today: TODAY });
+      expect(withCode.members[0]).toHaveProperty("code");
+      expect(withCode.members[0]).not.toHaveProperty("phone");
+
+      const without = await listViewMembers(leafSession, { ...emptyDefinition(), columns: ["grup"] }, { today: TODAY });
+      expect(without.members[0]).not.toHaveProperty("code");
+    });
+
     it("selects the phone only when a phone column is chosen", async () => {
       const result = await listViewMembers(
         leafSession,

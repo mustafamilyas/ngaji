@@ -171,3 +171,7 @@ export const RELATION_PICKER_LIMIT = 10;
 export const MEMBER_CODE_LENGTH = 6;
 /** Retries when a generated code collides with an existing one (unique index on `Member.code`). */
 export const MEMBER_CODE_MAX_ATTEMPTS = 5;
+/** Members coded per lookup round by `pnpm member-codes:backfill`; keeps each `IN (...)` query bounded. */
+export const MEMBER_CODE_BACKFILL_BATCH = 500;
+/** One transaction per organization; generous because the backfill runs offline, before the app starts. */
+export const MEMBER_CODE_BACKFILL_TIMEOUT_MS = 60_000;

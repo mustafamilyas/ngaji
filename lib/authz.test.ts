@@ -82,6 +82,39 @@ describe("authorize — member create/update/delete, all roles allowed within sc
   }
 });
 
+describe("authorize member.relate — both members in scope, any role", () => {
+  const SIBLING_KELOMPOK = "1/2/3/5/";
+  const OTHER_ORG_KELOMPOK = "50/51/52/53/";
+
+  for (const role of ["OWNER", "ADMIN", "USER"] as const) {
+    it(`${role} links two members of their own kelompok`, () => {
+      const s = session(role, 4, KELOMPOK);
+      expect(() => authorize(s, "member.relate", { groupPath: KELOMPOK, relativeGroupPath: KELOMPOK })).not.toThrow();
+    });
+  }
+
+  it("a USER of K1 cannot link to a member of sibling kelompok K2, in either order", () => {
+    const s = session("USER", 4, KELOMPOK);
+    expect(() => authorize(s, "member.relate", { groupPath: KELOMPOK, relativeGroupPath: SIBLING_KELOMPOK })).toThrow(NotFoundError);
+    expect(() => authorize(s, "member.relate", { groupPath: SIBLING_KELOMPOK, relativeGroupPath: KELOMPOK })).toThrow(NotFoundError);
+  });
+
+  it("an ADMIN of desa D links members of two kelompok under D", () => {
+    const s = session("ADMIN", 3, DESA);
+    expect(() => authorize(s, "member.relate", { groupPath: KELOMPOK, relativeGroupPath: SIBLING_KELOMPOK })).not.toThrow();
+  });
+
+  it("a member of another organization is NotFoundError, even for a root OWNER", () => {
+    const s = session("OWNER", 1, ROOT);
+    expect(() => authorize(s, "member.relate", { groupPath: KELOMPOK, relativeGroupPath: OTHER_ORG_KELOMPOK })).toThrow(NotFoundError);
+  });
+
+  it("an additional ADMIN role never widens scope", () => {
+    const s = { ...session("USER", 4, KELOMPOK), extraRoles: [{ groupId: 9, role: "ADMIN" as const }] };
+    expect(() => authorize(s, "member.relate", { groupPath: KELOMPOK, relativeGroupPath: OTHER_KELOMPOK })).toThrow(NotFoundError);
+  });
+});
+
 describe("authorize — group create/update/delete, role >= ADMIN required", () => {
   const actions = ["group.create", "group.update", "group.delete"] as const;
 

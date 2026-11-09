@@ -108,6 +108,20 @@ export function buildScenarios(ids: SeedIds): Scenario[] {
       steps: [{ click: pickerTrigger, measure: "picker open" }],
     });
   }
+  if (ids.memberId !== null) {
+    // The seed gives this member relatives (parent, child, sibling in another kelompok).
+    scenarios.push({
+      name: "member detail keluarga dialogs",
+      role: "admin",
+      path: `/dashboard/anggota/${ids.memberId}`,
+      steps: [
+        { measure: "section" },
+        { click: { selector: "button", text: "Tambah keluarga" }, measure: "add dialog" },
+        { key: "Escape" },
+        { click: { selector: 'button[aria-label^="Hapus hubungan"]' }, measure: "remove dialog" },
+      ],
+    });
+  }
   if (ids.activityId !== null) {
     scenarios.push({
       name: "activity detail tag picker",

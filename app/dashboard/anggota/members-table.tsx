@@ -55,6 +55,8 @@ function cell(member: MemberRow, key: MemberColumnKey, asOf: string, canPick: bo
       );
     case "whatsapp":
       return <WhatsAppButton phone={member.phone} name={member.name} compact />;
+    case "kode":
+      return member.code ? <span className="font-mono">{member.code}</span> : <span className="text-muted-foreground">—</span>;
     case "hp":
       return member.phone;
     case "tempatLahir":

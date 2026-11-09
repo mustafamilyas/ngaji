@@ -137,6 +137,35 @@ describe("member import actions", () => {
       expect(forced).toMatchObject({ ok: true, data: { status: "done", created: 2, skipped: 0 } });
       expect(await countNamed("Ulang ")).toBe(4);
     });
+
+    it("gives each of 40 imported members its own code with the organization prefix", async () => {
+      const lines = Array.from({ length: 40 }, (_, i) => line(`Empatpuluh ${String(i + 1).padStart(2, "0")}`));
+      const result = await confirmMemberImportAction(form(fx.leaf.id, lines));
+      expect(result).toMatchObject({ ok: true, data: { status: "done", created: 40 } });
+
+      const members = await db.member.findMany({ where: { name: { startsWith: "Empatpuluh " }, groupId: fx.leaf.id } });
+      const prefix = (await db.organization.findUniqueOrThrow({ where: { id: fx.organizationId } })).memberCodePrefix;
+      const codes = members.map((member) => member.code);
+      expect(codes).toHaveLength(40);
+      expect(new Set(codes).size).toBe(40);
+      expect(codes.every((code) => code?.startsWith(`${prefix}-`))).toBe(true);
+    });
+
+    it("ignores a kode column: the preview names it and the stored code is generated", async () => {
+      const data = () => {
+        const body = [`${HEADER},kode`, `${line("Berkode Satu")},ZZZ-000000`].join("\n");
+        const formData = new FormData();
+        formData.set("file", new File([body], "anggota.csv"));
+        formData.set("groupId", String(fx.leaf.id));
+        return formData;
+      };
+
+      expect(await previewMemberImportAction(data())).toMatchObject({ ok: true, data: { ignoredColumns: ["kode"] } });
+      expect(await confirmMemberImportAction(data())).toMatchObject({ ok: true, data: { status: "done", created: 1 } });
+      const member = await db.member.findFirstOrThrow({ where: { name: "Berkode Satu", groupId: fx.leaf.id } });
+      expect(member.code).not.toBe("ZZZ-000000");
+      expect(member.code).toMatch(/^Z[A-Z]{3}-[0-9A-HJKMNP-TV-Z]{6}$/);
+    });
   });
 
   describe("confirm re-validates", () => {

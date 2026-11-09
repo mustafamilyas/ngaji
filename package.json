@@ -15,7 +15,8 @@
     "leads": "tsx scripts/leads.ts",
     "audit:viewport": "tsx scripts/viewport-audit.ts",
     "audit:print": "tsx scripts/audit-print.ts",
-    "reset-owner-password": "tsx scripts/reset-owner-password.ts"
+    "reset-owner-password": "tsx scripts/reset-owner-password.ts",
+    "member-codes:backfill": "tsx scripts/member-codes-backfill.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

@@ -215,7 +215,12 @@ export function ActivityCalendar({
                   )}
                 </div>
               ))}
-              {overflow > 0 && <span className="hidden text-[9px] text-muted-foreground sm:block">+{overflow} lagi</span>}
+              {overflow > 0 && (
+                // Same dense-grid exemption as the entries above: tapping the cell opens the day's full list.
+                <span data-small-text-ok className="hidden text-[9px] text-muted-foreground sm:block">
+                  +{overflow} lagi
+                </span>
+              )}
             </Link>
           );
         })}

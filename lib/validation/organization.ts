@@ -7,7 +7,7 @@ const nameSchema = z.string().trim().min(1, "Nama wajib diisi").max(100, "Nama t
 
 /** Member code prefix (member-code spec): 2–4 letters A–Z, stored uppercase, set once at creation. */
 export const memberCodePrefixSchema = z
-  .string()
+  .string({ error: "Prefiks kode anggota wajib diisi" })
   .trim()
   .toUpperCase()
   .regex(/^[A-Z]{2,4}$/, "Prefiks kode anggota harus 2–4 huruf A–Z");
@@ -29,5 +29,6 @@ export const provisionOrganizationSchema = z.object({
   ownerUsername: usernameSchema,
   ownerName: nameSchema,
   ownerPassword: passwordSchema,
+  memberCodePrefix: memberCodePrefixSchema,
 });
 export type ProvisionOrganizationInput = z.input<typeof provisionOrganizationSchema>;

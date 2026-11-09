@@ -13,6 +13,7 @@ export type Action =
   | "member.create"
   | "member.update"
   | "member.delete"
+  | "member.relate"
   | "activity.view"
   | "activity.create"
   | "activity.update"
@@ -45,6 +46,8 @@ export type Action =
   | "tag.use";
 
 type ScopeTarget = { groupPath: string };
+/** Both members of a link, already resolved (non-deleted, own organization) by `resolveMember`. */
+type MemberPairTarget = { groupPath: string; relativeGroupPath: string };
 type ActivityGroupTarget = { groupId: number };
 type AttendanceTarget = { activityGroupPath: string; leafGroupPath: string; isLeaf: boolean };
 type SurveyViewTarget = { surveyGroupPath: string };
@@ -213,6 +216,7 @@ export function authorize(
   action: "member_view.view" | "member_view.update" | "member_view.delete" | "member_view.transfer",
   target: MemberViewTarget,
 ): void;
+export function authorize(session: SessionUser, action: "member.relate", target: MemberPairTarget): void;
 export function authorize(session: SessionUser, action: "tag.manage", target: ActivityGroupTarget): void;
 export function authorize(session: SessionUser, action: "tag.use", target: ScopeTarget): void;
 export function authorize(session: SessionUser, action: "level.rename" | "organization.update"): void;
@@ -233,6 +237,14 @@ export function authorize(session: SessionUser, action: Action, target?: unknown
     case "member.delete": {
       const { groupPath } = target as ScopeTarget;
       assertInScope(session, groupPath);
+      return;
+    }
+
+    // Link or unlink (member-relations spec): any role, both members in scope.
+    case "member.relate": {
+      const { groupPath, relativeGroupPath } = target as MemberPairTarget;
+      assertInScope(session, groupPath);
+      assertInScope(session, relativeGroupPath);
       return;
     }
 

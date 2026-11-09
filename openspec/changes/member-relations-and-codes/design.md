@@ -45,7 +45,7 @@ model MemberRelation {
 - The picker is a server action `searchRelativeCandidates(memberId, query)`. It is scope-filtered, takes `RELATION_PICKER_LIMIT` (10) and selects only id, name, group name and code.
 
 ### 3. Member code: Crockford base32, 6 characters, org prefix
-- 32⁶ ≈ 1.07 × 10⁹ codes per organization. At 10⁴ members the chance of a collision per insert is about 10⁻⁵, so a retry loop (`MEMBER_CODE_MAX_ATTEMPTS = 5`) on a unique-constraint violation is enough. Generation uses `crypto.randomInt`.
+- 32⁶ ≈ 1.07 × 10⁹ codes per organization. At 10⁴ members the chance of a collision per insert is about 10⁻⁵, so a retry loop (`MEMBER_CODE_MAX_ATTEMPTS = 5`) is enough: inside the create transaction, generate the needed codes, look them up in one query (raw SQL, so soft-deleted members' codes count as taken), and regenerate only the taken ones. The same helper serves CSV import with one query per round. The unique index on `Member.code` stays as the backstop. Catching the violation and retrying was rejected: continuing a Prisma interactive transaction after a failed statement is fragile. Generation uses `crypto.randomInt`.
 - Format `ANR-7K3MQ9` (10 characters) fits on a card and in a QR version 1. The prefix makes cards from different organizations distinguishable, and global uniqueness then reduces to per-prefix uniqueness. A DB unique index on `Member.code` still enforces it.
 - *Alternative*: sequential numbers. Rejected: guessable, and they leak member counts (the user chose the prefix + random format).
 - Normalization for search (`normalizeMemberCode`) is pure and tested: uppercase, strip whitespace and dashes, `O→0`, `I/L→1`, then, if the result is 8–10 characters, split it as "everything except the last 6 = prefix, last 6 = random part". The digit mapping applies only to the random part, because a prefix is letters only. It returns `PREFIX-XXXXXX` when the prefix is 2–4 letters and the random part is valid Crockford, otherwise `null` (not a code, so it is a name search only).
@@ -53,9 +53,9 @@ model MemberRelation {
 
 ### 4. Nullable columns + mandatory backfill
 - Migration: `Organization.memberCodePrefix String? @unique`, `Member.code String? @unique` (SQLite unique indexes allow multiple NULLs), plus the `MemberRelation` table.
-- `scripts/member-codes-backfill.ts` (`pnpm member-codes:backfill --prefix <orgId>=<PREFIX> …`): sets missing prefixes from its arguments and refuses to run if any organization would remain without one. It then assigns codes to members where `code IS NULL` in batches, inside transactions, with an `audit` entry `member.code_backfill` per organization (`meta: { count }`; actor = system, as in `org:create`). It is idempotent.
+- `scripts/member-codes-backfill.ts` (`pnpm member-codes:backfill <orgId>=<PREFIX> …`): sets missing prefixes from its arguments and refuses to run, changing nothing, if any organization would remain without one or an existing prefix would change (repeating the same prefix is allowed). It then runs one transaction per organization: set the prefix (audited as `organization.update`, before/after `memberCodePrefix`), assign codes to members where `code IS NULL` (soft-deleted included) in batches of `MEMBER_CODE_BACKFILL_BATCH`, and write one `member.code_backfill` entry (`meta: { count }`, only when codes were assigned). Actor = system (`null`), as in `org:create`. It is idempotent: a re-run writes nothing.
 - In app code, `Member.code` is treated as required after the backfill. Creating a member in an organization without a prefix throws an internal error: logged without PII, generic message to the user.
-- Seed: organizations get prefixes (`ANR`, a second one for the isolation org), and members get codes and a few sample relationships.
+- Seed: organizations get prefixes (`YNN` for Yayasan Ngaji Nusantara, `ANR` for the isolation org Majelis An-Nur); members get codes from the same backfill at the end of the seed (also run by the viewport-audit bulk seed). A few sample relationships are added with the Keluarga UI (tasks 6.2/6.3).
 - *Alternative*: a two-step migration to make the columns `NOT NULL`. Deferred: `prisma migrate deploy` applies all pending migrations at once, so the backfill can't run between them in one release. A later release can tighten the columns.
 
 ### 5. Import and audit
@@ -73,6 +73,6 @@ model MemberRelation {
 ## Migration Plan
 
 1. Deploy the image with the migration (`prisma migrate deploy`).
-2. Before starting the app: `pnpm member-codes:backfill --prefix 1=ANR …` for every existing organization.
+2. Before starting the app: `pnpm member-codes:backfill 1=ANR …` for every existing organization.
 3. Start the app. Sanity check: no member with `code IS NULL`; a new member gets a code; search by code works.
 4. Rollback: the previous image ignores the new nullable columns and table, so it can run against the migrated DB.

@@ -8,6 +8,7 @@ const base = {
   BOOTSTRAP_OWNER_USERNAME: "owner",
   BOOTSTRAP_OWNER_NAME: "Owner",
   BOOTSTRAP_OWNER_PASSWORD: "kata-sandi-aman",
+  BOOTSTRAP_MEMBER_CODE_PREFIX: "ORG",
 };
 
 describe("provisionInputFromEnv", () => {
@@ -20,6 +21,7 @@ describe("provisionInputFromEnv", () => {
       ownerUsername: "owner",
       ownerName: "Owner",
       ownerPassword: "kata-sandi-aman",
+      memberCodePrefix: "ORG",
     });
   });
 

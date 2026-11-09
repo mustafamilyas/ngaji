@@ -12,6 +12,7 @@ export const MEMBER_COLUMNS = [
   { key: "jenisKelamin", label: "Jenis kelamin", defaultVisible: true },
   { key: "tanggalLahir", label: "Tanggal lahir", defaultVisible: true },
   { key: "status", label: "Status", defaultVisible: true },
+  { key: "kode", label: "Kode", defaultVisible: false },
   { key: "hp", label: "No. HP", defaultVisible: false },
   { key: "tempatLahir", label: "Tempat lahir", defaultVisible: false },
   { key: "alamat", label: "Alamat", defaultVisible: false },

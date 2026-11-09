@@ -7,6 +7,7 @@ import { db } from "../../lib/db";
 import { addDays, today } from "../../lib/dates";
 import { DEFAULT_TIMEZONE } from "../../lib/validation/enums";
 import type { Prisma } from "../../lib/generated/prisma/client";
+import { backfillMemberCodes } from "../../lib/member/code-backfill";
 import { definitionSchema, newViewDefinition } from "../../lib/validation/member-view";
 import { BULK_ACTIVITY_NAME, BULK_VIEW_NAME, WIDE_TAG_KEY, WIDE_TAG_VALUES } from "./bulk-activity";
 
@@ -37,6 +38,7 @@ async function main() {
       createdById: owner.id,
     })),
   });
+  await backfillMemberCodes(new Map());
   const members = await db.member.findMany({ where: { groupId: base.groupId, deletedAt: null }, select: { id: true } });
 
   const activity = await db.activity.create({

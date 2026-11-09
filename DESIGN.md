@@ -46,6 +46,7 @@ type OccurrenceStatus = 'SCHEDULED' | 'CANCELLED'
 type AttendanceStatus = 'HADIR' | 'IZIN'
 type ViewSource       = 'member'      // sumber data tampilan; hanya 'member' untuk sekarang
 type ViewVisibility   = 'GROUP'       // hanya 'GROUP' untuk sekarang (tampilan pribadi = non-MVP)
+type RelationType     = 'ORANG_TUA' | 'WALI' | 'PASANGAN' | 'SAUDARA'   // hubungan keluarga (§14)
 ```
 
 ```prisma
@@ -55,6 +56,7 @@ model Organization {
   name      String
   timezone  String   @default("Asia/Jakarta")  // salah satu TIMEZONES (lib/validation/enums.ts)
   logoUrl   String?                            // belum bisa diubah / ditampilkan
+  memberCodePrefix String? @unique             // 2–4 huruf A–Z, awalan kode anggota (§14); tetap, tidak bisa diubah lewat aplikasi
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   levels    Level[]
@@ -162,6 +164,7 @@ model UserExtraRole {
 model Member {
   id            Int           @id @default(autoincrement())
   groupId       Int                          // wajib grup daun
+  code          String?   @unique            // "ANR-7K3MQ9", dibuat server saat anggota dibuat, tidak pernah berubah (§14)
   name          String
   birthPlace    String
   birthDate     String                       // YYYY-MM-DD
@@ -407,6 +410,24 @@ model MemberTag {
   @@index([tagId])
 }
 
+/// Hubungan keluarga antar dua anggota (§14). Satu baris per pasangan; arah kebalikan diturunkan saat ditampilkan.
+/// Dihapus permanen, tercatat di audit.
+model MemberRelation {
+  id           Int      @id @default(autoincrement())
+  fromMemberId Int                          // ORANG_TUA/WALI: orang tua/wali; PASANGAN/SAUDARA: id yang lebih kecil
+  toMemberId   Int
+  type         String                       // RelationType
+  createdById  Int
+  createdAt    DateTime @default(now())
+
+  fromMember Member @relation("memberRelationFrom", fields: [fromMemberId], references: [id])
+  toMember   Member @relation("memberRelationTo", fields: [toMemberId], references: [id])
+  createdBy  User   @relation("memberRelationCreatedBy", fields: [createdById], references: [id])
+
+  @@unique([fromMemberId, toMemberId])
+  @@index([toMemberId])
+}
+
 /// Tautan tag ↔ kegiatan. Dihapus permanen, tercatat di audit.
 model ActivityTag {
   activityId  Int
@@ -458,10 +479,11 @@ model AuditLog {
 - **Survei** (§11): `Survey` soft delete (`deletedAt: null` wajib di setiap query, seperti `Activity`). `SurveyResponse`/`SurveyAnswer` dihapus permanen (seperti `Attendance`), isi yang dihapus ada di audit. Jawaban adalah PII anggota: hanya terbaca lewat query yang terfilter scope dan viewer audit OWNER.
 - **Tampilan anggota** (§12): `MemberView` soft delete (`deletedAt: null` wajib di setiap query). `definition` adalah `Json` (aturan, urutan, pengelompokan, kolom) dan tidak pernah dipercaya mentah: selalu di-parse zod (ketat saat simpan, longgar saat muat).
 - **Tag** (§13): `Tag` soft delete (`deletedAt: null` wajib di setiap query). `MemberTag`/`ActivityTag` adalah tautan, dihapus permanen seperti `Attendance`; setiap pasang/lepas tercatat di audit. Keunikan nama (sepanjang rantai leluhur) dicek di aplikasi di dalam transaksi, bukan oleh indeks.
+- **Relasi & kode anggota** (§14): `MemberRelation` adalah tautan, dihapus permanen seperti `MemberTag`; setiap tautkan/lepas tercatat di audit. `@@unique([fromMemberId, toMemberId])` tidak menangkap arah sebaliknya untuk jenis berarah, jadi pengecekan pasangan (kedua arah) ada di mutasi, di dalam transaksi. `Member.code` dan `Organization.memberCodePrefix` nullable hanya agar migrasi bisa berjalan di data lama; setelah skrip backfill (DEPLOYMENT.md §9) semuanya terisi dan kode anggota dianggap wajib di kode aplikasi.
 - **Impor anggota** (§7): tanpa perubahan skema dan tanpa tabel staging. File tidak disimpan: klien menyimpannya di memori antara pratinjau dan konfirmasi, lalu konfirmasi mengirim dan memvalidasi ulang file yang sama, sehingga impor yang ditinggalkan tidak menyisakan PII.
 - **Multi-organisasi** (§1): tidak ada filter `organizationId` global; scope path sudah memisahkan entitas yang menempel pada grup. Query yang tidak berbasis path (level, pengecekan username, lookup organisasi) wajib dibatasi ke organisasi user; daftar dan hasil pemeriksaannya ada di `openspec/changes/multi-org-and-onboarding/isolation-checklist.md`. Entitas organisasi lain dijawab 404 seperti entitas di luar scope. Last-owner (§3.2) dihitung per organisasi.
 - **`InterestLead`** menyimpan PII calon pengguna (persetujuan dicatat di `consentAt`); PII hanya ada di baris ini, bukan di `AuditLog`. Masa simpan belum ditetapkan.
-- Enum domain (`Role`, `Sex`, `MaritalStatus`, `WorkStatus`, `MemberStatus`, `Freq`, `OccurrenceStatus`, `AttendanceStatus`, `QuestionType`, `ViewSource`, `ViewVisibility`) bukan Prisma `enum` (tidak didukung SQLite) — kolomnya `String`, nilai valid ditegakkan oleh TS union + zod di `lib/validation/enums.ts`, bukan oleh database.
+- Enum domain (`Role`, `Sex`, `MaritalStatus`, `WorkStatus`, `MemberStatus`, `Freq`, `OccurrenceStatus`, `AttendanceStatus`, `QuestionType`, `ViewSource`, `ViewVisibility`, `RelationType`) bukan Prisma `enum` (tidak didukung SQLite) — kolomnya `String`, nilai valid ditegakkan oleh TS union + zod di `lib/validation/enums.ts`, bukan oleh database.
 
 ---
 
@@ -500,6 +522,7 @@ Seorang user bisa USER/ADMIN di grup atasnya sekaligus ADMIN di grup yang lebih 
 | Ambil alih tampilan yatim (pemilik nonaktif / pindah grup) di grup user sendiri | ✅ | ✅ | ❌ |
 | Lihat tag (§13): milik leluhur / grup user / dalam scope | ✅ | ✅ | ✅ |
 | Buat / ubah nama / ubah warna / hapus (soft) tag **milik grup user sendiri** | ✅ | ✅ | ❌ |
+| Tautkan / lepas hubungan keluarga antar dua anggota (§14) — **kedua** anggota harus dalam scope | ✅ | ✅ | ✅ |
 | Pasang / lepas tag milik grup user atau leluhurnya pada anggota dalam scope & kegiatan yang terlihat (§13.3) | ✅ | ✅ | ✅ |
 | Buat user USER / ADMIN untuk grup dalam scope | ✅ | ✅ | ❌ |
 | Reset password user lain | ✅ semua dalam scope | ✅ hanya USER **di grup yang sama** | ❌ |
@@ -628,7 +651,9 @@ Helper `audit(tx, { action, entity, entityId, groupId, before, after, meta })` d
 | `organization.create` | `pnpm org:create` (`actorId: null`, `groupId` = grup akar) | `after` = nama, zona waktu, nama level, id grup akar (diikuti `user.create` untuk OWNER pertama) |
 | `organization.update` | ubah nama / zona waktu di `/dashboard/pengaturan` | `before`/`after` = nama + zona waktu |
 | `lead.create` | kirim formulir publik `/daftar` (`actorId: null`, `groupId: null`) | tanpa PII; `meta: { leadId }`; dipakai juga untuk batas laju per IP; **tidak pernah tampil** di viewer audit organisasi mana pun |
-| `member.create/update/delete` | anggota | snapshot penuh (PII); impor CSV menulis satu `member.create` per anggota di satu transaksi, semuanya dengan `meta: { importId }` (UUID) yang sama |
+| `member.create/update/delete` | anggota | snapshot penuh (PII, termasuk `code`); impor CSV menulis satu `member.create` per anggota di satu transaksi, semuanya dengan `meta: { importId }` (UUID) yang sama |
+| `member.relate`, `member.unrelate` | tautkan / lepas hubungan keluarga (§14) | `meta: { fromMemberId, toMemberId, type }`; `groupId` = grup anggota pertama |
+| `member.code_backfill` | `pnpm member-codes:backfill` (`actorId: null`) | `meta: { count }`, hanya bila ada kode yang dibuat; pengisian awalan organisasi tercatat sebagai `organization.update` |
 | `activity.create/update/delete/split` | template kegiatan | snapshot; `split` mencatat `{ fromActivityId, toActivityId, fromDate }` |
 | `occurrence.override` | batal/geser/jam/lokasi | snapshot baris occurrence |
 | `attendance.save` | simpan absensi (massal, check-in, atau satu anggota dari tabel) | `meta: { date, groupId, set: [{memberId,status,note?}], removed: [memberId] }` |
@@ -756,9 +781,9 @@ Semua halaman aplikasi (wajib login) ada di bawah `/dashboard` dan memakai app s
 | `/dashboard` | Dashboard: ringkasan statistik scope + kegiatan 7 hari ke depan |
 | `/dashboard/grup` | Pohon grup dalam scope |
 | `/dashboard/grup/[id]` | Detail (§7.2), tab: anggota (grup daun) **atau** sub-grup, kegiatan, pengguna, tag (`?tab=tag`: tag milik grup ini dikelompokkan per kunci, terlihat oleh siapa pun yang melihat grup; kelola hanya ADMIN/OWNER grup ini, §13: tag baru, ubah warna, ubah nama kunci/nilai, tambah nilai, hapus tag/kunci lewat dialog kecil; jumlah anggota & kegiatan pemakai hanya ditampilkan ke pengelola), pengaturan (ADMIN/OWNER: rename + zona berbahaya hapus) — tiap daftar dipaginasi sendiri (`?subgrup=`, `?anggota=`, `?kegiatan=`, `?pengguna=`, 10/hal); aksi: lihat semua anggota, tambah anggota (daun, `/dashboard/anggota/baru?grup=`) atau tambah sub-grup (dialog) |
-| `/dashboard/anggota` | Tabel (paginasi `?page=`, 50/hal) + cari nama + filter grup (multi, termasuk turunan) / status / tag (`?tag=`, salah satu, §13.4); kolom bisa dipilih (§7.1, termasuk "Tag" dengan pemilih tag per baris); pilih baris → "Tambah tag" / "Hapus tag" massal (halaman saat ini saja); tombol WhatsApp per anggota; menu ⋮ di samping "Tambah anggota" berisi "Impor CSV" |
+| `/dashboard/anggota` | Tabel (paginasi `?page=`, 50/hal) + cari nama + filter grup (multi, termasuk turunan) / status / tag (`?tag=`, salah satu, §13.4); pencarian juga cocok dengan kode anggota (§14); kolom bisa dipilih (§7.1, termasuk "Tag" dengan pemilih tag per baris dan "Kode" yang tersembunyi secara bawaan); pilih baris → "Tambah tag" / "Hapus tag" massal (halaman saat ini saja); tombol WhatsApp per anggota; menu ⋮ di samping "Tambah anggota" berisi "Impor CSV" |
 | `/dashboard/anggota/impor` | Impor CSV: pilih satu grup daun dalam scope, atau pakai kolom `grup` berisi nama grup daun per baris (menggantikan pilihan grup; nama kosong, tak dikenal, di luar scope, atau ganda = galat baris). Boleh untuk peran apa pun yang boleh menambah anggota di grup itu. Unduh template (`/dashboard/anggota/impor/template`, hanya baris judul) → unggah → pratinjau → konfirmasi. Batas: 900 KB (`MAX_IMPORT_FILE_BYTES`), 2000 baris (`MAX_IMPORT_ROWS`), 100 galat ditampilkan (`MAX_IMPORT_ERRORS_SHOWN`) beserta totalnya. Menerima `;` atau `,`, BOM, UTF-8, Windows-1252, tanggal hari-lebih-dulu, label Indonesia. Semua-atau-tidak-sama-sekali: satu baris tidak valid membatalkan seluruh impor. Duplikat (nama + tanggal lahir sama dengan anggota dalam scope atau baris sebelumnya) dilewati kecuali "Tetap impor" dicentang |
-| `/dashboard/anggota/baru`, `/dashboard/anggota/[id]` | Form (`?grup=` memilih grup awal); detail (§7.2) tab profil, kehadiran (paginasi `?riwayat=`, 10/hal, tautan ke occurrence), ubah (form + zona berbahaya hapus soft); tombol WhatsApp |
+| `/dashboard/anggota/baru`, `/dashboard/anggota/[id]` | Form (`?grup=` memilih grup awal); detail (§7.2) tab profil (detail + kartu **Keluarga**, §14), kehadiran (paginasi `?riwayat=`, 10/hal, tautan ke occurrence), ubah (form + zona berbahaya hapus soft); header memuat kode anggota yang bisa disalin; tombol WhatsApp |
 | `/dashboard/kegiatan` | Daftar **atau** kalender (toggle; kalender berupa agenda per hari untuk rentang ≤ 7 hari, grid bulan untuk rentang lebih panjang) per rentang tanggal — preset Hari ini/Minggu ini/Bulan ini/pilih tanggal (default Minggu ini) dengan tombol ‹ › per rentang, badge *warisan*, *konflik*, *dipindah*, *batal*; Keterangan occurrence (`overrideNotes` atau catatan kegiatan) tampil sebagai teks polos terpotong di daftar dan kalender; cari nama kegiatan (badge konflik tetap dihitung dari semua kegiatan); filter grup multi-select (dengan pintasan "pilih dengan turunannya") atas union §5.3; filter tag (`?tag=`, salah satu, §13.4; badge konflik tetap dari semua kegiatan); chip tag + pemilih tag per baris daftar; daftar dipaginasi 50/hal; semua state (grup, tag, rentang, tampilan, cari) di URL; tombol **Cetak** membuka `/dashboard/kegiatan/cetak` dengan filter yang sama |
 | `/dashboard/kegiatan/cetak` | Jadwal siap cetak untuk filter yang sama dengan daftar (`grup`, `q`, `tag`, `range`, `anchor`, `from`, `to`), tanpa paginasi; satu tabel untuk seluruh rentang (kolom Tanggal, Jam, Kegiatan, Grup, Lokasi, Keterangan), Tanggal tampil sekali per tanggal efektif (rowspan) dengan garis pemisah, urut jam lalu nama, header tabel diulang tiap halaman cetak, baris tidak terbelah; label *Dipindah*/*Batal* sebagai teks; `batal=0` menyembunyikan yang batal (default tampil); rentang maks. `PRINT_MAX_MONTHS` (3) bulan; navigasi & toolbar disembunyikan saat cetak, A4 hitam-putih; dicetak lewat dialog browser (tanpa PDF server) |
 | `/dashboard/kegiatan/baru`, `/dashboard/kegiatan/[id]` | Form template; detail (§7.2) tab absensi per rentang (preset 7/30/90 hari, bulan ini, pilih tanggal; default 30 hari) dengan tabel per-occurrence & per-anggota (10/hal), jadwal 90 hari ke depan (`?jadwal=`, 10/hal; ubah satu tanggal lewat dialog, hanya `canEdit`), pengaturan (hanya `canEdit`: form, geser, zona berbahaya akhiri/hapus); aksi "Isi absensi hari ini" bila ada occurrence hari ini, atau untuk ADMIN/OWNER (peran utama) "Isi absensi · <tanggal>" ke occurrence berikutnya bila tidak ada. Tombol "Isi absensi" di baris jadwal dan aksi daftar kegiatan memakai aturan tanggal yang sama (`canRecordDate`); occurrence lampau tetap bisa diubah semua penulis absensi |
@@ -852,7 +877,6 @@ Semua halaman aplikasi (wajib login) ada di bawah `/dashboard` dan memakai app s
 
 | Fitur | Persiapan di MVP |
 |---|---|
-| Relasi anggota (ayah, ibu, saudara, suami/istri, anak) | Tabel `MemberRelation(memberId, relatedId, type)` — tambah nanti, tidak mengubah `Member`. |
 | Foto anggota | Kolom `photoUrl` + object storage; tambah nanti. |
 | Multi-peran lintas cabang | Peran tambahan ADMIN di bawah grup utama sudah ada (§3.2a). Yang belum: peran di cabang lain (scope = union path) dan peran tambahan selain ADMIN. |
 | Syarat peserta kegiatan (perempuan saja, SMP, dll.) | Kolom JSON `criteria` di `Activity`; `expected()` sudah terpusat sehingga tinggal tambah filter. |
@@ -948,3 +972,22 @@ Label berwarna untuk anggota dan kegiatan, milik grup dan diwariskan ke turunan.
 - `?tag=` (id dipisah koma, maks. `MAX_TAG_FILTER_IDS`) di `/dashboard/anggota`, `/dashboard/kegiatan` (daftar & kalender), dan `/dashboard/kegiatan/cetak`. Cocok bila entitas punya **salah satu** tag terpilih; di-AND dengan filter lain dan tidak pernah memperluas scope.
 - Id di-resolve di server; id rusak, terhapus, organisasi lain, atau tidak terlihat **dibuang** tanpa galat (seperti filter grup kegiatan).
 
+---
+## 14. Relasi & kode anggota
+
+Hubungan keluarga antar anggota dan kode anggota yang permanen. Spesifikasi & skenario uji: `openspec/changes/member-relations-and-codes/`.
+
+### 14.1 Hubungan keluarga
+- Satu baris `MemberRelation` per pasangan anggota, dengan satu jenis: `ORANG_TUA` (pertama = orang tua, kedua = anak), `WALI` (pertama = wali, kedua = anak asuh), `PASANGAN` dan `SAUDARA` (setara; disimpan dengan id lebih kecil di `fromMemberId`). Arah kebalikan tidak pernah disimpan, hanya diturunkan: `relationLabel(type, side, sexRelatif)` di `lib/member/relations.ts` memberi Ayah/Ibu, Anak laki-laki/perempuan, Suami/Istri, Saudara laki-laki/perempuan, Wali, Anak asuh.
+- Ditolak: hubungan dengan diri sendiri, anggota yang sudah dihapus (soft), pasangan yang sudah punya hubungan jenis apa pun di kedua arah, dan anggota yang sudah punya `RELATION_MAX_PER_MEMBER` hubungan. Anggota berstatus apa pun boleh dihubungkan. Kontradiksi lebih dari satu pasangan (A orang tua B, B orang tua C, C orang tua A) tidak dicek.
+- **Izin**: peran apa pun boleh menautkan atau melepas hubungan bila **kedua** anggota belum dihapus dan dalam scope (`member.relate`, §3.2). Kedua id di-resolve di server; di luar scope atau organisasi lain = 404, tanpa menulis apa pun. Melepas = hapus permanen.
+- **Tampilan**: kartu "Keluarga" di tab profil anggota (hubungan dengan kerabat yang belum dihapus, urut: orang tua/wali, pasangan, saudara, anak/anak asuh, lalu nama). Kerabat **dalam scope** ditautkan ke halamannya dan bisa dilepas. Kerabat **di luar scope** hanya tampil sebagai nama, nama grup, dan label, tanpa tautan; server tidak mengirim id maupun field lain (HP, alamat, tanggal lahir) ke klien.
+- Dialog "Tambah keluarga": jenis dan arah dipilih dalam kalimat biasa ("… adalah Ayah/Ibu dari", "… adalah Anak dari", dst.), anggota dicari lewat nama atau kode di `searchRelativeCandidates` (terfilter scope, tanpa dirinya sendiri, maks. `RELATION_PICKER_LIMIT`, hanya id, nama, grup, kode).
+- Audit: `member.relate` / `member.unrelate` (§4.5). Anggota yang dihapus (soft) menyembunyikan hubungannya tanpa menghapus baris.
+
+### 14.2 Kode anggota
+- Format `<AWALAN>-<6 karakter>`, mis. `ANR-7K3MQ9`. Awalan: 2–4 huruf A–Z per organisasi (`Organization.memberCodePrefix`), unik antar organisasi, diisi saat organisasi dibuat (`BOOTSTRAP_MEMBER_CODE_PREFIX`) dan **tidak bisa diubah** lewat aplikasi. 6 karakter diundi dari alfabet Crockford base32 (tanpa `I`, `L`, `O`, `U`) memakai `crypto.randomInt`; bukan berurutan dan tidak diturunkan dari data anggota.
+- Dibuat di server saat anggota dibuat (form maupun impor CSV; kolom `code`/`kode` dari klien diabaikan), tidak pernah berubah, tidak dipakai ulang, juga untuk anggota yang dihapus (soft). Bentrok diatasi dengan mengundi ulang di dalam transaksi (`MEMBER_CODE_MAX_ATTEMPTS`); indeks unik tetap menjadi pengaman terakhir. Membuat anggota di organisasi tanpa awalan gagal dengan galat generik.
+- Pencarian daftar anggota: masukan dinormalisasi (`normalizeMemberCode`: huruf besar, tanpa spasi/tanda hubung, `O`→`0`, `I`/`L`→`1` pada bagian acak) dan, bila berbentuk kode lengkap, anggota dengan kode itu ikut ditampilkan di samping hasil nama, tetap dalam scope. Kolom `kode` ("Kode") tersedia di daftar dan tampilan anggota, tersembunyi secara bawaan.
+- **Kode bukan autentikator.** Kode adalah pengenal yang bisa difoto dari kartu dan dipakai ulang oleh siapa pun. Fitur yang kelak memakainya (QR check-in mandiri) harus menambah bukti sendiri, mis. dipindai oleh admin atau token tempat; jangan menerima kode saja sebagai bukti kehadiran.
+- Pengisian data lama: setelah migrasi, `pnpm member-codes:backfill <idOrganisasi>=<AWALAN> …` (DEPLOYMENT.md §9) mengisi awalan dan kode semua anggota (termasuk yang dihapus), menolak berjalan bila ada organisasi tanpa awalan atau awalan akan berubah, dan idempoten.

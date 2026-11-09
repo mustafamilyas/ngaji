@@ -43,7 +43,7 @@ export function TabNav<T extends string>({
                 scroll={false}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "-mb-px inline-flex h-11 items-center gap-2 border-b-2 px-3 text-sm font-medium xl:h-10 whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                  "inline-flex h-11 items-center gap-2 border-b-2 px-3 text-sm font-medium xl:h-10 whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
                   active
                     ? "border-primary text-foreground"
                     : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",

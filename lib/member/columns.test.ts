@@ -38,6 +38,17 @@ describe("tag column (task 5.4)", () => {
   });
 });
 
+describe("kode column (member-code spec \"Display\")", () => {
+  it("is an optional column labelled Kode, hidden by default", () => {
+    expect(MEMBER_COLUMNS.find((c) => c.key === "kode")).toEqual({ key: "kode", label: "Kode", defaultVisible: false });
+    expect(DEFAULT_MEMBER_COLUMNS).not.toContain("kode");
+  });
+
+  it("can be chosen from a saved cookie", () => {
+    expect(parseMemberColumns("kode,grup")).toEqual(["grup", "kode"]);
+  });
+});
+
 describe("serializeMemberColumns", () => {
   it("round-trips a selection", () => {
     expect(parseMemberColumns(serializeMemberColumns(["alamat", "grup"]))).toEqual(["grup", "alamat"]);

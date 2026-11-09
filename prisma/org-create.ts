@@ -12,6 +12,7 @@
  *   BOOTSTRAP_OWNER_USERNAME  (required)
  *   BOOTSTRAP_OWNER_NAME      (required)
  *   BOOTSTRAP_OWNER_PASSWORD  (required, >= 8 chars) — set by the deployer, never generated or printed
+ *   BOOTSTRAP_MEMBER_CODE_PREFIX (required, 2–4 letters A–Z, unique across organizations, permanent)
  */
 import { db } from "../lib/db";
 import { ValidationError } from "../lib/errors";

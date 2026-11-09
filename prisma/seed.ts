@@ -5,6 +5,8 @@ import { expandDates } from "../lib/activity/expand";
 import { addDays, daysBetween, today } from "../lib/dates";
 import { AGE_BRACKETS } from "../lib/constants";
 import type { Prisma } from "../lib/generated/prisma/client";
+import { backfillMemberCodes } from "../lib/member/code-backfill";
+import { linkMembers } from "../lib/member/relation-mutations";
 import { definitionSchema, newViewDefinition } from "../lib/validation/member-view";
 import type { AttendanceStatus, MemberStatus, Role } from "../lib/validation/enums";
 import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
@@ -165,7 +167,7 @@ async function seedHistory(
  */
 async function seedSecondOrganization() {
   const organization = await db.organization.create({
-    data: { name: "Majelis An-Nur", timezone: "Asia/Makassar" },
+    data: { name: "Majelis An-Nur", timezone: "Asia/Makassar", memberCodePrefix: "ANR" },
   });
   for (const [depth, name] of ["pusat", "cabang", "kelompok"].entries()) {
     await db.level.create({ data: { organizationId: organization.id, depth, name } });
@@ -255,7 +257,7 @@ async function main() {
   }
 
   const organization = await db.organization.create({
-    data: { name: "Yayasan Ngaji Nusantara", timezone: "Asia/Jakarta" },
+    data: { name: "Yayasan Ngaji Nusantara", timezone: "Asia/Jakarta", memberCodePrefix: "YNN" },
   });
 
   for (const [depth, name] of LEVEL_NAMES.entries()) {
@@ -772,7 +774,35 @@ async function main() {
   await db.activityTag.create({ data: { activityId: activityA.id, tagId: prioritasTinggi.id, createdById: adminDesa.id } });
   await db.activityTag.create({ data: { activityId: activityA.id, tagId: fokus.id, createdById: userKelompok.id } });
 
+  // --- Family relations --------------------------------------------------
+
+  // Through the real link logic (scope, pair rules, audit). The first Kelompok A member (the viewport audit's
+  // member) gets a parent, a child and a sibling in Kelompok B, which a Kelompok A user sees as plain text.
+  const desaSession = {
+    id: String(adminDesa.id),
+    username: adminDesa.username,
+    name: adminDesa.name,
+    role: "ADMIN" as const,
+    groupId: desaMenteng.id,
+    groupPath: desaMenteng.path,
+    organizationId: organization.id,
+    timeZone: DEFAULT_TIMEZONE,
+    mustChangePassword: false,
+  };
+  const [familyHead, familyChild, familyParent] = taggedMembers;
+  const siblingInB = await db.member.findFirstOrThrow({
+    where: { groupId: kelompokB_Menteng.id, deletedAt: null },
+    orderBy: { id: "asc" },
+  });
+  if (familyHead && familyChild && familyParent) {
+    await linkMembers(desaSession, { fromMemberId: familyHead.id, toMemberId: familyChild.id, type: "ORANG_TUA" });
+    await linkMembers(desaSession, { fromMemberId: familyParent.id, toMemberId: familyHead.id, type: "ORANG_TUA" });
+    await linkMembers(desaSession, { fromMemberId: familyHead.id, toMemberId: siblingInB.id, type: "SAUDARA" });
+  }
+
   await seedSecondOrganization();
+  // Members are created above without codes; the production backfill assigns them all (soft-deleted too).
+  await backfillMemberCodes(new Map());
 
   console.log(
     `Seed complete: ${index + 2} members, ${kelompokGroups.length} kelompok groups, 7 activities (1 conflicted, 1 monthly-edge, 1 ended, 1 split, 1 upcoming, 1 soft-deleted), 1 survey with responses, 2 member views, 4 tags (+1 in the second organization), historical attendance over ${historyDatesA.length} weeks. Second organization \"Majelis An-Nur\" (admin_annur): 6 members, 2 activities.`,
