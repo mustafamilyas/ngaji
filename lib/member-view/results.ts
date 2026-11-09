@@ -2,10 +2,11 @@ import type { Prisma } from "@/lib/generated/prisma/client";
 import type { SessionUser } from "@/lib/auth/session-user";
 import { PAGE_SIZE } from "@/lib/constants";
 import { db } from "@/lib/db";
-import { today as todayInJakarta } from "@/lib/dates";
+import { today as todayIn } from "@/lib/dates";
 import type { MemberColumnKey } from "@/lib/member/columns";
 import { clampPage } from "@/lib/pagination";
-import { resolveDefinitionGroupsLenient } from "@/lib/resolve";
+import { visibleTagLinks } from "@/lib/tag/include";
+import { resolveDefinitionGroupsLenient, resolveDefinitionSummariesLenient, resolveDefinitionTagsLenient } from "@/lib/resolve";
 import type { Definition } from "@/lib/validation/member-view";
 import { buildOrderBy, buildWhere, type QueryContext } from "./query";
 
@@ -19,6 +20,7 @@ const COLUMN_SELECT = {
   jenisKelamin: { sex: true },
   tanggalLahir: { birthDate: true },
   status: { status: true },
+  kode: { code: true },
   whatsapp: { phone: true },
   hp: { phone: true },
   tempatLahir: { birthPlace: true },
@@ -27,10 +29,14 @@ const COLUMN_SELECT = {
   pekerjaan: { workStatus: true },
   email: { email: true },
   tanggalMasuk: { joinedAt: true },
-} satisfies Record<MemberColumnKey, Prisma.MemberSelect>;
+} satisfies Record<Exclude<MemberColumnKey, "tag">, Prisma.MemberSelect>;
 
-export function memberSelectFor(columns: readonly MemberColumnKey[]) {
-  return Object.assign({ id: true, name: true }, ...columns.map((key) => COLUMN_SELECT[key])) as Prisma.MemberSelect;
+/** The tag column depends on who is looking (only visible tags), so it is the one select built from the session. */
+export function memberSelectFor(columns: readonly MemberColumnKey[], session: Pick<SessionUser, "groupPath">) {
+  return Object.assign(
+    { id: true, name: true },
+    ...columns.map((key) => (key === "tag" ? { tags: visibleTagLinks(session) } : COLUMN_SELECT[key])),
+  ) as Prisma.MemberSelect;
 }
 
 export type PreparedView = {
@@ -41,6 +47,8 @@ export type PreparedView = {
   today: string;
   /** Some rules were dropped (group deleted or out of scope); drives the "diabaikan" notice. */
   dropped: boolean;
+  /** Fields of the chosen columns only, for every `member` query of this view. */
+  select: Prisma.MemberSelect;
 };
 
 /**
@@ -52,23 +60,30 @@ export type PreparedView = {
 export async function prepareView(
   session: SessionUser,
   definition: Definition,
-  today: string = todayInJakarta(),
+  today: string = todayIn(session.timeZone),
 ): Promise<PreparedView> {
-  const { definition: resolved, dropped } = await resolveDefinitionGroupsLenient(session, definition);
+  const groupsResolved = await resolveDefinitionGroupsLenient(session, definition);
+  const tagsResolved = await resolveDefinitionTagsLenient(session, groupsResolved.definition);
+  const summariesResolved = await resolveDefinitionSummariesLenient(session, tagsResolved.definition);
+  const resolved = summariesResolved.definition;
+  const dropped = groupsResolved.dropped || tagsResolved.dropped || summariesResolved.dropped;
 
   const groupIds = new Set<number>();
+  // Every tag id left after the lenient pass is one the viewer may see.
+  const visibleTagIds = new Set<number>();
   for (const group of resolved.filter.groups) {
     for (const rule of group.rules) {
       if (rule.field === "group") for (const id of rule.value as number[]) groupIds.add(id);
+      if (rule.field === "tag") for (const id of rule.value as number[]) visibleTagIds.add(id);
     }
   }
   const groups = groupIds.size > 0 ? await db.group.findMany({ where: { id: { in: [...groupIds] } }, select: { id: true, path: true } }) : [];
-  const ctx: QueryContext = { today, groupPaths: new Map(groups.map((g) => [g.id, g.path])) };
+  const ctx: QueryContext = { today, groupPaths: new Map(groups.map((g) => [g.id, g.path])), visibleTagIds };
 
   const where: Prisma.MemberWhereInput = {
     AND: [{ deletedAt: null, group: { path: { startsWith: session.groupPath } } }, buildWhere(resolved, ctx)],
   };
-  return { definition: resolved, where, today, dropped };
+  return { definition: resolved, where, today, dropped, select: memberSelectFor(resolved.columns, session) };
 }
 
 /** Scope-filtered, paginated, ungrouped result list for a view definition. */
@@ -86,7 +101,7 @@ export async function listViewMembers(
     orderBy: buildOrderBy(prepared.definition.sort),
     skip: (page - 1) * PAGE_SIZE,
     take: PAGE_SIZE,
-    select: memberSelectFor(prepared.definition.columns),
+    select: prepared.select,
   });
 
   return { members, total, page, pageSize: PAGE_SIZE, dropped: prepared.dropped };

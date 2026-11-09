@@ -1,19 +1,19 @@
 import { z } from "zod";
 import {
   VIEW_MAX_AGE,
-  VIEW_MAX_AGE_BUCKETS,
-  VIEW_MAX_BUCKET_LABEL_LENGTH,
   VIEW_MAX_GROUP_IDS,
-  VIEW_MAX_GROUP_LEVEL,
   VIEW_MAX_RULES_PER_GROUP,
   VIEW_MAX_RULE_GROUPS,
+  VIEW_MAX_SUMMARIES,
   VIEW_MAX_TEXT_VALUE_LENGTH,
   VIEW_MAX_WITHIN_DAYS,
   MAX_NAME_LENGTH,
+  MAX_TAG_FILTER_IDS,
 } from "@/lib/constants";
 import { isDateString } from "@/lib/dates";
 import { VIEW_SOURCES, VIEW_VISIBILITIES } from "@/lib/validation/enums";
-import { MEMBER_VIEW_FIELDS, GROUPABLE_FIELDS, RULE_FIELD_KEYS, SORT_FIELD_KEYS, operatorsFor, type FieldKey, type Operator } from "@/lib/member-view/fields";
+import { MEMBER_VIEW_FIELDS, RULE_FIELD_KEYS, SORT_FIELD_KEYS, operatorsFor, type FieldKey, type Operator } from "@/lib/member-view/fields";
+import { ageBucketsDimensionSchema, groupLevelDimensionSchema, propertyDimensionSchema, summarySchema, type Summary } from "@/lib/validation/summary";
 import { DEFAULT_MEMBER_COLUMNS, MEMBER_COLUMNS, isMemberColumnKey, type MemberColumnKey } from "@/lib/member/columns";
 
 /**
@@ -78,6 +78,11 @@ function parseRuleValue(field: FieldKey, operator: Operator, value: unknown): Va
       if (!result.success || new Set(result.data).size !== result.data.length) return fail("Grup tidak valid");
       return ok(result.data);
     }
+    case "tag": {
+      const result = z.array(positiveInt).min(1).max(MAX_TAG_FILTER_IDS).safeParse(value);
+      if (!result.success || new Set(result.data).size !== result.data.length) return fail("Tag tidak valid");
+      return ok(result.data);
+    }
   }
 }
 
@@ -121,32 +126,7 @@ export const sortSchema = z
   .strict();
 export type ViewSort = z.infer<typeof sortSchema>;
 
-const ageBucketSchema = z
-  .object({
-    label: z.string().trim().min(1).max(VIEW_MAX_BUCKET_LABEL_LENGTH),
-    min: z.number().int().min(0).max(VIEW_MAX_AGE),
-    max: z.number().int().min(0).max(VIEW_MAX_AGE).nullable(),
-  })
-  .strict()
-  .refine((b) => b.max === null || b.max >= b.min, { message: "Batas usia tidak valid" });
-
-export const groupBySchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("property"), field: z.enum(GROUPABLE_FIELDS as [(typeof GROUPABLE_FIELDS)[number], ...(typeof GROUPABLE_FIELDS)[number][]]) }).strict(),
-  z.object({ kind: z.literal("groupLevel"), depth: z.number().int().min(0).max(VIEW_MAX_GROUP_LEVEL) }).strict(),
-  z
-    .object({ kind: z.literal("ageBuckets"), buckets: z.array(ageBucketSchema).min(1).max(VIEW_MAX_AGE_BUCKETS) })
-    .strict()
-    .superRefine((value, ctx) => {
-      const sorted = [...value.buckets].sort((a, b) => a.min - b.min);
-      for (let i = 1; i < sorted.length; i++) {
-        const prevMax = sorted[i - 1].max;
-        if (prevMax === null || sorted[i].min <= prevMax) {
-          ctx.addIssue({ code: "custom", message: "Rentang usia saling tumpang tindih", path: ["buckets"] });
-          return;
-        }
-      }
-    }),
-]);
+export const groupBySchema = z.discriminatedUnion("kind", [propertyDimensionSchema, groupLevelDimensionSchema, ageBucketsDimensionSchema]);
 export type GroupBy = z.infer<typeof groupBySchema>;
 
 /** Known column keys, unique, normalized to table order. */
@@ -165,6 +145,8 @@ export const definitionSchema = z
     sort: sortSchema,
     groupBy: groupBySchema.optional(),
     columns: columnsSchema,
+    /** "Ringkasan" cards in order; absent = none (old stored definitions have no such key). */
+    summaries: z.array(summarySchema).max(VIEW_MAX_SUMMARIES).optional(),
   })
   .strict();
 export type Definition = z.infer<typeof definitionSchema>;
@@ -194,7 +176,8 @@ export type DefinitionWarning =
   | "limit_exceeded"
   | "sort_invalid"
   | "group_by_invalid"
-  | "columns_invalid";
+  | "columns_invalid"
+  | "summaries_invalid";
 
 export type LenientResult = { definition: Definition; warnings: DefinitionWarning[] };
 
@@ -264,6 +247,21 @@ export function parseDefinitionLenient(input: unknown): LenientResult {
       const known = input.columns.filter((c): c is MemberColumnKey => typeof c === "string" && isMemberColumnKey(c));
       if (known.length !== input.columns.length) warn("columns_invalid");
       definition.columns = columnsSchema.parse([...new Set(known)]);
+    }
+  }
+
+  if (input.summaries !== undefined) {
+    if (!Array.isArray(input.summaries)) {
+      warn("summaries_invalid");
+    } else {
+      const summaries: Summary[] = [];
+      for (const raw of input.summaries) {
+        const summary = summarySchema.safeParse(raw);
+        if (!summary.success) warn("summaries_invalid");
+        else if (summaries.length >= VIEW_MAX_SUMMARIES) warn("limit_exceeded");
+        else summaries.push(summary.data);
+      }
+      if (summaries.length > 0) definition.summaries = summaries;
     }
   }
 

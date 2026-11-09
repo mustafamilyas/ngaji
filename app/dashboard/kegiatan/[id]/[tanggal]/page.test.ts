@@ -1,5 +1,6 @@
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("next/navigation", async (importOriginal) => {
@@ -12,7 +13,7 @@ vi.mock("next/navigation", async (importOriginal) => {
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { today } from "@/lib/dates";
+import { addDays, today } from "@/lib/dates";
 import { buildPageFixture, mockAuthSession, sessionFor } from "@/lib/test/fixtures";
 import AttendancePage from "./page";
 
@@ -21,40 +22,80 @@ describe("AttendancePage", () => {
     await db.$disconnect();
   });
 
-  it("renders the attendance form for today's occurrence without crashing", async () => {
+  it("renders the attendance table for today's occurrence with toggles", async () => {
     const fixture = await buildPageFixture("kegiatan-absensi");
     const session = sessionFor(fixture.actorId, "OWNER", fixture.leaf);
     mockAuthSession(auth, { user: session });
 
     const html = renderToStaticMarkup(
       await AttendancePage({
-        params: Promise.resolve({ id: String(fixture.activityId), tanggal: today() }),
+        params: Promise.resolve({ id: String(fixture.activityId), tanggal: today(DEFAULT_TIMEZONE) }),
         searchParams: Promise.resolve({}),
       }),
     );
-    expect(html).toContain("Cari nama anggota");
-    expect(html).toContain("Belum ada yang ditandai");
+    expect(html).toContain("Anggota Uji");
+    expect(html).toContain("Belum absen");
+    expect(html).toContain("Tandai Anggota Uji hadir");
   });
 
-  it("shows a member with existing attendance in the marked list without searching", async () => {
+  it("shows existing IZIN attendance with its reason", async () => {
     const fixture = await buildPageFixture("kegiatan-absensi-existing");
     const session = sessionFor(fixture.actorId, "OWNER", fixture.leaf);
     mockAuthSession(auth, { user: session });
 
     const occurrence = await db.activityOccurrence.create({
-      data: { activityId: fixture.activityId, date: today() },
+      data: { activityId: fixture.activityId, date: today(DEFAULT_TIMEZONE) },
     });
     await db.attendance.create({
-      data: { occurrenceId: occurrence.id, memberId: fixture.memberId, status: "HADIR", recordedById: fixture.actorId },
+      data: {
+        occurrenceId: occurrence.id,
+        memberId: fixture.memberId,
+        status: "IZIN",
+        note: "Sakit demam",
+        recordedById: fixture.actorId,
+      },
     });
 
     const html = renderToStaticMarkup(
       await AttendancePage({
-        params: Promise.resolve({ id: String(fixture.activityId), tanggal: today() }),
+        params: Promise.resolve({ id: String(fixture.activityId), tanggal: today(DEFAULT_TIMEZONE) }),
         searchParams: Promise.resolve({}),
       }),
     );
     expect(html).toContain("Anggota Uji");
+    expect(html).toContain("Sakit demam");
+  });
+
+  it("keeps an earlier occurrence editable for every role (task 6.3)", async () => {
+    const fixture = await buildPageFixture("kegiatan-absensi-past");
+    for (const role of ["USER", "ADMIN", "OWNER"] as const) {
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, role, fixture.leaf) });
+      const html = renderToStaticMarkup(
+        await AttendancePage({
+          params: Promise.resolve({ id: String(fixture.activityId), tanggal: addDays(today(DEFAULT_TIMEZONE), -7) }),
+          searchParams: Promise.resolve({}),
+        }),
+      );
+      expect(html).toContain("Tandai Anggota Uji izin");
+    }
+  });
+
+  it("lets an ADMIN fill a future date but keeps it read-only for a USER", async () => {
+    const fixture = await buildPageFixture("kegiatan-absensi-future");
+    const render = async (role: "ADMIN" | "USER") => {
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, role, fixture.leaf) });
+      return renderToStaticMarkup(
+        await AttendancePage({
+          params: Promise.resolve({ id: String(fixture.activityId), tanggal: addDays(today(DEFAULT_TIMEZONE), 7) }),
+          searchParams: Promise.resolve({}),
+        }),
+      );
+    };
+
+    expect(await render("ADMIN")).toContain("Tandai Anggota Uji izin");
+    const userHtml = await render("USER");
+    expect(userHtml).toContain("absensi belum bisa diisi");
+    expect(userHtml).not.toContain("Tandai Anggota Uji");
   });
 
   it("shows a read-only, cross-subtree view (including attendee names) for a session outside the recording scope", async () => {
@@ -63,7 +104,7 @@ describe("AttendancePage", () => {
     mockAuthSession(auth, { user: session });
 
     const occurrence = await db.activityOccurrence.create({
-      data: { activityId: fixture.activityId, date: today() },
+      data: { activityId: fixture.activityId, date: today(DEFAULT_TIMEZONE) },
     });
     await db.attendance.create({
       data: { occurrenceId: occurrence.id, memberId: fixture.memberId, status: "HADIR", recordedById: fixture.actorId },
@@ -71,13 +112,13 @@ describe("AttendancePage", () => {
 
     const html = renderToStaticMarkup(
       await AttendancePage({
-        params: Promise.resolve({ id: String(fixture.activityId), tanggal: today() }),
+        params: Promise.resolve({ id: String(fixture.activityId), tanggal: today(DEFAULT_TIMEZONE) }),
         searchParams: Promise.resolve({}),
       }),
     );
     expect(html).toContain("tidak bisa mengisi absensi");
     expect(html).toContain("Anggota Uji");
-    expect(html).not.toContain("Cari nama anggota");
+    expect(html).not.toContain("Tandai Anggota Uji");
   });
 
   it("404s for a malformed date", async () => {
@@ -97,7 +138,7 @@ describe("AttendancePage", () => {
     mockAuthSession(auth, null);
     await expect(
       AttendancePage({
-        params: Promise.resolve({ id: "1", tanggal: today() }),
+        params: Promise.resolve({ id: "1", tanggal: today(DEFAULT_TIMEZONE) }),
         searchParams: Promise.resolve({}),
       }),
     ).rejects.toMatchObject({ digest: expect.stringContaining("NEXT_REDIRECT") });

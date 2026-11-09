@@ -84,12 +84,50 @@ Untuk deployment production (bukan setup lokal), lihat [DEPLOYMENT.md](DEPLOYMEN
 ## Perintah lain
 
 ```bash
-pnpm test              # vitest: fungsi murni + server action lintas-scope
+pnpm test              # vitest: fungsi murni + server action lintas-scope + form klien (jsdom, *.test.tsx)
 pnpm lint              # eslint
 pnpm tsc --noEmit      # type check
 pnpm build             # production build
 pnpm start             # jalankan hasil build
 ```
+
+## Audit tampilan HP dan tablet
+
+```bash
+pnpm audit:viewport                          # owner, 360x740 / 768x1024 / 1024x768
+pnpm audit:viewport --roles owner,admin,user # ulangi untuk tiap peran
+pnpm audit:viewport --landscape              # tambah 667x375 dan 812x375 (HP landscape)
+pnpm audit:viewport --only kegiatan          # hanya halaman yang path-nya memuat teks itu
+pnpm audit:viewport --keep-server            # biarkan server dan database sementara tetap hidup
+```
+
+Membuka tiap halaman di Chrome headless (lewat DevTools Protocol) dan melaporkan: halaman yang bisa digeser ke samping, target sentuh yang tingginya di bawah 44px, kolom isian dengan teks di bawah 16px (iOS memperbesar layar saat fokus), dan grafik yang tidak ikut menyesuaikan lebar setelah ukuran layar berubah (ukuran diganti tanpa memuat ulang, seperti memutar HP). Exit code 1 jika ada temuan; laporan JSON ditulis ke folder temp.
+
+- Mandiri: skrip membuat database sementara (migrate + seed) dan server `next dev` di port bebas, lalu menghapusnya. `prisma/dev.db` tidak disentuh.
+- Perlu Google Chrome (atau set `CHROME_PATH`) dan Node 22+.
+- Hentikan dulu `pnpm dev` atau `pnpm dev:scratch` yang berjalan di folder ini (termasuk dari sesi lain): dua server `next dev` tidak bisa berbagi `.next`, dan skrip berhenti dengan "next dev exited early".
+- Dialog, popover, dan dropdown yang terbuka tidak tercakup karena perlu klik dulu; periksa manual.
+- Pane Browser di aplikasi desktop yang tersembunyi tidak menjalankan `ResizeObserver` atau animasi, jadi hasil ukuran grafik di sana bisa menyesatkan; skrip ini tidak punya masalah itu.
+
+## Audit cetak jadwal
+
+```bash
+pnpm audit:print                      # semua skenario; PDF di folder temp (path dicetak)
+pnpm audit:print --only week
+pnpm audit:print --out ./cetak --png  # PNG per halaman (hanya macOS, memakai sips)
+```
+
+Mencetak `/dashboard/kegiatan/cetak` ke PDF lewat Chrome sendiri (A4 potret, media cetak) di database sementara: satu minggu (maks. 1 halaman), dua bulan (maks. 3 halaman), dan teks sepanjang batas maksimum (hanya dilaporkan: jadwal cetak memuat teks lengkap, jadi baris yang tinggi menambah halaman). Exit code 1 jika anggaran halaman terlampaui. Buka PDF-nya untuk memeriksa tampilannya; header tabel yang diulang dan baris yang tidak terbelah tidak diperiksa otomatis. Sama seperti audit tampilan, hentikan dulu `pnpm dev` atau `pnpm dev:scratch` di folder ini.
+
+## Dev server dengan database sementara
+
+```bash
+pnpm dev:scratch                 # port 3100, database dihapus saat berhenti (Ctrl+C)
+pnpm dev:scratch --port 4200
+pnpm dev:scratch --keep          # database dipertahankan; path-nya dicetak
+```
+
+Membuat database baru (migrate + seed), menghapus kewajiban ganti password pada akun seed, lalu menjalankan `next dev`. Akun yang tersedia dicetak di terminal (mis. `admin` / `admin`). Cocok untuk pemeriksaan di browser dan uji coba yang mengubah data, karena `prisma/dev.db` tidak disentuh. Hentikan dulu `pnpm dev` yang sedang berjalan di folder ini: dua server `next dev` tidak bisa berbagi `.next`. Di aplikasi desktop, konfigurasi `ngaji-scratch` di `.claude/launch.json` menjalankan skrip yang sama.
 
 ## Melihat/mengubah data lewat Prisma Studio
 

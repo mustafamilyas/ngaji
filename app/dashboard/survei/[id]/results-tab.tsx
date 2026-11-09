@@ -13,10 +13,19 @@ import { formatDate } from "@/lib/filters";
 import { SEX_LABELS, formatEnumLabel } from "@/lib/member/labels";
 import { pageHref } from "@/lib/pagination";
 import type { BreakdownRow, QuestionResult, SurveyDemographics, SurveyStatistics } from "@/lib/survey/stats";
+import { cn } from "@/lib/utils";
 import { MARITAL_STATUSES, SEXES, WORK_STATUSES } from "@/lib/validation/enums";
 import { ResultChart } from "./result-chart";
 
 type Params = Record<string, string | string[] | undefined>;
+
+// Below md the same table markup is laid out as one card per row (no sideways scrolling); header cells are table-only.
+const stackedCell =
+  "col-span-2 flex items-center justify-between gap-3 px-0 py-0 text-sm whitespace-normal md:table-cell md:px-4 md:py-2.5 md:whitespace-nowrap";
+
+function PhoneLabel({ children }: { children: React.ReactNode }) {
+  return <span className="shrink-0 text-xs text-muted-foreground md:hidden">{children}</span>;
+}
 
 const number = new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 });
 
@@ -34,6 +43,7 @@ export function ResultsTab({
   search,
   groupActive,
   demographics,
+  timeZone,
 }: {
   surveyId: number;
   stats: SurveyStatistics;
@@ -43,6 +53,8 @@ export function ResultsTab({
   /** `?grup=` was given; otherwise the selected group is the page default. */
   groupActive: boolean;
   demographics: SurveyDemographics;
+  /** Organization timezone the free-text answer dates are shown in. */
+  timeZone: string;
 }) {
   const path = `/dashboard/survei/${surveyId}`;
   const isFiltered = Boolean(search || groupActive || Object.keys(demographics).length > 0);
@@ -110,7 +122,7 @@ export function ResultsTab({
         <p className="py-6 text-center text-sm text-muted-foreground">Survei ini belum punya pertanyaan.</p>
       ) : (
         questions.map((question, index) => (
-          <QuestionCard key={question.id} number={index + 1} question={question} path={path} params={params} />
+          <QuestionCard key={question.id} number={index + 1} question={question} path={path} params={params} timeZone={timeZone} />
         ))
       )}
 
@@ -154,9 +166,9 @@ function NonRespondents({
       }
     >
       {nonRespondents.rows.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className={tableClass}>
-            <thead>
+        <div className="relative overflow-x-auto">
+          <table className={cn(tableClass, "block md:table")}>
+            <thead className="hidden md:table-header-group">
               <tr className={theadRowClass}>
                 <th scope="col" className={thClass}>Nama</th>
                 <th scope="col" className={thClass}>Grup</th>
@@ -167,19 +179,25 @@ function NonRespondents({
                 )}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="block md:table-row-group">
               {nonRespondents.rows.map((row) => (
-                <tr key={row.memberId} className={trClass}>
-                  <td className={tdClass}>
+                <tr
+                  key={row.memberId}
+                  className={cn(trClass, "grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1 px-4 py-2 md:table-row md:p-0")}
+                >
+                  <td className={cn(tdClass, "block min-w-0 p-0 whitespace-normal md:table-cell md:px-4 md:py-2.5 md:whitespace-nowrap")}>
                     <span className="font-medium">{row.name}</span>
                   </td>
-                  <td className={tdClass}>{row.groupName}</td>
+                  <td className={stackedCell}>
+                    <PhoneLabel>Grup</PhoneLabel>
+                    <span>{row.groupName}</span>
+                  </td>
                   {canRecord && (
-                    <td className="px-2 py-1 text-right whitespace-nowrap">
+                    <td className="col-start-2 row-start-1 p-0 text-right whitespace-nowrap md:px-2 md:py-1">
                       <Link
                         href={`${path}/isi?anggota=${row.memberId}`}
                         aria-label={`Isi survei untuk ${row.name}`}
-                        className={buttonVariants({ variant: "outline", size: "sm" })}
+                        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-11 px-4 text-base xl:h-7 xl:px-2.5 xl:text-[0.8rem]")}
                       >
                         Isi
                       </Link>
@@ -204,11 +222,13 @@ function QuestionCard({
   question,
   path,
   params,
+  timeZone,
 }: {
   number: number;
   question: QuestionResult;
   path: string;
   params: Params;
+  timeZone: string;
 }) {
   return (
     <Card>
@@ -230,14 +250,14 @@ function QuestionCard({
             Belum ada jawaban
           </p>
         ) : (
-          <QuestionBody question={question} path={path} params={params} />
+          <QuestionBody question={question} path={path} params={params} timeZone={timeZone} />
         )}
       </CardContent>
     </Card>
   );
 }
 
-function QuestionBody({ question, path, params }: { question: QuestionResult; path: string; params: Params }) {
+function QuestionBody({ question, path, params, timeZone }: { question: QuestionResult; path: string; params: Params; timeZone: string }) {
   switch (question.type) {
     case "SINGLE_CHOICE":
     case "MULTI_CHOICE":
@@ -288,7 +308,7 @@ function QuestionBody({ question, path, params }: { question: QuestionResult; pa
               <li key={i} className="flex flex-col gap-0.5 px-3 py-2 text-sm">
                 <span className="whitespace-pre-line">{answer.text}</span>
                 <span className="text-xs text-muted-foreground">
-                  {answer.memberName} · {formatDate(dateOf(answer.updatedAt))}
+                  {answer.memberName} · {formatDate(dateOf(answer.updatedAt, timeZone))}
                 </span>
               </li>
             ))}
@@ -313,7 +333,7 @@ function Breakdown({ rows, questions }: { rows: BreakdownRow[]; questions: Quest
   return (
     <section aria-labelledby="breakdown-title" className="flex flex-col gap-4">
       <TableCard title={<h2 id="breakdown-title" className="font-medium text-foreground">Per sub-grup</h2>}>
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className={tableClass}>
             <thead>
               <tr className={theadRowClass}>
@@ -339,10 +359,10 @@ function Breakdown({ rows, questions }: { rows: BreakdownRow[]; questions: Quest
 
       {choiceLike.map((question) => (
         <details key={question.id} className="rounded-xl bg-card ring-1 ring-foreground/10">
-          <summary className="cursor-pointer px-4 py-3 text-sm font-medium">
+          <summary className="flex min-h-11 cursor-pointer items-center px-4 py-3 text-sm font-medium">
             {question.label} · per sub-grup
           </summary>
-          <div className="overflow-x-auto border-t">
+          <div className="relative overflow-x-auto border-t">
             <BreakdownQuestionTable question={question} rows={rows} />
           </div>
         </details>

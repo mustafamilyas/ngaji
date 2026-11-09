@@ -13,25 +13,32 @@ Manajemen anggota & kegiatan untuk organisasi berjenjang (pusat → daerah → d
 ```bash
 pnpm install
 pnpm prisma migrate dev       # migrasi, membuat file SQLite jika belum ada
-pnpm prisma db seed           # org + 4 level + contoh pohon + owner admin/admin (wajib ganti password)
+pnpm prisma db seed           # 2 org (org kedua kecil, owner admin_annur, untuk uji isolasi) + owner admin/admin (wajib ganti password)
+pnpm org:create               # org baru + level + grup akar + OWNER pertama (env BOOTSTRAP_*); `pnpm bootstrap` = alias
+pnpm leads [--csv]            # daftar minat dari /daftar (hanya-baca)
+pnpm audit:viewport          # audit HP/tablet di Chrome headless (db + server sementara); exit 1 jika ada temuan
+pnpm audit:print             # cetak jadwal ke PDF lewat Chrome (A4) untuk beberapa skenario; exit 1 jika halaman melebihi anggaran
+                              # kedua audit menjalankan `next dev` sendiri: hentikan dulu `pnpm dev`/`pnpm dev:scratch` di folder ini (satu `.next`)
 pnpm dev
-pnpm test                     # vitest: fungsi murni + server action lintas-scope
+pnpm dev:scratch               # dev server di port 3100 dengan database sementara yang sudah di-seed (prisma/dev.db tidak disentuh; login admin/admin; `--keep`, `--port`)
+pnpm test                     # vitest: fungsi murni + server action lintas-scope + form klien (jsdom, *.test.tsx, helper lib/test/dom.ts)
 pnpm lint && pnpm tsc --noEmit
 ```
 
 ## Invarian yang wajib dijaga (server-side)
+- **Multi-organisasi dalam satu DB**: organisasi user = organisasi grupnya, diambil dari sesi (`getOrganization(session)`), bukan "organisasi pertama". Entitas organisasi lain → 404. Username unik global dan selalu huruf kecil. Daftar minat (`InterestLead`) tidak terkait organisasi mana pun dan tidak boleh tampil di halaman/audit organisasi. Detail: DESIGN.md §1.
 - Setiap query list difilter **scope** user: `group.path startsWith user.groupPath` (path memuat id sendiri + `/` penutup).
 - **Setiap ID dari client** (`groupId`, `memberId`, `activityId`, `occurrenceId`, `userId`, tanggal) di-resolve ke entitasnya di server lalu dicek scope + aturan. Jangan pernah percaya ID/path dari client.
 - Semua mutasi lewat `authorize(session, action, target)` di `lib/authz.ts`; entitas di luar scope → 404, bukan 403.
-- **Tidak ada hard delete.** `Group`, `Member`, `Activity` soft delete (`deletedAt`); `User` hanya `isActive`. Setiap query ketiga tabel itu wajib `deletedAt: null`.
+- **Tidak ada hard delete.** `Group`, `Member`, `Activity` soft delete (`deletedAt`); `User` hanya `isActive`. Setiap query ketiga tabel itu wajib `deletedAt: null`. `Tag` juga soft delete dan difilter otomatis oleh `lib/db.ts` (baris tautan `MemberTag`/`ActivityTag` di-hard-delete dan diaudit).
 - **Setiap mutasi menulis `AuditLog` di transaksi yang sama** lewat `audit(tx, …)`. `passwordHash` selalu diredaksi.
 - `isActive` dan `role` divalidasi ulang ke DB tiap request di callback `jwt`; jangan percaya JWT untuk keduanya.
 - `Group.depth === parent.depth + 1`; anggota hanya boleh di grup daun (depth = level terakhir).
-- Kegiatan milik grup X berlaku ke seluruh turunan X. **Ubah** kegiatan/occurrence hanya oleh user ≥ ADMIN yang `groupId === activity.groupId`. **Absensi** hanya oleh user di X atau di bawah X, untuk grup daun dalam scope, tanggal ≤ hari ini, tanggal kunci sah menurut `occurrencesFor`.
+- Kegiatan milik grup X berlaku ke seluruh turunan X. **Ubah** kegiatan/occurrence hanya oleh user dengan peran ADMIN+ di `activity.groupId` (grup sendiri, atau `UserExtraRole` ADMIN; DESIGN.md §3.2a — peran tambahan tidak pernah memperluas scope). **Absensi** hanya oleh user di X atau di bawah X, untuk grup daun dalam scope, tanggal ≤ hari ini (kecuali peran utama ≥ ADMIN, `canRecordFutureAttendance`, di semua penulis absensi: tabel, check-in, simpan massal), tanggal kunci sah menurut `occurrencesFor`.
 - `ActivityOccurrence` dibuat lazy (upsert saat absensi / override). Tidak ada job generator. `date` = tanggal kunci aturan; tanggal efektif = `overrideDate ?? date`.
 - Absen = anggota *expected* (`lib/stats.ts`) tanpa baris `Attendance`. Jangan simpan baris "tidak hadir".
-- Hapus grup hanya jika kosong (tanpa anak, anggota, kegiatan, user yang belum dihapus).
-- Tanggal: kolom `String` (`YYYY-MM-DD`) di DB (SQLite tidak punya tipe DATE native) maupun di seluruh kode — tidak ada konversi Date↔string untuk tanggal murni; `lib/dates.ts` hanya berisi kalkulasi (tambah hari, cari Minggu, dst.) di atas string tersebut. Jam: string `HH:mm`. Satu timezone `Asia/Jakarta`. Minggu dimulai hari Minggu.
+- Hapus grup hanya jika kosong (tanpa anak, anggota, kegiatan, user, tag yang belum dihapus).
+- Tanggal: kolom `String` (`YYYY-MM-DD`) di DB (SQLite tidak punya tipe DATE native) maupun di seluruh kode — tidak ada konversi Date↔string untuk tanggal murni; `lib/dates.ts` hanya berisi kalkulasi (tambah hari, cari Minggu, dst.) di atas string tersebut. Jam: string `HH:mm`. Zona waktu per organisasi (`session.user.timeZone`, default `Asia/Jakarta`): `today()`/`dateOf()` wajib menerima timezone. Minggu dimulai hari Minggu.
 - Enum domain (`Role`, `Sex`, `MemberStatus`, dll.) adalah kolom `String` di Prisma (SQLite tidak mendukung `enum`); nilai valid ditegakkan oleh TS union + zod di `lib/validation/enums.ts`, bukan oleh DB. `Activity.weekdays` adalah kolom `Json` (SQLite tidak punya scalar list `Int[]`).
 
 ## Konvensi
@@ -42,9 +49,13 @@ pnpm lint && pnpm tsc --noEmit
 - Fungsi murni (`expandDates`, `occurrencesFor`, konflik, `expected`, `authorize`) ditulis dengan tes lebih dulu.
 - Log aplikasi tidak memuat PII/password/token. Pesan error ke user generik.
 - Mobile-first; halaman absensi harus nyaman dipakai di HP.
+- Teks baca di dashboard minimal 14px di bawah `xl` (`text-xs` sudah di-override di `app/globals.css`); jangan memakai ukuran arbitrer lebih kecil (`text-[10px]`, `text-[0.65rem]`) kecuali ditandai `data-small-text-ok`. Daftar dengan filter sekunder memakai `more`/`activeCount` di `FilterBar` (panel di HP) dan menandai baris dengan `data-records`. `pnpm audit:viewport` memeriksa keduanya.
+- Ukuran sentuh ada di primitif (`Button`, `Input`, `Textarea`, `Select` di `components/ui`): 44px dan teks 16px di bawah `xl`, ringkas dari `xl`. Jangan menimpa tinggi/teksnya di pemakai; elemen native (`<input>`, `<select>`) memakai `touchField` (`components/ui/touch.ts`). `pnpm audit:viewport` memeriksanya.
+- Form dengan Server Action (`useActionState`) dan field tak-terkontrol: kirim lewat `onSubmit={useKeepValues(formAction)}` (`lib/forms/use-keep-values.ts`), bukan `action={formAction}`; React 19 mengosongkan field setelah action, termasuk saat galat, sehingga isian user hilang. Form password sengaja memakai `action` (field dikosongkan).
 
 ## Cara kerja dengan pemilik proyek
 - **Jangan berasumsi — tanyakan.** Kalau ada dua tafsir yang menghasilkan pekerjaan berbeda, tanya dulu.
 - Fokus MVP (target 2 hari). Fitur non-MVP ada di DESIGN.md §10 — jangan dikerjakan tanpa diminta.
 - Kerjakan bertahap sesuai `openspec/changes/ngaji-mvp/tasks.md` (urutan = DESIGN.md §8); spesifikasi & skenario uji per kapabilitas ada di `openspec/changes/ngaji-mvp/specs/`. Gunakan `/opsx:apply` untuk mengerjakan tugas. Setiap tahap harus bisa dijalankan.
+- **Setiap rilis ke production wajib punya dokumen rilis** di `docs/releases/`, dibuat dari `docs/releases/TEMPLATE.md` sebelum deploy (nama `YYYY-MM-DD-vX.Y.Z.md`), plus baris baru di indeks `docs/releases/README.md`. Prosedur server tetap di `DEPLOYMENT.md`; dokumen rilis hanya memuat hal khusus rilis itu dan hasil sanity check.
 - Jika mengubah keputusan desain, perbarui DESIGN.md **dan** spec OpenSpec terkait di commit yang sama.

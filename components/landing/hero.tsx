@@ -15,7 +15,7 @@ const BRANCHES = [
   "M875 190 C 875 380, 850 420, 850 590",
 ];
 
-export function Hero({ content, whatsappHref }: { content: LandingContent; whatsappHref: string | null }) {
+export function Hero({ content }: { content: LandingContent }) {
   const leafLevel = content.levels[3];
   return (
     <section className="landing-frame relative isolate overflow-hidden rounded-[28px] border border-(--l-ink)/8 bg-(--l-mist)/60 px-5 pt-14 pb-8 sm:px-10 xl:min-h-[680px] xl:pt-0 xl:pb-0">
@@ -43,17 +43,13 @@ export function Hero({ content, whatsappHref }: { content: LandingContent; whats
         </h1>
         <p className="mt-5 max-w-xl text-lg xl:max-w-[470px] leading-relaxed text-pretty text-(--l-muted)">{content.lead}</p>
         <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-          {whatsappHref && (
-            <a
-              href={whatsappHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex min-h-12 items-center gap-2 rounded-full bg-(--l-ink) px-6 font-medium text-(--l-paper) transition-colors hover:bg-(--l-leaf) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--l-leaf)"
-            >
-              <MessageCircle className="size-5" aria-hidden="true" />
-              {content.cta.button}
-            </a>
-          )}
+          <Link
+            href="/daftar"
+            className="inline-flex min-h-12 items-center gap-2 rounded-full bg-(--l-ink) px-6 font-medium text-(--l-paper) transition-colors hover:bg-(--l-leaf) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--l-leaf)"
+          >
+            <MessageCircle className="size-5" aria-hidden="true" />
+            {content.cta.button}
+          </Link>
           <a
             href="#cara-kerja"
             className="inline-flex min-h-12 items-center rounded-full border border-(--l-ink)/20 bg-white/70 px-6 font-medium transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--l-leaf)"

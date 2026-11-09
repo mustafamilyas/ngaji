@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MAX_ATTENDANCE_ENTRIES } from "@/lib/constants";
+import { MAX_ATTENDANCE_ENTRIES, MAX_ATTENDANCE_NOTE_LENGTH } from "@/lib/constants";
 import { dateSchema } from "./common";
 import { ATTENDANCE_STATUSES } from "./enums";
 
@@ -25,6 +25,24 @@ export const checkInSchema = z.object({
   memberId: z.coerce.number().int().positive(),
 });
 export type CheckInInput = z.infer<typeof checkInSchema>;
+
+/**
+ * One member's attendance set from the attendance table: `status: null`
+ * clears it (absent), `note` is the IZIN reason and is dropped for HADIR.
+ * The leaf group is the member's own, resolved on the server.
+ */
+export const attendanceSetSchema = z.object({
+  activityId: z.coerce.number().int().positive(),
+  date: dateSchema(),
+  memberId: z.coerce.number().int().positive(),
+  status: z.enum(ATTENDANCE_STATUSES).nullable(),
+  note: z
+    .string()
+    .trim()
+    .max(MAX_ATTENDANCE_NOTE_LENGTH, `Alasan maksimal ${MAX_ATTENDANCE_NOTE_LENGTH} karakter`)
+    .optional(),
+});
+export type AttendanceSetInput = z.infer<typeof attendanceSetSchema>;
 
 export const checkInMembersSchema = checkInSchema.omit({ memberId: true });
 export type CheckInMembersInput = z.infer<typeof checkInMembersSchema>;

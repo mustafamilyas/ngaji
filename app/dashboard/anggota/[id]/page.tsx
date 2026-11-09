@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { CalendarCheck, CalendarDays, Network, Pencil, Phone, User } from "lucide-react";
+import { CalendarCheck, CalendarDays, IdCard, Network, Pencil, Phone, User } from "lucide-react";
 import { auth } from "@/auth";
 import { DangerZone, DangerZoneItem } from "@/components/danger-zone";
 import { MemberStatusBadge } from "@/components/member-status-badge";
@@ -8,7 +8,9 @@ import { MetaItem, PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { TabNav } from "@/components/tab-nav";
 import { buttonVariants } from "@/components/ui/button";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { EntityTags } from "@/components/tags/entity-tags";
 import { WhatsAppButton } from "@/components/whatsapp-button";
 import { attendanceHistoryForMember } from "@/lib/attendance/history";
 import { ageInYears, today } from "@/lib/dates";
@@ -17,6 +19,8 @@ import { formatDate, parsePage } from "@/lib/filters";
 import { groupTrail } from "@/lib/group/trail";
 import { formatEnumLabel, SEX_LABELS } from "@/lib/member/labels";
 import { pageHref } from "@/lib/pagination";
+import { getMemberRelatives } from "@/lib/member/relation-queries";
+import { loadEntityTags } from "@/lib/tag/entity";
 import { resolveMember } from "@/lib/resolve";
 import { parseTab, tabHref } from "@/lib/tabs";
 import { cn } from "@/lib/utils";
@@ -24,6 +28,7 @@ import type { Sex } from "@/lib/validation/enums";
 import type { MemberFormValues } from "@/lib/validation/member";
 import { DeleteMemberForm } from "./delete-member-form";
 import { MemberForm } from "../member-form";
+import { FamilySection } from "./family-section";
 
 const TABS = ["profil", "kehadiran", "ubah"] as const;
 
@@ -61,9 +66,11 @@ export default async function MemberDetailPage({
 
   const tab = parseTab(query.tab, TABS, "profil");
   const path = `/dashboard/anggota/${member.id}`;
-  const [history, trail] = await Promise.all([
+  const [history, trail, entityTags, relatives] = await Promise.all([
     attendanceHistoryForMember(member.id, parsePage(query.riwayat)),
     groupTrail(session.user.groupPath, member.group.path),
+    loadEntityTags(session.user, { kind: "member", id: member.id }),
+    getMemberRelatives(session.user, member.id),
   ]);
   // The leaf and its parent are enough to place a member; the full chain is on the group page.
   const groupCrumbs = trail.slice(-2);
@@ -74,7 +81,7 @@ export default async function MemberDetailPage({
     birthDate: member.birthDate,
     sex: member.sex as MemberFormValues["sex"],
     address: member.address,
-    phone: member.phone,
+    phone: member.phone ?? "",
     maritalStatus: member.maritalStatus as MemberFormValues["maritalStatus"],
     workStatus: member.workStatus as MemberFormValues["workStatus"],
     email: member.email ?? undefined,
@@ -96,7 +103,7 @@ export default async function MemberDetailPage({
                 <span key={g.id}>
                   {i > 0 && " › "}
                   {g.href ? (
-                    <Link href={g.href} className="hover:text-foreground hover:underline">
+                    <Link href={g.href} className="inline-flex min-h-11 items-center hover:text-foreground hover:underline xl:min-h-0">
                       {g.name}
                     </Link>
                   ) : (
@@ -105,7 +112,15 @@ export default async function MemberDetailPage({
                 </span>
               ))}
             </MetaItem>
-            <MetaItem icon={Phone}>{member.phone}</MetaItem>
+            {member.code && (
+              <MetaItem icon={IdCard}>
+                {/* One tap or click selects the whole code for copying (member-code spec "Display"). */}
+                <span title="Kode anggota" className="font-mono select-all">
+                  {member.code}
+                </span>
+              </MetaItem>
+            )}
+            {member.phone && <MetaItem icon={Phone}>{member.phone}</MetaItem>}
             <MetaItem icon={CalendarDays}>Masuk {formatDate(member.joinedAt)}</MetaItem>
           </>
         }
@@ -117,10 +132,12 @@ export default async function MemberDetailPage({
                 Ubah data
               </Link>
             )}
-            <WhatsAppButton phone={member.phone} name={member.name} />
+            <WhatsAppButton phone={member.phone ?? ""} name={member.name} />
           </>
         }
       />
+
+      <EntityTags {...entityTags} />
 
       <div className="flex flex-col gap-4">
         <TabNav
@@ -135,17 +152,18 @@ export default async function MemberDetailPage({
         />
 
         {tab === "profil" && (
+          <>
           <Card>
             <CardContent>
               <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
                 <Detail label="Jenis kelamin">{SEX_LABELS[member.sex as Sex] ?? member.sex}</Detail>
                 <Detail label="Tempat, tanggal lahir">
                   {member.birthPlace}, {formatDate(member.birthDate)}
-                  <span className="text-muted-foreground"> · {ageInYears(member.birthDate, today())} th</span>
+                  <span className="text-muted-foreground"> · {ageInYears(member.birthDate, today(session.user.timeZone))} th</span>
                 </Detail>
                 <Detail label="Status nikah">{formatEnumLabel(member.maritalStatus)}</Detail>
                 <Detail label="Pekerjaan">{formatEnumLabel(member.workStatus)}</Detail>
-                <Detail label="No. HP">{member.phone}</Detail>
+                <Detail label="No. HP">{member.phone ?? <span className="text-muted-foreground">—</span>}</Detail>
                 <Detail label="Email">{member.email ?? <span className="text-muted-foreground">—</span>}</Detail>
                 <Detail label="Alamat" wide>
                   {member.address}
@@ -155,6 +173,8 @@ export default async function MemberDetailPage({
               </dl>
             </CardContent>
           </Card>
+          <FamilySection memberId={member.id} memberName={member.name} relatives={relatives} />
+          </>
         )}
 
         {tab === "kehadiran" && (
@@ -170,7 +190,7 @@ export default async function MemberDetailPage({
                     <li key={entry.id}>
                       <Link
                         href={`/dashboard/kegiatan/${entry.activityId}/${entry.date}`}
-                        className="-mx-2 flex items-center justify-between gap-3 rounded-md px-2 py-2.5 hover:bg-muted"
+                        className="-mx-2 flex min-h-11 items-center justify-between gap-3 rounded-md px-2 py-2.5 hover:bg-muted"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">{entry.activityName}</p>
@@ -206,7 +226,8 @@ export default async function MemberDetailPage({
 
         {tab === "ubah" && (
           <>
-            <Card>
+            {/* overflow-visible: see baru/page.tsx (sticky action bar) */}
+            <Card className="overflow-visible">
               <CardHeader>
                 <CardTitle>Data anggota</CardTitle>
                 <CardDescription>Perubahan tercatat di log audit.</CardDescription>

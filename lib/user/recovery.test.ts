@@ -78,6 +78,11 @@ describe("lib/user/recovery resetOwnerPassword", () => {
     expect(alreadyActive?.meta).toMatchObject({ activated: false });
   });
 
+  it("matches the username case-insensitively", async () => {
+    const result = await resetOwnerPassword("Recovery-Owner", { activate: false });
+    expect(result.temporaryPassword).toBeTruthy();
+  });
+
   it("rejects an unknown username and changes nothing", async () => {
     const auditCount = await db.auditLog.count();
     await expect(resetOwnerPassword("no-such-user", { activate: false })).rejects.toBeInstanceOf(ValidationError);

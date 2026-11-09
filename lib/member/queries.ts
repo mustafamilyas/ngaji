@@ -1,9 +1,11 @@
 import type { SessionUser } from "@/lib/auth/session-user";
 import { PAGE_SIZE } from "@/lib/constants";
 import { db } from "@/lib/db";
+import { normalizeMemberCode } from "@/lib/member/code";
 import { clampPage } from "@/lib/pagination";
-import { resolveGroups } from "@/lib/resolve";
+import { resolveGroups, resolveVisibleTags } from "@/lib/resolve";
 import type { SortState } from "@/lib/sort";
+import { visibleTagLinks } from "@/lib/tag/include";
 import type { MemberStatus } from "@/lib/validation/enums";
 
 /** Sortable `/dashboard/anggota` columns → the field they order by. Keys match `MEMBER_COLUMNS` (plus the name). */
@@ -29,6 +31,8 @@ export type ListMembersFilter = {
   /** Members in any of these groups or their descendants; default the caller's whole scope. */
   groupIds?: number[];
   status?: MemberStatus;
+  /** Members with a link to any of these tags. Ids the caller cannot see are dropped; none left = no filter. */
+  tagIds?: number[];
   sort?: SortState<MemberSortKey>;
 };
 
@@ -39,10 +43,15 @@ export async function listMembers(session: SessionUser, filter: ListMembersFilte
       ? (await resolveGroups(session, filter.groupIds)).map((g) => g.path)
       : [session.groupPath];
 
+  const tagIds = filter.tagIds?.length ? (await resolveVisibleTags(session, filter.tagIds)).map((t) => t.id) : [];
+
+  // A search that looks like a full member code also matches that code (member-code spec "Search by code").
+  const code = filter.search ? normalizeMemberCode(filter.search) : null;
   const where = {
     OR: groupPaths.map((path) => ({ group: { path: { startsWith: path } } })),
     ...(filter.status ? { status: filter.status } : {}),
-    ...(filter.search ? { name: { contains: filter.search } } : {}),
+    ...(tagIds.length > 0 ? { tags: { some: { tagId: { in: tagIds } } } } : {}),
+    ...(filter.search ? { AND: [{ OR: [{ name: { contains: filter.search } }, ...(code ? [{ code }] : [])] }] } : {}),
   };
 
   const total = await db.member.count({ where });
@@ -57,7 +66,10 @@ export async function listMembers(session: SessionUser, filter: ListMembersFilte
     ],
     skip: (page - 1) * PAGE_SIZE,
     take: PAGE_SIZE,
-    include: { group: { include: { parent: { select: { name: true } } } } },
+    include: {
+      group: { include: { parent: { select: { name: true } } } },
+      tags: visibleTagLinks(session),
+    },
   });
 
   return { members, total, page, pageSize: PAGE_SIZE };

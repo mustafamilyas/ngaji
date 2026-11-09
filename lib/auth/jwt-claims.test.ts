@@ -5,9 +5,11 @@ import { refreshTokenClaims } from "./jwt-claims";
 
 describe("refreshTokenClaims", () => {
   let userId: number;
+  let organizationId: number;
 
   beforeAll(async () => {
     const organization = await db.organization.create({ data: { name: "Jwt Org" } });
+    organizationId = organization.id;
     const group = await db.group.create({
       data: { organizationId: organization.id, depth: 0, name: "Root", path: "jwt-0/" },
     });
@@ -30,6 +32,8 @@ describe("refreshTokenClaims", () => {
       role: "USER",
       groupId: 1,
       groupPath: "jwt-0/",
+      organizationId: 0,
+      timeZone: "Asia/Jakarta",
       mustChangePassword: false,
       sessionVersion,
     };
@@ -39,6 +43,17 @@ describe("refreshTokenClaims", () => {
     const result = await refreshTokenClaims(tokenWith(0));
     expect(result).not.toBeNull();
     expect(result?.sessionVersion).toBe(0);
+  });
+
+  it("re-reads organizationId and timeZone from the DB on every refresh", async () => {
+    const first = await refreshTokenClaims(tokenWith(0));
+    expect(first?.organizationId).toBe(organizationId);
+    expect(first?.timeZone).toBe("Asia/Jakarta");
+
+    await db.organization.update({ where: { id: organizationId }, data: { timezone: "Asia/Jayapura" } });
+
+    const second = await refreshTokenClaims(tokenWith(0));
+    expect(second?.timeZone).toBe("Asia/Jayapura");
   });
 
   it("update cannot adopt new version: a stale token stays revoked", async () => {

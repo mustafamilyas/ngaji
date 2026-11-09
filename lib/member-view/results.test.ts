@@ -102,6 +102,59 @@ describe("listViewMembers", () => {
     });
   });
 
+  describe("tag rules", () => {
+    let own: { id: number };
+    let sibling: { id: number };
+    let gone: { id: number };
+
+    const newTag = (groupId: number, key: string, extra: { deletedAt?: Date } = {}) =>
+      db.tag.create({ data: { groupId, key, color: "blue", createdById: fx.actorId, ...extra } });
+    const link = (memberId: number, tagId: number) => db.memberTag.create({ data: { memberId, tagId, createdById: fx.actorId } });
+    const tagRule = (operator: "hasAnyOf" | "hasNoneOf", ids: number[]) =>
+      definitionWith([{ op: "AND", rules: [{ field: "tag", operator, value: ids }] }]);
+
+    beforeAll(async () => {
+      own = await newTag(fx.branch.id, "tag-rule-own");
+      sibling = await newTag(fx.otherLeaf.id, "tag-rule-sibling");
+      gone = await newTag(fx.branch.id, "tag-rule-gone", { deletedAt: new Date() });
+      const tagged = await makeMember(fx.leaf.id, "Bertag");
+      await link(tagged.id, own.id);
+      const otherLeafMember = await makeMember(fx.otherLeaf.id, "Bertag Sibling");
+      await link(otherLeafMember.id, own.id);
+      await link(otherLeafMember.id, sibling.id);
+    });
+
+    it("has any of: returns tagged members within the viewer's scope only", async () => {
+      const result = await listViewMembers(leafSession, tagRule("hasAnyOf", [own.id]), { today: TODAY });
+      expect(names(result)).toEqual(["Bertag"]);
+      expect(result.dropped).toBe(false);
+    });
+
+    it("has none of: also returns members with no tags at all", async () => {
+      const result = await listViewMembers(leafSession, tagRule("hasNoneOf", [own.id]), { today: TODAY });
+      expect(names(result)).toContain("Anggota Uji");
+      expect(names(result)).not.toContain("Bertag");
+      expect(names(result)).not.toContain("Bertag Sibling");
+    });
+
+    it("a viewer above both leaves sees tagged members of both", async () => {
+      const result = await listViewMembers(branchSession, tagRule("hasAnyOf", [own.id]), { today: TODAY });
+      expect(names(result).sort()).toEqual(["Bertag", "Bertag Sibling"]);
+    });
+
+    it("ignores a tag the viewer cannot see instead of widening or leaking", async () => {
+      const result = await listViewMembers(leafSession, tagRule("hasAnyOf", [sibling.id]), { today: TODAY });
+      expect(result.dropped).toBe(true);
+      expect(result.total).toBe((await listViewMembers(leafSession, emptyDefinition(), { today: TODAY })).total);
+    });
+
+    it("drops a deleted tag with the notice, keeping the rule's other tags", async () => {
+      const result = await listViewMembers(leafSession, tagRule("hasAnyOf", [own.id, gone.id]), { today: TODAY });
+      expect(result.dropped).toBe(true);
+      expect(names(result)).toEqual(["Bertag"]);
+    });
+  });
+
   describe("age and boolean logic", () => {
     it("counts a birthday today and excludes the day before", async () => {
       const result = await listViewMembers(
@@ -193,6 +246,15 @@ describe("listViewMembers", () => {
       for (const hidden of ["phone", "address", "email", "birthDate"]) expect(row).not.toHaveProperty(hidden);
     });
 
+    it("selects the code only when the Kode column is chosen", async () => {
+      const withCode = await listViewMembers(leafSession, { ...emptyDefinition(), columns: ["kode"] }, { today: TODAY });
+      expect(withCode.members[0]).toHaveProperty("code");
+      expect(withCode.members[0]).not.toHaveProperty("phone");
+
+      const without = await listViewMembers(leafSession, { ...emptyDefinition(), columns: ["grup"] }, { today: TODAY });
+      expect(without.members[0]).not.toHaveProperty("code");
+    });
+
     it("selects the phone only when a phone column is chosen", async () => {
       const result = await listViewMembers(
         leafSession,
@@ -201,6 +263,24 @@ describe("listViewMembers", () => {
       );
       expect(result.members[0]).toHaveProperty("phone");
       expect(result.members[0]).not.toHaveProperty("address");
+    });
+  });
+
+  describe("tag column (task 5.4)", () => {
+    it("loads only the tags the viewer may see, and only when the Tag column is chosen", async () => {
+      const visible = await db.tag.create({ data: { groupId: fx.root.id, key: "view-visible", color: "blue", createdById: fx.actorId } });
+      const foreign = await db.tag.create({ data: { groupId: fx.otherLeaf.id, key: "view-foreign", color: "red", createdById: fx.actorId } });
+      const deleted = await db.tag.create({ data: { groupId: fx.root.id, key: "view-deleted", color: "red", createdById: fx.actorId, deletedAt: new Date() } });
+      for (const tag of [visible, foreign, deleted]) {
+        await db.memberTag.create({ data: { memberId: fx.memberId, tagId: tag.id, createdById: fx.actorId } });
+      }
+
+      const withColumn = await listViewMembers(leafSession, { ...emptyDefinition(), columns: ["tag"] }, { today: TODAY });
+      const row = withColumn.members.find((m) => m.id === fx.memberId) as unknown as { tags: { tag: { key: string } }[] };
+      expect(row.tags.map((link) => link.tag.key)).toEqual(["view-visible"]);
+
+      const without = await listViewMembers(leafSession, { ...emptyDefinition(), columns: ["jenisKelamin"] }, { today: TODAY });
+      expect(without.members[0]).not.toHaveProperty("tags");
     });
   });
 

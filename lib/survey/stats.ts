@@ -159,7 +159,7 @@ export async function surveyStatistics(
       : await resolveGroup(session, session.groupId);
 
   const demographics = filter.demographics ?? {};
-  const asOf = today();
+  const asOf = today(session.timeZone);
   const popPath = intersectPaths(group.path, ownerPath);
   const populationWhere = memberWhere(popPath, demographics, asOf);
 

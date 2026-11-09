@@ -6,7 +6,7 @@ import { MARITAL_STATUSES, MEMBER_STATUSES, SEXES, WORK_STATUSES } from "@/lib/v
  * definition schema and query builder only accept keys from this registry.
  * Other data sources later get their own registry keyed by `ViewSource`.
  */
-export type FieldType = "text" | "choice" | "date" | "nullableDate" | "age" | "group";
+export type FieldType = "text" | "choice" | "date" | "nullableDate" | "age" | "group" | "tag";
 
 const DATE_OPERATORS = ["before", "onOrBefore", "after", "onOrAfter", "between", "withinLastDays"] as const;
 
@@ -17,6 +17,7 @@ export const OPERATORS_BY_TYPE = {
   nullableDate: [...DATE_OPERATORS, "isEmpty", "isNotEmpty"],
   age: ["eq", "neq", "gt", "gte", "lt", "lte", "between"],
   group: ["inSubtreeOf"],
+  tag: ["hasAnyOf", "hasNoneOf"],
 } as const satisfies Record<FieldType, readonly string[]>;
 
 export type Operator = (typeof OPERATORS_BY_TYPE)[FieldType][number];
@@ -42,6 +43,7 @@ export const MEMBER_VIEW_FIELDS = {
   exitedAt: { label: "Tanggal keluar", type: "nullableDate", sortable: true, groupable: false },
   age: { label: "Usia", type: "age", sortable: true, groupable: false },
   group: { label: "Grup", type: "group", sortable: true, groupable: false },
+  tag: { label: "Tag", type: "tag", sortable: false, groupable: false },
 } as const satisfies Record<string, FieldDef>;
 
 export type FieldKey = keyof typeof MEMBER_VIEW_FIELDS;

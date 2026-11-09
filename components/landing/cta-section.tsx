@@ -1,9 +1,9 @@
+import Link from "next/link";
 import { MessageCircle } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import type { LandingContent } from "./content";
 
-/** Rendered only when a WhatsApp number is configured. */
-export function CtaSection({ cta, href }: { cta: LandingContent["cta"]; href: string }) {
+export function CtaSection({ cta }: { cta: LandingContent["cta"] }) {
   return (
     <section
       aria-labelledby="hubungi"
@@ -17,15 +17,13 @@ export function CtaSection({ cta, href }: { cta: LandingContent["cta"]; href: st
         {cta.title}
       </h2>
       <p className="mt-3 max-w-md leading-relaxed text-(--l-muted)">{cta.body}</p>
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
+      <Link
+        href="/daftar"
         className="mt-7 inline-flex min-h-12 items-center gap-2 rounded-full bg-(--l-leaf) px-6 font-medium text-white transition-colors hover:bg-(--l-ink) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--l-ink)"
       >
         <MessageCircle className="size-5" aria-hidden="true" />
         {cta.button}
-      </a>
+      </Link>
     </section>
   );
 }

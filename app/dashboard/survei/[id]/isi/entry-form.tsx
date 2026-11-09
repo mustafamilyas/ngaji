@@ -338,7 +338,7 @@ function QuestionField({
               id={inputId}
               type="number"
               inputMode="decimal"
-              className="h-12 text-base"
+              className="h-12 text-base md:text-base"
               value={draft.value}
               disabled={readOnly}
               aria-label={q.label}
@@ -350,7 +350,7 @@ function QuestionField({
           {q.type === "SHORT_TEXT" && (
             <Input
               id={inputId}
-              className="h-12 text-base"
+              className="h-12 text-base md:text-base"
               value={draft.value}
               maxLength={SHORT_TEXT_MAX}
               disabled={readOnly}
@@ -364,6 +364,7 @@ function QuestionField({
             <Textarea
               id={inputId}
               rows={4}
+              className="text-base md:text-base xl:text-sm"
               value={draft.value}
               maxLength={LONG_TEXT_MAX}
               disabled={readOnly}

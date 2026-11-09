@@ -3,12 +3,18 @@ import type { Mock } from "vitest";
 import type { SessionUser } from "@/lib/auth/session-user";
 import { db } from "@/lib/db";
 import { addDays, today, weekdayOf } from "@/lib/dates";
+import { generateMemberCode } from "@/lib/member/code";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
+
+/** A group as tests pass it around: enough to build a session for an actor who sits in it. */
+export type FixtureGroup = { id: number; path: string; organizationId: number };
 
 /** Hand-built `SessionUser` — no real login/JWT involved, just the shape every `lib/**` and page function expects. */
 export function sessionFor(
   actorId: number,
   role: SessionUser["role"],
-  group: { id: number; path: string },
+  group: FixtureGroup,
+  timeZone: string = DEFAULT_TIMEZONE,
 ): SessionUser {
   return {
     id: String(actorId),
@@ -17,6 +23,8 @@ export function sessionFor(
     role,
     groupId: group.id,
     groupPath: group.path,
+    organizationId: group.organizationId,
+    timeZone,
     mustChangePassword: false,
   };
 }
@@ -32,12 +40,24 @@ export function mockAuthSession(authFn: unknown, session: { user: SessionUser } 
   (authFn as Mock<() => Promise<Session | null>>).mockResolvedValue(value);
 }
 
+/**
+ * Unique member code prefix for a fixture organization: `Z` + the id as 3 base-26 letters (id 5 → `ZAAF`).
+ * Hand-picked test prefixes never start with `Z`, so they cannot collide in the shared `test.db`.
+ */
+export function fixtureCodePrefix(organizationId: number): string {
+  let letters = "";
+  for (let n = organizationId, i = 0; i < 3; i++, n = Math.floor(n / 26)) {
+    letters = String.fromCharCode(65 + (n % 26)) + letters;
+  }
+  return `Z${letters}`;
+}
+
 export type PageFixture = {
   organizationId: number;
-  root: { id: number; path: string };
-  branch: { id: number; path: string };
-  leaf: { id: number; path: string };
-  otherLeaf: { id: number; path: string };
+  root: FixtureGroup;
+  branch: FixtureGroup;
+  leaf: FixtureGroup;
+  otherLeaf: FixtureGroup;
   actorId: number;
   memberId: number;
   activityId: number;
@@ -55,7 +75,12 @@ export async function buildPageFixture(label: string): Promise<PageFixture> {
     data: { username: `${label}-actor`, passwordHash: "x", name: "Actor" },
   });
 
-  const organization = await db.organization.create({ data: { name: `${label} Org` } });
+  const created = await db.organization.create({ data: { name: `${label} Org` } });
+  const codePrefix = fixtureCodePrefix(created.id);
+  const organization = await db.organization.update({
+    where: { id: created.id },
+    data: { memberCodePrefix: codePrefix },
+  });
   for (const [depth, name] of ["Root", "Branch", "Leaf"].entries()) {
     await db.level.create({ data: { organizationId: organization.id, depth, name } });
   }
@@ -92,6 +117,7 @@ export async function buildPageFixture(label: string): Promise<PageFixture> {
   const member = await db.member.create({
     data: {
       groupId: leaf.id,
+      code: generateMemberCode(codePrefix),
       name: "Anggota Uji",
       birthPlace: "Jakarta",
       birthDate: "2000-01-01",
@@ -115,8 +141,8 @@ export async function buildPageFixture(label: string): Promise<PageFixture> {
       durationMinutes: 60,
       freq: "WEEKLY",
       interval: 1,
-      weekdays: [weekdayOf(today())],
-      startsOn: addDays(today(), -30),
+      weekdays: [weekdayOf(today(DEFAULT_TIMEZONE))],
+      startsOn: addDays(today(DEFAULT_TIMEZONE), -30),
       createdById: actor.id,
     },
   });
@@ -130,5 +156,46 @@ export async function buildPageFixture(label: string): Promise<PageFixture> {
     actorId: actor.id,
     memberId: member.id,
     activityId: activity.id,
+  };
+}
+
+export type OrgFixture = PageFixture & {
+  organizationName: string;
+  timezone: string;
+  /** Active OWNER whose own group is `root`. */
+  owner: SessionUser;
+  levelNames: string[];
+};
+
+/**
+ * A complete second organization for cross-organization isolation tests: own
+ * levels (3), root group, an OWNER with a `UserGroupRole` at the root, a
+ * member and an activity. Builds on `buildPageFixture`, so `label` must be
+ * unique per test file for the same reason. Call it twice (two labels) to get
+ * org A and org B.
+ */
+export async function buildOrgFixture(
+  label: string,
+  options: { timezone?: string } = {},
+): Promise<OrgFixture> {
+  const base = await buildPageFixture(label);
+  const timezone = options.timezone ?? "Asia/Jakarta";
+  const organization = await db.organization.update({
+    where: { id: base.organizationId },
+    data: { timezone },
+  });
+  await db.userGroupRole.create({
+    data: { userId: base.actorId, groupId: base.root.id, role: "OWNER" },
+  });
+  const levels = await db.level.findMany({
+    where: { organizationId: organization.id },
+    orderBy: { depth: "asc" },
+  });
+  return {
+    ...base,
+    organizationName: organization.name,
+    timezone,
+    owner: sessionFor(base.actorId, "OWNER", base.root, timezone),
+    levelNames: levels.map((level) => level.name),
   };
 }

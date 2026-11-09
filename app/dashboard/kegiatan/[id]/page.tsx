@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { auth } from "@/auth";
 import { DangerZone, DangerZoneItem } from "@/components/danger-zone";
+import { BreakdownSection } from "@/components/breakdown/breakdown-section";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { FilterBar } from "@/components/filters/filter-bar";
 import { MetaItem, PageHeader } from "@/components/page-header";
@@ -24,24 +25,44 @@ import { Pagination } from "@/components/pagination";
 import { TabNav, type TabItem } from "@/components/tab-nav";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { EntityTags } from "@/components/tags/entity-tags";
 import { scheduleLabel, WEEKDAY_LABELS } from "@/lib/activity/labels";
 import { toActivityTemplate } from "@/lib/activity/template";
 import { occurrencesFor } from "@/lib/activity/occurrences";
 import { loadOccurrenceRows } from "@/lib/activity/rows";
-import { canEditActivity } from "@/lib/authz";
+import { canEditActivity, canRecordDate } from "@/lib/authz";
 import { CONFLICT_HORIZON_DAYS, EMBEDDED_PAGE_SIZE, STATS_DATE_RANGE } from "@/lib/constants";
 import { addDays, today, weekdayOf } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
-import { formatDate, parsePage, resolveDateRange } from "@/lib/filters";
+import { breakdownParam, formatDate, parseBreakdown, parsePage, resolveDateRange } from "@/lib/filters";
 import { pageHref, paginate } from "@/lib/pagination";
+import { participationPage } from "@/lib/participation/page";
+import {
+  DEFAULT_OCCURRENCE_SORT,
+  DEFAULT_PARTICIPATION_SORT,
+  MEMBER_SORT_PARAMS,
+  OCCURRENCE_SORT_KEYS,
+  OCCURRENCE_SORT_PARAMS,
+  PARTICIPATION_SORT_KEYS,
+  parseSort,
+  sortOccurrences,
+  sortPreserve,
+} from "@/lib/sort";
 import { resolveActivity } from "@/lib/resolve";
+import { tagChoices } from "@/lib/tag/choices";
+import { loadEntityTags, loadTagOptions } from "@/lib/tag/entity";
+import { resolveBreakdown } from "@/lib/summary/breakdown";
+import type { SessionUser } from "@/lib/auth/session-user";
 import { isInScope } from "@/lib/scope";
 import { activityAttendanceSummary } from "@/lib/stats";
 import { parseTab, tabHref } from "@/lib/tabs";
 import { cn } from "@/lib/utils";
 import { ActivityForm } from "../activity-form";
+import { ParticipationTable } from "@/app/dashboard/statistik/participation-table";
 import { ActivityAttendanceChart } from "./attendance-chart";
+import { OccurrenceTable } from "./occurrence-table";
 import { DeleteActivityForm } from "./delete-activity-form";
 import { EndActivityForm } from "./end-activity-form";
 import { OccurrenceOverrideDialog } from "./occurrence-override-dialog";
@@ -78,11 +99,17 @@ export default async function ActivityDetailPage({
   const canRecord = isInScope(session.user.groupPath, activity.group.path);
   const path = `/dashboard/kegiatan/${activity.id}`;
 
-  const now = today();
+  const now = today(session.user.timeZone);
   const scheduleTo = addDays(now, CONFLICT_HORIZON_DAYS);
-  const rows = await loadOccurrenceRows(activity.id, now, scheduleTo);
+  const [rows, entityTags] = await Promise.all([
+    loadOccurrenceRows(activity.id, now, scheduleTo),
+    loadEntityTags(session.user, { kind: "activity", id: activity.id }),
+  ]);
   const occurrences = occurrencesFor(toActivityTemplate(activity), now, scheduleTo, rows);
-  const todays = occurrences.find((o) => o.effectiveDate === now && o.status !== "CANCELLED");
+  // Today's occurrence, else (ADMIN+, who may record ahead) the next one; `occurrences` is sorted by effective date.
+  const recordTarget = canRecord
+    ? occurrences.find((o) => o.status !== "CANCELLED" && o.effectiveDate >= now && canRecordDate(session.user, o.effectiveDate, now))
+    : undefined;
   const ended = activity.endsOn !== null && activity.endsOn < now;
 
   const tabs: TabItem<Tab>[] = [
@@ -92,7 +119,7 @@ export default async function ActivityDetailPage({
   ];
   const requested = parseTab(query.tab, TABS, "absensi");
   const tab = tabs.some((t) => t.key === requested) ? requested : "absensi";
-  const attendance = tab === "absensi" ? await loadAttendance(activity, query, now) : null;
+  const attendance = tab === "absensi" ? await loadAttendance(activity, query, now, session.user) : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -114,7 +141,7 @@ export default async function ActivityDetailPage({
             <MetaItem icon={MapPin}>{activity.location}</MetaItem>
             <MetaItem icon={Network}>
               {canRecord ? (
-                <Link href={`/dashboard/grup/${activity.group.id}`} className="hover:text-foreground hover:underline">
+                <Link href={`/dashboard/grup/${activity.group.id}`} className="inline-flex min-h-11 items-center hover:text-foreground hover:underline xl:min-h-0">
                   {activity.group.name}
                 </Link>
               ) : (
@@ -131,10 +158,12 @@ export default async function ActivityDetailPage({
                 Ubah
               </Link>
             )}
-            {canRecord && todays && (
-              <Link href={`${path}/${todays.key}`} className={buttonVariants({ size: "lg" })}>
+            {recordTarget && (
+              <Link href={`${path}/${recordTarget.key}`} className={buttonVariants({ size: "lg" })}>
                 <ClipboardCheck />
-                Isi absensi hari ini
+                {recordTarget.effectiveDate === now
+                  ? "Isi absensi hari ini"
+                  : `Isi absensi · ${WEEKDAY_LABELS[weekdayOf(recordTarget.effectiveDate)].slice(0, 3)}, ${formatDate(recordTarget.effectiveDate)}`}
               </Link>
             )}
           </>
@@ -155,10 +184,12 @@ export default async function ActivityDetailPage({
       )}
       {activity.notes && <p className="text-sm whitespace-pre-line text-muted-foreground">{activity.notes}</p>}
 
+      <EntityTags {...entityTags} />
+
       <div className="flex flex-col gap-4">
         <TabNav path={path} tabs={tabs} current={tab} defaultTab="absensi" />
 
-        {attendance && <AttendanceTab activityId={activity.id} attendance={attendance} canRecord={canRecord} now={now} />}
+        {attendance && <AttendanceTab activityId={activity.id} attendance={attendance} canRecord={canRecord} now={now} query={query} />}
 
         {tab === "jadwal" && (
           <ScheduleTab
@@ -168,6 +199,7 @@ export default async function ActivityDetailPage({
             query={query}
             canEdit={canEdit}
             canRecord={canRecord}
+            user={session.user}
             now={now}
           />
         )}
@@ -214,9 +246,9 @@ export default async function ActivityDetailPage({
             <DangerZone>
               <DangerZoneItem
                 title="Akhiri kegiatan"
-                description="Tidak ada jadwal lagi mulai tanggal yang dipilih; jadwal dan absensi sebelumnya tetap."
+                description="Tidak ada jadwal lagi mulai tanggal yang dipilih; jadwal dan absensi sebelumnya tetap. Jika tanggalnya sama dengan atau sebelum tanggal mulai, kegiatan dihapus."
               >
-                <EndActivityForm activityId={activity.id} />
+                <EndActivityForm activityId={activity.id} startsOn={activity.startsOn} />
               </DangerZoneItem>
               <DangerZoneItem
                 title="Hapus kegiatan"
@@ -237,30 +269,55 @@ async function loadAttendance(
   activity: Awaited<ReturnType<typeof resolveActivity>>,
   query: Record<string, string | string[] | undefined>,
   now: string,
+  user: SessionUser,
 ) {
   const statsRange = resolveDateRange(query, STATS_DATE_RANGE, now);
   // STATS_DATE_RANGE has no open-ended mode, so both bounds are always set.
   const statsFrom = statsRange.from!;
   const statsTo = statsRange.to!;
+  const choice = parseBreakdown(query.rincian);
+  const breakdown = await resolveBreakdown(user, choice);
   const summary = await activityAttendanceSummary(activity.id, toActivityTemplate(activity), activity.group.path, {
     from: statsFrom,
     to: statsTo,
+    timeZone: user.timeZone,
+    breakdown,
   });
-  return { statsRange, statsFrom, statsTo, summary };
+  const choices = tagChoices((await loadTagOptions(user)).visible);
+  // An unusable choice (invisible tag…) resolved to none: no breakdown, no error.
+  const rincian = breakdown && choice ? breakdownParam(choice) : undefined;
+  return { statsRange, statsFrom, statsTo, summary, choices, rincian };
 }
 
 function AttendanceTab({
   activityId,
-  attendance: { statsRange, statsFrom, statsTo, summary },
+  attendance: { statsRange, statsFrom, statsTo, summary, choices, rincian },
   canRecord,
   now,
+  query,
 }: {
   activityId: number;
   attendance: Awaited<ReturnType<typeof loadAttendance>>;
   canRecord: boolean;
   now: string;
+  query: Record<string, string | string[] | undefined>;
 }) {
   const path = `/dashboard/kegiatan/${activityId}`;
+
+  const occurrenceSort = parseSort(query, OCCURRENCE_SORT_KEYS, DEFAULT_OCCURRENCE_SORT, OCCURRENCE_SORT_PARAMS);
+  const memberSort = parseSort(query, PARTICIPATION_SORT_KEYS, DEFAULT_PARTICIPATION_SORT, MEMBER_SORT_PARAMS);
+  const occurrencePage = paginate(
+    sortOccurrences(summary.occurrences, occurrenceSort),
+    parsePage(query[OCCURRENCE_SORT_PARAMS.page]),
+    EMBEDDED_PAGE_SIZE,
+  );
+  const memberPage = participationPage(summary.participation, {
+    sort: memberSort,
+    page: parsePage(query[MEMBER_SORT_PARAMS.page]),
+    pageSize: EMBEDDED_PAGE_SIZE,
+  });
+  // `summary.occurrences` is newest first; the trend reads oldest first.
+  const trend = [...summary.occurrences].reverse().map((o) => ({ date: o.effectiveDate, percentHadir: o.percentHadir }));
 
   return (
     <Card>
@@ -271,17 +328,63 @@ function AttendanceTab({
       <CardContent className="flex flex-col gap-4">
         <FilterBar
           action={path}
+          preserve={{
+            ...(rincian ? { rincian } : {}),
+            // A range change keeps both tables' order; their pages are not preserved, so each starts at page 1.
+            ...sortPreserve(occurrenceSort, DEFAULT_OCCURRENCE_SORT, OCCURRENCE_SORT_PARAMS),
+            ...sortPreserve(memberSort, DEFAULT_PARTICIPATION_SORT, MEMBER_SORT_PARAMS),
+          }}
           isFiltered={statsRange.mode !== STATS_DATE_RANGE.defaultMode || statsRange.anchor !== now}
           resetHref={path}
         >
           <DateRangeFilter range={statsRange} {...STATS_DATE_RANGE} today={now} />
         </FilterBar>
         <ActivityAttendanceChart
-          summary={summary}
           from={statsFrom}
           to={statsTo}
-          activityId={activityId}
-          canRecord={canRecord}
+          totals={{
+            occurrenceCount: summary.occurrences.length,
+            hadir: summary.totalHadir,
+            izin: summary.totalIzin,
+            absent: summary.totalExpected - summary.totalHadir - summary.totalIzin,
+            percentHadir: summary.percentHadir,
+          }}
+          trend={trend}
+        />
+        <section aria-labelledby="per-occurrence" className="flex min-w-0 flex-col gap-2">
+          <h3 id="per-occurrence" className="text-sm font-medium">
+            Per occurrence
+          </h3>
+          <OccurrenceTable
+            page={occurrencePage}
+            sort={occurrenceSort}
+            activityId={activityId}
+            canRecord={canRecord}
+            basePath={path}
+            searchParams={query}
+          />
+        </section>
+        <section aria-labelledby="siapa-hadir" className="flex min-w-0 flex-col gap-2">
+          <h3 id="siapa-hadir" className="text-sm font-medium">
+            Siapa yang hadir
+          </h3>
+          <ParticipationTable
+            page={memberPage}
+            sort={memberSort}
+            basePath={path}
+            searchParams={query}
+            params={MEMBER_SORT_PARAMS}
+            selectLabel="Urutkan peserta"
+            embedded
+          />
+        </section>
+        <BreakdownSection
+          choices={choices}
+          breakdown={summary.breakdown}
+          selected={rincian}
+          basePath={path}
+          searchParams={query}
+          page={parsePage(query.rincianhal)}
         />
       </CardContent>
     </Card>
@@ -295,6 +398,7 @@ function ScheduleTab({
   query,
   canEdit,
   canRecord,
+  user,
   now,
 }: {
   activityId: number;
@@ -303,6 +407,7 @@ function ScheduleTab({
   query: Record<string, string | string[] | undefined>;
   canEdit: boolean;
   canRecord: boolean;
+  user: SessionUser;
   now: string;
 }) {
   const schedulePage = paginate(occurrences, page, EMBEDDED_PAGE_SIZE);
@@ -321,10 +426,11 @@ function ScheduleTab({
               const cancelled = occurrence.status === "CANCELLED";
               const moved = occurrence.effectiveDate !== occurrence.key;
               const isToday = occurrence.effectiveDate === now;
+              const recordable = canRecord && !cancelled && canRecordDate(user, occurrence.effectiveDate, now);
               return (
                 <li key={occurrence.key} className="flex items-center gap-3 py-2.5">
                   <div className="flex size-11 shrink-0 flex-col items-center justify-center rounded-lg bg-muted leading-none">
-                    <span className="text-[0.65rem] text-muted-foreground uppercase">
+                    <span className="text-xs text-muted-foreground uppercase">
                       {WEEKDAY_LABELS[weekdayOf(occurrence.effectiveDate)].slice(0, 3)}
                     </span>
                     <span className="text-base font-semibold">{Number(occurrence.effectiveDate.slice(8))}</span>
@@ -356,9 +462,9 @@ function ScheduleTab({
                     )}
                     <Link
                       href={`${path}/${occurrence.key}`}
-                      className={buttonVariants({ variant: isToday && canRecord && !cancelled ? "default" : "ghost" })}
+                      className={buttonVariants({ variant: recordable ? (isToday ? "default" : "outline") : "ghost" })}
                     >
-                      {isToday && canRecord && !cancelled ? "Isi absensi" : "Lihat"}
+                      {recordable ? "Isi absensi" : "Lihat"}
                       <ChevronRight data-icon="inline-end" />
                     </Link>
                   </div>

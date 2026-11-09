@@ -44,7 +44,7 @@ export function ResultChart({
               stroke="var(--muted-foreground)"
             />
             <Tooltip contentStyle={tooltipStyle} formatter={formatLabel} />
-            <Bar dataKey="count" fill={barFill} radius={[0, 4, 4, 0]} maxBarSize={24} isAnimationActive={false}>
+            <Bar dataKey="count" name="Jumlah" fill={barFill} radius={[0, 4, 4, 0]} maxBarSize={24} isAnimationActive={false}>
               <LabelList dataKey="text" position="right" fontSize={12} />
             </Bar>
           </BarChart>
@@ -61,7 +61,7 @@ export function ResultChart({
           <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="var(--muted-foreground)" />
           <YAxis allowDecimals={false} tick={{ fontSize: 12 }} stroke="var(--muted-foreground)" />
           <Tooltip contentStyle={tooltipStyle} formatter={formatLabel} />
-          <Bar dataKey="count" fill={barFill} radius={[4, 4, 0, 0]} maxBarSize={48} isAnimationActive={false}>
+          <Bar dataKey="count" name="Jumlah" fill={barFill} radius={[4, 4, 0, 0]} maxBarSize={48} isAnimationActive={false}>
             <LabelList dataKey="text" position="top" fontSize={12} />
           </Bar>
         </BarChart>

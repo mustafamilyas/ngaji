@@ -8,16 +8,15 @@ import { Save } from "lucide-react";
 import { createMemberAction, updateMemberAction } from "@/app/dashboard/anggota/actions";
 import { GroupAutocomplete, type GroupAutocompleteOption } from "@/components/group-autocomplete";
 import { Button } from "@/components/ui/button";
-import { today } from "@/lib/dates";
+import { touchField } from "@/components/ui/touch";
 import { cn } from "@/lib/utils";
 import { formatEnumLabel, SEX_LABELS } from "@/lib/member/labels";
 import { MARITAL_STATUSES, MEMBER_STATUSES, SEXES, WORK_STATUSES } from "@/lib/validation/enums";
 import { memberFormSchema, type MemberFormValues } from "@/lib/validation/member";
 
-const inputClass =
-  "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+const inputClass = touchField;
 const textareaClass =
-  "min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+  "min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 xl:min-h-20 xl:text-sm";
 
 function Field({
   label,
@@ -50,10 +49,16 @@ function Field({
 
 
 type MemberFormProps =
-  | { mode: "create"; leafGroups: GroupAutocompleteOption[]; initialGroupId?: number }
+  | {
+      mode: "create";
+      leafGroups: GroupAutocompleteOption[];
+      initialGroupId?: number;
+      /** The organization's "today" (`YYYY-MM-DD`), computed on the server. */
+      today: string;
+    }
   | { mode: "edit"; memberId: number; defaultValues: MemberFormValues };
 
-const emptyDefaults: MemberFormValues = {
+const emptyDefaults = (today: string): MemberFormValues => ({
   name: "",
   birthPlace: "",
   birthDate: "",
@@ -64,9 +69,9 @@ const emptyDefaults: MemberFormValues = {
   workStatus: "BEKERJA",
   email: undefined,
   status: "AKTIF",
-  joinedAt: today(),
+  joinedAt: today,
   exitedAt: undefined,
-};
+});
 
 export function MemberForm(props: MemberFormProps) {
   const router = useRouter();
@@ -82,7 +87,7 @@ export function MemberForm(props: MemberFormProps) {
     formState: { errors },
   } = useForm<MemberFormValues>({
     resolver: zodResolver(memberFormSchema),
-    defaultValues: props.mode === "edit" ? props.defaultValues : emptyDefaults,
+    defaultValues: props.mode === "edit" ? props.defaultValues : emptyDefaults(props.today),
   });
   const status = useWatch({ control, name: "status" });
 
@@ -115,11 +120,11 @@ export function MemberForm(props: MemberFormProps) {
       )}
 
       <Field label="Nama" htmlFor="name" error={errors.name?.message} wide>
-        <input id="name" className={inputClass} {...register("name")} />
+        <input id="name" className={inputClass} autoComplete="off" {...register("name")} />
       </Field>
 
       <Field label="Tempat lahir" htmlFor="birthPlace" error={errors.birthPlace?.message}>
-        <input id="birthPlace" className={inputClass} {...register("birthPlace")} />
+        <input id="birthPlace" className={inputClass} autoComplete="off" {...register("birthPlace")} />
       </Field>
 
       <Field label="Tanggal lahir" htmlFor="birthDate" error={errors.birthDate?.message}>
@@ -137,11 +142,11 @@ export function MemberForm(props: MemberFormProps) {
       </Field>
 
       <Field label="Alamat" htmlFor="address" error={errors.address?.message} wide>
-        <textarea id="address" className={textareaClass} {...register("address")} />
+        <textarea id="address" className={textareaClass} autoComplete="off" {...register("address")} />
       </Field>
 
-      <Field label="No. HP" htmlFor="phone" error={errors.phone?.message}>
-        <input id="phone" className={inputClass} {...register("phone")} />
+      <Field label="No. HP (opsional)" htmlFor="phone" error={errors.phone?.message}>
+        <input id="phone" type="tel" inputMode="tel" autoComplete="off" className={inputClass} {...register("phone")} />
       </Field>
 
       <Field label="Status pernikahan" htmlFor="maritalStatus" error={errors.maritalStatus?.message}>
@@ -165,7 +170,7 @@ export function MemberForm(props: MemberFormProps) {
       </Field>
 
       <Field label="Email (opsional)" htmlFor="email" error={errors.email?.message}>
-        <input id="email" type="email" className={inputClass} {...register("email")} />
+        <input id="email" type="email" inputMode="email" autoComplete="off" className={inputClass} {...register("email")} />
       </Field>
 
       <Field label="Status keanggotaan" htmlFor="status" error={errors.status?.message}>
@@ -194,8 +199,9 @@ export function MemberForm(props: MemberFormProps) {
         </p>
       )}
 
-      <div className="flex justify-end border-t pt-4 sm:col-span-2">
-        <Button type="submit" size="lg" disabled={pending} className="w-full sm:w-auto">
+      {/* Sticky below xl so Simpan stays under the thumb on this long form (like the survey answer form); `-mx-4` bleeds to the card edge (the card must not clip: it needs `overflow-visible`, see the pages). */}
+      <div className="sticky bottom-0 -mx-4 flex justify-end border-t bg-background/95 px-4 py-3 backdrop-blur sm:col-span-2 xl:static xl:mx-0 xl:bg-transparent xl:px-0 xl:pt-4 xl:pb-0 xl:backdrop-blur-none">
+        <Button type="submit" size="lg" disabled={pending} className="h-12 w-full text-base xl:h-9 xl:w-auto xl:text-sm">
           <Save />
           {pending ? "Menyimpan…" : "Simpan"}
         </Button>

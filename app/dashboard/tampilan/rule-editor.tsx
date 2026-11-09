@@ -4,15 +4,27 @@ import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
 import { VIEW_MAX_RULES_PER_GROUP } from "@/lib/constants";
 import { choiceLabel, initialRuleValue, OPERATOR_LABELS } from "@/lib/member-view/edit";
-import type { GroupOption } from "@/lib/member-view/editor-options";
+import type { GroupOption, TagOption } from "@/lib/member-view/editor-options";
 import { MEMBER_VIEW_FIELDS, operatorsFor, RULE_FIELD_KEYS, type FieldKey, type Operator } from "@/lib/member-view/fields";
 import { cn } from "@/lib/utils";
 import { ruleSchema, type Conjunction, type Rule, type RuleGroup } from "@/lib/validation/member-view";
 
 export const nativeSelectClass =
-  "h-8 min-w-0 rounded-lg border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+  "h-11 min-w-0 rounded-lg border border-input bg-background px-2 text-base outline-none xl:h-8 xl:text-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+
+/** "Terapkan" footer of the Tampilan panels: applies the panel's draft and closes it (task 6.1). */
+export function ApplyFooter({ onApply }: { onApply: () => void }) {
+  return (
+    <div className="flex justify-end border-t p-2">
+      <Button type="button" onClick={onApply}>
+        Terapkan
+      </Button>
+    </div>
+  );
+}
 
 /** Uncontrolled input that reports its value on blur or Enter, so typing never re-renders the page per keystroke. */
 function CommitInput({
@@ -48,32 +60,44 @@ function kindOf(operator: Operator): OperatorKind {
 
 type DraftRule = { field: FieldKey; operator: Operator; value: unknown };
 
-function GroupPicker({ options, selected, onChange }: { options: GroupOption[]; selected: number[]; onChange: (ids: number[]) => void }) {
+/** Searchable checklist of ids with labels, shared by the group and tag rules. */
+function OptionPicker({
+  options,
+  selected,
+  onChange,
+  noun,
+}: {
+  options: { id: number; label: string }[];
+  selected: number[];
+  onChange: (ids: number[]) => void;
+  noun: string;
+}) {
   const [query, setQuery] = useState("");
   const shown = options.filter((o) => o.label.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 100);
   return (
     <div className="flex flex-col gap-1.5">
-      <Input type="search" placeholder="Cari grup…" aria-label="Cari grup" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <Input type="search" placeholder={`Cari ${noun}…`} aria-label={`Cari ${noun}`} value={query} onChange={(e) => setQuery(e.target.value)} />
       <ul className="max-h-40 overflow-y-auto rounded-lg border p-1">
         {shown.map((option) => (
           <li key={option.id}>
-            <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-muted">
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-2 py-1 text-base hover:bg-muted xl:min-h-0 xl:gap-2 xl:text-sm">
               <input
                 type="checkbox"
+                className="size-5 xl:size-4"
                 checked={selected.includes(option.id)}
                 onChange={(e) => onChange(e.target.checked ? [...selected, option.id] : selected.filter((id) => id !== option.id))}
               />
-              {option.label}
+              <span className="min-w-0 break-words">{option.label}</span>
             </label>
           </li>
         ))}
-        {shown.length === 0 && <li className="px-2 py-1 text-sm text-muted-foreground">Tidak ada grup.</li>}
+        {shown.length === 0 && <li className="px-2 py-1 text-sm text-muted-foreground">Tidak ada {noun}.</li>}
       </ul>
     </div>
   );
 }
 
-function ValueInput({ draft, groups, onChange }: { draft: DraftRule; groups: GroupOption[]; onChange: (value: unknown) => void }) {
+function ValueInput({ draft, groups, tags, onChange }: { draft: DraftRule; groups: GroupOption[]; tags: TagOption[]; onChange: (value: unknown) => void }) {
   const def = MEMBER_VIEW_FIELDS[draft.field];
   const kind = kindOf(draft.operator);
   const id = `${draft.field}-${draft.operator}`;
@@ -85,9 +109,10 @@ function ValueInput({ draft, groups, onChange }: { draft: DraftRule; groups: Gro
       return (
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           {def.values.map((value) => (
-            <label key={value} className="flex cursor-pointer items-center gap-1.5 text-sm">
+            <label key={value} className="flex min-h-11 cursor-pointer items-center gap-2.5 text-base xl:min-h-0 xl:gap-1.5 xl:text-sm">
               <input
                 type="checkbox"
+                className="size-5 xl:size-4"
                 checked={selected.includes(value)}
                 onChange={(e) =>
                   onChange(def.values.filter((v) => (v === value ? e.target.checked : selected.includes(v))))
@@ -104,7 +129,9 @@ function ValueInput({ draft, groups, onChange }: { draft: DraftRule; groups: Gro
         <CommitInput key={id} aria-label={def.label} defaultValue={String(draft.value ?? "")} onCommit={onChange} placeholder="Ketik lalu Enter" />
       );
     case "group":
-      return <GroupPicker options={groups} selected={(draft.value as number[]) ?? []} onChange={onChange} />;
+      return <OptionPicker options={groups} selected={(draft.value as number[]) ?? []} onChange={onChange} noun="grup" />;
+    case "tag":
+      return <OptionPicker options={tags} selected={(draft.value as number[]) ?? []} onChange={onChange} noun="tag" />;
     case "age": {
       if (kind === "between") {
         const [min, max] = (draft.value as number[]) ?? [0, 0];
@@ -153,11 +180,13 @@ function ValueInput({ draft, groups, onChange }: { draft: DraftRule; groups: Gro
 function RuleRow({
   rule,
   groups,
+  tags,
   onCommit,
   onRemove,
 }: {
   rule: Rule;
   groups: GroupOption[];
+  tags: TagOption[];
   onCommit: (rule: Rule) => void;
   onRemove: () => void;
 }) {
@@ -215,7 +244,7 @@ function RuleRow({
           <Trash2 />
         </Button>
       </div>
-      <ValueInput draft={draft} groups={groups} onChange={(value) => update({ ...draft, value })} />
+      <ValueInput draft={draft} groups={groups} tags={tags} onChange={(value) => update({ ...draft, value })} />
       {error && (
         <p role="status" className="text-xs text-destructive">
           Belum diterapkan: {error}
@@ -229,12 +258,14 @@ function RuleRow({
 export function RuleGroupEditor({
   group,
   groups,
+  tags,
   onChange,
   onRemove,
   className,
 }: {
   group: RuleGroup;
   groups: GroupOption[];
+  tags: TagOption[];
   onChange: (group: RuleGroup) => void;
   onRemove: () => void;
   className?: string;
@@ -244,7 +275,7 @@ export function RuleGroupEditor({
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       {group.rules.length > 1 && (
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex flex-wrap items-center gap-2 text-base xl:text-sm">
           Aturan di grup ini:
           <select
             aria-label="Gabungkan aturan"
@@ -263,6 +294,7 @@ export function RuleGroupEditor({
             key={`${group.rules.length}-${index}`}
             rule={rule}
             groups={groups}
+            tags={tags}
             onCommit={(next) => setRules(group.rules.map((r, i) => (i === index ? next : r)))}
             onRemove={() => setRules(group.rules.filter((_, i) => i !== index))}
           />

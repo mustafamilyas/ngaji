@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily Dahan backup at 02:00 Asia/Jakarta
+
+[Timer]
+OnCalendar=*-*-* 02:00:00 Asia/Jakarta
+Persistent=true
+Unit=dahan-backup.service
+
+[Install]
+WantedBy=timers.target

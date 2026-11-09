@@ -2,14 +2,15 @@ import { occurrencesFor, type ActivityTemplate, type OccurrenceRow } from "@/lib
 import { toActivityTemplate } from "@/lib/activity/template";
 import type { SessionUser } from "@/lib/auth/session-user";
 import { AGE_BRACKETS } from "@/lib/constants";
-import { ageInYears, today } from "@/lib/dates";
+import { today } from "@/lib/dates";
+import type { Prisma } from "@/lib/generated/prisma/client";
 import { db } from "@/lib/db";
+import { createTally, type AttendanceBreakdown, type Breakdown } from "@/lib/summary/breakdown";
+import { countByAgeBuckets, countByProperty, countByTag, countByTagKey } from "@/lib/summary/count";
+import { resolveVisibleTag } from "@/lib/summary/tags";
 import { resolveGroup } from "@/lib/resolve";
 import { ancestorPathsOf, isInScope } from "@/lib/scope";
 import {
-  MARITAL_STATUSES,
-  SEXES,
-  WORK_STATUSES,
   type MaritalStatus,
   type MemberStatus,
   type OccurrenceStatus,
@@ -78,44 +79,123 @@ export type MemberStatistics = {
   byWorkStatus: Record<WorkStatus, number>;
   byAgeBracket: Record<string, number>;
   byDirectSubGroup: { groupId: number; groupName: string; count: number }[];
+  byTag: TagBreakdown | null;
 };
 
-/** DESIGN.md §6 "Anggota": AKTIF, non-deleted members in scope, broken down several ways. */
-export async function memberStatistics(session: SessionUser, groupId?: number): Promise<MemberStatistics> {
+/** The optional "Per tag" breakdown of Statistik → Anggota: buckets follow the summary dimension rules. */
+export type TagBreakdown = {
+  tagId: number;
+  /** The tag's key (shared by all values of a key–value tag). */
+  label: string;
+  kind: "tag" | "tagKey";
+  buckets: { key: string; label: string; count: number }[];
+};
+
+/**
+ * DESIGN.md §6 "Anggota": AKTIF, non-deleted members in scope, broken down
+ * several ways. Everything is counted by the database (`lib/summary/count.ts`);
+ * no member rows are loaded. `options.tagId` adds `byTag` when it names a tag
+ * the viewer can see; anything else is ignored.
+ */
+export async function memberStatistics(
+  session: SessionUser,
+  groupId?: number,
+  options: { tagId?: number } = {},
+): Promise<MemberStatistics> {
   const scope = await resolveScopeGroup(session, groupId);
-  const members = await db.member.findMany({
-    where: { status: "AKTIF", group: { path: { startsWith: scope.path } } },
-  });
+  const where = { status: "AKTIF", deletedAt: null, group: { path: { startsWith: scope.path } } };
+  const asOf = today(session.timeZone);
 
-  const bySex = Object.fromEntries(SEXES.map((s) => [s, 0])) as Record<Sex, number>;
-  const byMaritalStatus = Object.fromEntries(MARITAL_STATUSES.map((s) => [s, 0])) as Record<
-    MaritalStatus,
-    number
-  >;
-  const byWorkStatus = Object.fromEntries(WORK_STATUSES.map((s) => [s, 0])) as Record<WorkStatus, number>;
-  const byAgeBracket = Object.fromEntries(AGE_BRACKETS.map((b) => [b.label, 0])) as Record<string, number>;
+  const property = (field: "sex" | "maritalStatus" | "workStatus") =>
+    countByProperty(where, { kind: "property", field }, asOf).then(
+      (buckets) => Object.fromEntries(buckets.map((b) => [b.key.slice(2), b.count])),
+    );
+  const ageBuckets = countByAgeBuckets(
+    where,
+    { kind: "ageBuckets", buckets: AGE_BRACKETS.map(({ label, min, max }) => ({ label, min, max })) },
+    asOf,
+  );
+  const children = db.group.findMany({ where: { parentId: scope.id }, orderBy: { name: "asc" } });
 
-  const asOf = today();
-  for (const member of members) {
-    bySex[member.sex as Sex]++;
-    byMaritalStatus[member.maritalStatus as MaritalStatus]++;
-    byWorkStatus[member.workStatus as WorkStatus]++;
-    const age = ageInYears(member.birthDate, asOf);
-    const bracket = AGE_BRACKETS.find((b) => age >= b.min && (b.max === null || age <= b.max));
-    if (bracket) byAgeBracket[bracket.label]++;
-  }
+  const [total, bySex, byMaritalStatus, byWorkStatus, ages, kids, byTag] = await Promise.all([
+    db.member.count({ where }),
+    property("sex") as Promise<Record<Sex, number>>,
+    property("maritalStatus") as Promise<Record<MaritalStatus, number>>,
+    property("workStatus") as Promise<Record<WorkStatus, number>>,
+    ageBuckets,
+    children,
+    tagBreakdown(session, where, options.tagId, asOf),
+  ]);
 
-  const children = await db.group.findMany({ where: { parentId: scope.id }, orderBy: { name: "asc" } });
+  const byAgeBracket = Object.fromEntries(ages.filter((b) => b.key !== "a:other").map((b) => [b.label, b.count]));
   const byDirectSubGroup = await Promise.all(
-    children.map(async (child) => ({
+    kids.map(async (child) => ({
       groupId: child.id,
       groupName: child.name,
       count: await db.member.count({ where: { status: "AKTIF", group: { path: { startsWith: child.path } } } }),
     })),
   );
 
-  return { total: members.length, bySex, byMaritalStatus, byWorkStatus, byAgeBracket, byDirectSubGroup };
+  return { total, bySex, byMaritalStatus, byWorkStatus, byAgeBracket, byDirectSubGroup, byTag };
 }
+
+async function tagBreakdown(
+  session: SessionUser,
+  where: Prisma.MemberWhereInput,
+  tagId: number | undefined,
+  asOf: string,
+): Promise<TagBreakdown | null> {
+  if (tagId === undefined) return null;
+  const tag = await resolveVisibleTag(session, tagId);
+  if (!tag) return null;
+  const buckets =
+    tag.kind === "tag"
+      ? await countByTag(where, { kind: "tag", tagId: tag.tagId }, asOf)
+      : await countByTagKey(where, tag.values);
+  return {
+    tagId: tag.tagId,
+    label: tag.label,
+    kind: tag.kind,
+    buckets: buckets.map(({ key, label, count }) => ({ key, label, count })),
+  };
+}
+
+/** The member columns attendance statistics need (design D4): enough for `expected()` and every breakdown dimension. */
+const ATTENDANCE_MEMBER_SELECT = {
+  id: true,
+  name: true,
+  groupId: true,
+  joinedAt: true,
+  status: true,
+  exitedAt: true,
+  deletedAt: true,
+  sex: true,
+  birthDate: true,
+  maritalStatus: true,
+  workStatus: true,
+} as const;
+
+/** Links of the subtree's members to the tags a tag breakdown looks at; empty for any other dimension. */
+async function loadBreakdownTagLinks(breakdown: Breakdown | null | undefined, groupPath: string): Promise<Map<number, Set<number>>> {
+  const links = new Map<number, Set<number>>();
+  if (!breakdown) return links;
+  const { dimension } = breakdown;
+  const tagIds =
+    dimension.kind === "tagKey" ? breakdown.tagValues.map((v) => v.id) : dimension.kind === "tag" ? [dimension.tagId] : [];
+  if (tagIds.length === 0) return links;
+  const rows = await db.memberTag.findMany({
+    where: { tagId: { in: tagIds }, member: { group: { path: { startsWith: groupPath } } } },
+    select: { memberId: true, tagId: true },
+  });
+  for (const { memberId, tagId } of rows) {
+    const set = links.get(memberId) ?? new Set<number>();
+    set.add(tagId);
+    links.set(memberId, set);
+  }
+  return links;
+}
+
+const NO_TAGS: ReadonlySet<number> = new Set();
 
 export type OccurrenceStat = {
   activityId: number;
@@ -132,6 +212,8 @@ export type ActivityStatistics = {
   occurrences: OccurrenceStat[];
   trend: { date: string; percentHadir: number }[];
   byDirectSubGroup: { groupId: number; groupName: string; percentHadir: number }[];
+  /** Present only when a breakdown was asked for; rows add up to the occurrences' totals. */
+  breakdown: AttendanceBreakdown | null;
 };
 
 function percent(numerator: number, denominator: number): number {
@@ -146,16 +228,21 @@ function percent(numerator: number, denominator: number): number {
  */
 export async function activityStatistics(
   session: SessionUser,
-  { from, to, groupId }: { from: string; to: string; groupId?: number },
+  { from, to, groupId, breakdown = null }: { from: string; to: string; groupId?: number; breakdown?: Breakdown | null },
 ): Promise<ActivityStatistics> {
   const scope = await resolveScopeGroup(session, groupId);
   const groupIds = await relatedGroupIds(scope.path);
   const activities = await db.activity.findMany({ where: { groupId: { in: groupIds } } });
 
-  const members = await db.member.findMany({ where: { group: { path: { startsWith: scope.path } } } });
+  const members = await db.member.findMany({
+    where: { group: { path: { startsWith: scope.path } } },
+    select: ATTENDANCE_MEMBER_SELECT,
+  });
   const membersTyped = members.map((m) => ({ ...m, status: m.status as MemberStatus }));
+  const tagLinks = await loadBreakdownTagLinks(breakdown, scope.path);
 
-  const todayStr = today();
+  const todayStr = today(session.timeZone);
+  const tally = breakdown ? createTally(breakdown, todayStr) : null;
   const occurrenceStats: OccurrenceStat[] = [];
 
   for (const activity of activities) {
@@ -193,6 +280,10 @@ export async function activityStatistics(
         if (!expectedIds.has(attendance.memberId)) continue;
         if (attendance.status === "HADIR") hadir++;
         else if (attendance.status === "IZIN") izin++;
+      }
+      if (tally) {
+        const statusOf = new Map(attendances.map((a) => [a.memberId, a.status]));
+        for (const member of expectedMembers) tally.add(member, tagLinks.get(member.id) ?? NO_TAGS, statusOf.get(member.id));
       }
 
       occurrenceStats.push({
@@ -239,7 +330,12 @@ export async function activityStatistics(
     return { groupId: child.id, groupName: child.name, percentHadir: percent(hadir, expectedTotal) };
   });
 
-  return { occurrences: occurrenceStats, trend, byDirectSubGroup };
+  return {
+    occurrences: occurrenceStats,
+    trend,
+    byDirectSubGroup,
+    breakdown: breakdown && tally ? { label: breakdown.label, rows: tally.rows() } : null,
+  };
 }
 
 export type ActivityOccurrenceAttendance = {
@@ -261,6 +357,8 @@ export type ActivityAttendanceSummary = {
   percentHadir: number;
   /** Per-member breakdown for the same range — "who is actually attending" drill-down. */
   participation: ParticipationRow[];
+  /** Present only when a breakdown was asked for; rows add up to the totals above. */
+  breakdown: AttendanceBreakdown | null;
 };
 
 /**
@@ -274,7 +372,7 @@ export async function activityAttendanceSummary(
   activityId: number,
   template: ActivityTemplate,
   groupPath: string,
-  { from, to }: { from: string; to: string },
+  { from, to, timeZone, breakdown = null }: { from: string; to: string; timeZone: string; breakdown?: Breakdown | null },
 ): Promise<ActivityAttendanceSummary> {
   const occurrenceRows = await db.activityOccurrence.findMany({
     where: {
@@ -295,10 +393,15 @@ export async function activityAttendanceSummary(
     hasAttendance: r.attendances.length > 0,
   }));
 
-  const members = await db.member.findMany({ where: { group: { path: { startsWith: groupPath } } } });
+  const members = await db.member.findMany({
+    where: { group: { path: { startsWith: groupPath } } },
+    select: ATTENDANCE_MEMBER_SELECT,
+  });
   const membersTyped = members.map((m) => ({ ...m, status: m.status as MemberStatus }));
+  const tagLinks = await loadBreakdownTagLinks(breakdown, groupPath);
 
-  const todayStr = today();
+  const todayStr = today(timeZone);
+  const breakdownTally = breakdown ? createTally(breakdown, todayStr) : null;
   const occurrences: ActivityOccurrenceAttendance[] = [];
   const memberTally = new Map(membersTyped.map((m) => [m.id, { occurrenceCount: 0, hadir: 0, izin: 0 }]));
 
@@ -317,6 +420,7 @@ export async function activityAttendanceSummary(
       const tally = memberTally.get(member.id)!;
       tally.occurrenceCount++;
       const status = attendanceByMember.get(member.id);
+      breakdownTally?.add(member, tagLinks.get(member.id) ?? NO_TAGS, status);
       if (status === "HADIR") {
         hadir++;
         tally.hadir++;
@@ -362,6 +466,7 @@ export async function activityAttendanceSummary(
     totalIzin,
     percentHadir: percent(totalHadir, totalExpected),
     participation,
+    breakdown: breakdown && breakdownTally ? { label: breakdown.label, rows: breakdownTally.rows() } : null,
   };
 }
 
@@ -457,7 +562,7 @@ export async function participationStatistics(
     include: { group: { select: { path: true } } },
   });
 
-  const todayStr = today();
+  const todayStr = today(session.timeZone);
   return members.map((member) => {
     const windowStart = maxDate(from, member.joinedAt);
     const windowEnd = minDate(to, member.exitedAt ?? todayStr);

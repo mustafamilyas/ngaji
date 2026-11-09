@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { SortableTh, TableCard, tableClass, tdClass, thClass, theadRowClass, trClass } from "@/components/data-table";
 import { FilterBar, SearchFilter } from "@/components/filters/filter-bar";
 import { GroupFilter } from "@/components/filters/group-filter";
+import { SortSelect } from "@/components/filters/sort-select";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -12,7 +13,7 @@ import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
 import { parseGroupIds, parsePage, parseSearch } from "@/lib/filters";
 import { pageHref } from "@/lib/pagination";
-import { parseSort, sortHref, sortPreserve } from "@/lib/sort";
+import { parseSort, sortHref } from "@/lib/sort";
 import { DEFAULT_USER_SORT, listUsers, USER_SORT_KEYS, type UserSortKey } from "@/lib/user/queries";
 import { userRowPermissions } from "@/lib/user/row-permissions";
 import { cn, initials } from "@/lib/utils";
@@ -26,6 +27,13 @@ const COLUMNS: { key: UserSortKey; label: string }[] = [
   { key: "grup", label: "Grup" },
   { key: "status", label: "Status" },
 ];
+
+const stackedCell =
+  "col-span-2 flex items-center justify-between gap-3 px-0 py-0 text-sm whitespace-normal md:table-cell md:px-4 md:py-2.5 md:whitespace-nowrap";
+
+function PhoneLabel({ children }: { children: React.ReactNode }) {
+  return <span className="shrink-0 text-xs text-muted-foreground md:hidden">{children}</span>;
+}
 
 export default async function UsersPage({
   searchParams,
@@ -70,6 +78,7 @@ export default async function UsersPage({
     />
   );
 
+  // Below md the same table markup is laid out as one card per user (no sideways scrolling); sort headers are table-only.
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -88,12 +97,21 @@ export default async function UsersPage({
         toolbar={
           <FilterBar
             action="/dashboard/pengguna"
-            preserve={sortPreserve(sort, DEFAULT_USER_SORT)}
             isFiltered={isFiltered}
             resetHref="/dashboard/pengguna"
+            activeCount={groupIds ? 1 : 0}
+            more={
+              <>
+                <GroupFilter groups={groups} selected={groupIds ?? []} hint="Termasuk semua grup di bawahnya." />
+                <SortSelect
+                  options={[{ key: "nama", label: "Nama" }, ...COLUMNS]}
+                  current={sort}
+                  fallback={DEFAULT_USER_SORT}
+                />
+              </>
+            }
           >
             <SearchFilter value={q} placeholder="Cari nama atau username…" />
-            <GroupFilter groups={groups} selected={groupIds ?? []} hint="Termasuk semua grup di bawahnya." />
           </FilterBar>
         }
         footer={
@@ -108,9 +126,9 @@ export default async function UsersPage({
         }
       >
         {roles.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className={tableClass}>
-              <thead>
+          <div className="relative overflow-x-auto">
+            <table className={cn(tableClass, "block md:table")}>
+              <thead className="hidden md:table-header-group">
                 <tr className={theadRowClass}>
                   {th("nama", "Nama")}
                   {COLUMNS.map((c) => th(c.key, c.label))}
@@ -119,7 +137,7 @@ export default async function UsersPage({
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody data-records className="block md:table-row-group">
                 {roles.map((userRole) => {
                   const role = userRole.role as (typeof ROLES)[number];
                   const { canManage, canReset } = userRowPermissions({
@@ -130,8 +148,11 @@ export default async function UsersPage({
                     isSelf: String(userRole.user.id) === session.user.id,
                   });
                   return (
-                    <tr key={userRole.id} className={trClass}>
-                      <th scope="row" className={cn(tdClass, "text-left font-medium")}>
+                    <tr
+                      key={userRole.id}
+                      className={cn(trClass, "grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1 px-4 py-3 md:table-row md:p-0")}
+                    >
+                      <th scope="row" className={cn(tdClass, "block p-0 text-left font-medium whitespace-normal md:table-cell md:px-4 md:py-2.5 md:whitespace-nowrap")}>
                         <span className="flex items-center gap-2.5">
                           <Avatar size="sm">
                             <AvatarFallback>{initials(userRole.user.name)}</AvatarFallback>
@@ -139,12 +160,25 @@ export default async function UsersPage({
                           {userRole.user.name}
                         </span>
                       </th>
-                      <td className={cn(tdClass, "text-muted-foreground")}>@{userRole.user.username}</td>
-                      <td className={tdClass}>
-                        <Badge variant="secondary">{role}</Badge>
+                      <td className={cn(stackedCell, "text-muted-foreground")}>
+                        <PhoneLabel>Username</PhoneLabel>
+                        <span>@{userRole.user.username}</span>
                       </td>
-                      <td className={tdClass}>{userRole.group.name}</td>
-                      <td className={tdClass}>
+                      <td className={stackedCell}>
+                        <PhoneLabel>Peran</PhoneLabel>
+                        <Badge variant="secondary">{role}</Badge>
+                        {userRole.user.extraRoles.length > 0 && (
+                          <span className="ml-1.5 text-xs text-muted-foreground">
+                            +ADMIN di {userRole.user.extraRoles.map((extra) => extra.group.name).join(", ")}
+                          </span>
+                        )}
+                      </td>
+                      <td className={stackedCell}>
+                        <PhoneLabel>Grup</PhoneLabel>
+                        <span>{userRole.group.name}</span>
+                      </td>
+                      <td className={stackedCell}>
+                        <PhoneLabel>Status</PhoneLabel>
                         {userRole.user.isActive ? (
                           <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
                             Aktif
@@ -155,7 +189,7 @@ export default async function UsersPage({
                           </span>
                         )}
                       </td>
-                      <td className="px-2 py-1 text-right">
+                      <td className="col-start-2 row-start-1 p-0 text-right md:px-2 md:py-1">
                         {(canManage || canReset) && (
                           <ManageUserDialog
                             userId={userRole.user.id}
@@ -166,6 +200,10 @@ export default async function UsersPage({
                             canManage={canManage}
                             canReset={canReset}
                             groups={groups}
+                            extraRoles={userRole.user.extraRoles.map((extra) => ({
+                              groupId: extra.groupId,
+                              groupName: extra.group.name,
+                            }))}
                           />
                         )}
                       </td>

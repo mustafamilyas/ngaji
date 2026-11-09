@@ -5,8 +5,11 @@ import { expandDates } from "../lib/activity/expand";
 import { addDays, daysBetween, today } from "../lib/dates";
 import { AGE_BRACKETS } from "../lib/constants";
 import type { Prisma } from "../lib/generated/prisma/client";
+import { backfillMemberCodes } from "../lib/member/code-backfill";
+import { linkMembers } from "../lib/member/relation-mutations";
 import { definitionSchema, newViewDefinition } from "../lib/validation/member-view";
 import type { AttendanceStatus, MemberStatus, Role } from "../lib/validation/enums";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 const LEVEL_NAMES = ["pusat", "daerah", "desa", "kelompok"];
 
@@ -157,6 +160,94 @@ async function seedHistory(
   }
 }
 
+/**
+ * A second, fully separate organization (3 levels, WITA) so cross-organization
+ * isolation can be exercised by hand and in tests. Shares nothing with the
+ * main tree: own levels, root group, OWNER, members and activities.
+ */
+async function seedSecondOrganization() {
+  const organization = await db.organization.create({
+    data: { name: "Majelis An-Nur", timezone: "Asia/Makassar", memberCodePrefix: "ANR" },
+  });
+  for (const [depth, name] of ["pusat", "cabang", "kelompok"].entries()) {
+    await db.level.create({ data: { organizationId: organization.id, depth, name } });
+  }
+
+  const pusat = await createGroup(organization.id, null, 0, "Majelis Pusat");
+  const cabangMakassar = await createGroup(organization.id, pusat, 1, "Cabang Makassar");
+  const kelompokSatu = await createGroup(organization.id, cabangMakassar, 2, "Kelompok Satu");
+  const kelompokDua = await createGroup(organization.id, cabangMakassar, 2, "Kelompok Dua");
+
+  const owner = await createUser("admin_annur", "annur123", "Admin An-Nur", pusat.id, "OWNER");
+
+  const people = [
+    { name: "Hasan Basri", sex: "L", group: kelompokSatu },
+    { name: "Siti Aisyah", sex: "P", group: kelompokSatu },
+    { name: "Yusuf Daeng", sex: "L", group: kelompokSatu },
+    { name: "Nurhaliza", sex: "P", group: kelompokDua },
+    { name: "Andi Mappanyukki", sex: "L", group: kelompokDua },
+    { name: "Fatimah Azzahra", sex: "P", group: kelompokDua },
+  ] as const;
+  for (const [i, person] of people.entries()) {
+    await db.member.create({
+      data: {
+        groupId: person.group.id,
+        name: person.name,
+        birthPlace: "Makassar",
+        birthDate: `${1980 + i * 5}-0${i + 1}-1${i}`,
+        sex: person.sex,
+        address: `Jl. Pelita No. ${i + 1}, Makassar`,
+        phone: `0813${String(2000000 + i).padStart(7, "0")}`,
+        maritalStatus: "MENIKAH",
+        workStatus: "BEKERJA",
+        status: "AKTIF",
+        joinedAt: "2024-01-01",
+        createdById: owner.id,
+      },
+    });
+  }
+
+  await db.activity.create({
+    data: {
+      groupId: kelompokSatu.id,
+      name: "Kajian Ba'da Maghrib",
+      location: "Musala An-Nur Satu",
+      notes: "Kajian mingguan Kelompok Satu",
+      startTime: "18:30",
+      durationMinutes: 60,
+      freq: "WEEKLY",
+      interval: 1,
+      weekdays: [5], // Friday
+      monthDay: null,
+      startsOn: "2024-01-05",
+      endsOn: null,
+      createdById: owner.id,
+    },
+  });
+  await db.activity.create({
+    data: {
+      groupId: cabangMakassar.id,
+      name: "Pertemuan Cabang Makassar",
+      location: "Aula Cabang Makassar",
+      startTime: "09:00",
+      durationMinutes: 120,
+      freq: "MONTHLY",
+      interval: 1,
+      weekdays: [],
+      monthDay: 15,
+      startsOn: "2024-01-15",
+      endsOn: null,
+      createdById: owner.id,
+    },
+  });
+
+  const pemula = await db.tag.create({
+    data: { groupId: kelompokSatu.id, createdById: owner.id, key: "pemula", color: "amber" },
+  });
+  const firstMember = await db.member.findFirstOrThrow({ where: { groupId: kelompokSatu.id }, orderBy: { id: "asc" } });
+  await db.memberTag.create({ data: { memberId: firstMember.id, tagId: pemula.id, createdById: owner.id } });
+}
+
 async function main() {
   const existing = await db.user.findUnique({ where: { username: "admin" } });
   if (existing) {
@@ -166,7 +257,7 @@ async function main() {
   }
 
   const organization = await db.organization.create({
-    data: { name: "Yayasan Ngaji Nusantara", timezone: "Asia/Jakarta" },
+    data: { name: "Yayasan Ngaji Nusantara", timezone: "Asia/Jakarta", memberCodePrefix: "YNN" },
   });
 
   for (const [depth, name] of LEVEL_NAMES.entries()) {
@@ -298,7 +389,7 @@ async function main() {
   const recentJoiner = mentengMembers[mentengMembers.length - 1];
   await db.member.update({
     where: { id: recentJoiner.id },
-    data: { joinedAt: addDays(today(), -20) },
+    data: { joinedAt: addDays(today(DEFAULT_TIMEZONE), -20) },
   });
 
   // Edge case: a member who left only 14 days ago — still `expected()` (and
@@ -317,7 +408,7 @@ async function main() {
       workStatus: "IBU_RUMAH_TANGGA",
       status: "KELUAR",
       joinedAt: "2023-01-01",
-      exitedAt: addDays(today(), -14),
+      exitedAt: addDays(today(DEFAULT_TIMEZONE), -14),
       createdById: owner.id,
     },
   });
@@ -466,8 +557,8 @@ async function main() {
       interval: 1,
       weekdays: [],
       monthDay: null,
-      startsOn: addDays(today(), 4),
-      endsOn: addDays(today(), 4),
+      startsOn: addDays(today(DEFAULT_TIMEZONE), 4),
+      endsOn: addDays(today(DEFAULT_TIMEZONE), 4),
       createdById: owner.id,
     },
   });
@@ -493,8 +584,8 @@ async function main() {
 
   // --- Historical occurrences & attendance ------------------------------
 
-  const historyFrom = addDays(today(), -63);
-  const historyTo = addDays(today(), -1);
+  const historyFrom = addDays(today(DEFAULT_TIMEZONE), -63);
+  const historyTo = addDays(today(DEFAULT_TIMEZONE), -1);
   const historyDatesA = expandDates(
     { freq: "WEEKLY", interval: 1, weekdays: [4], monthDay: null, startsOn: "2023-01-05", endsOn: null },
     historyFrom,
@@ -506,9 +597,9 @@ async function main() {
 
   const activityAMembers = [...mentengMembers.slice(0, -1), recentJoiner, recentLeaver].map((m) => ({
     id: m.id,
-    joinedAt: m.id === recentJoiner.id ? addDays(today(), -20) : m.joinedAt,
+    joinedAt: m.id === recentJoiner.id ? addDays(today(DEFAULT_TIMEZONE), -20) : m.joinedAt,
     status: m.id === recentLeaver.id ? "KELUAR" : m.status,
-    exitedAt: m.id === recentLeaver.id ? addDays(today(), -14) : m.exitedAt,
+    exitedAt: m.id === recentLeaver.id ? addDays(today(DEFAULT_TIMEZONE), -14) : m.exitedAt,
   }));
 
   await seedHistory(activityA.id, historyDatesA, activityAMembers, userKelompok.id, {
@@ -522,8 +613,8 @@ async function main() {
   // turnout against an org-wide `expected()` denominator.
   const monthlyDatesC = expandDates(
     { freq: "MONTHLY", interval: 1, weekdays: [], monthDay: 31, startsOn: "2023-01-31", endsOn: null },
-    addDays(today(), -360),
-    addDays(today(), -30),
+    addDays(today(DEFAULT_TIMEZONE), -360),
+    addDays(today(DEFAULT_TIMEZONE), -30),
   );
   const pastMonthlyDate = monthlyDatesC[monthlyDatesC.length - 1];
   if (pastMonthlyDate) {
@@ -659,8 +750,62 @@ async function main() {
     });
   }
 
+  // --- Tags (Desa Menteng and Kelompok A) ---------------------------------
+
+  // Desa-owned key "prioritas" (exclusive per entity) and simple tag, plus a
+  // kelompok-owned simple tag; the sibling Kelompok B must not see the latter.
+  const tagData = (groupId: number, createdById: number, key: string, color: string, value: string | null = null) =>
+    db.tag.create({ data: { groupId, createdById, key, value, color } });
+  const prioritasTinggi = await tagData(desaMenteng.id, adminDesa.id, "prioritas", "red", "tinggi");
+  await tagData(desaMenteng.id, adminDesa.id, "prioritas", "green", "rendah");
+  const binaan = await tagData(desaMenteng.id, adminDesa.id, "binaan", "indigo");
+  const fokus = await tagData(kelompokA_Menteng.id, userKelompok.id, "fokus", "teal");
+  const taggedMembers = await db.member.findMany({
+    where: { groupId: kelompokA_Menteng.id, deletedAt: null },
+    orderBy: { id: "asc" },
+    take: 3,
+  });
+  for (const [i, member] of taggedMembers.entries()) {
+    const tagIds = [i === 0 ? prioritasTinggi.id : null, i < 2 ? binaan.id : null, fokus.id].filter((id) => id !== null);
+    for (const tagId of tagIds) {
+      await db.memberTag.create({ data: { memberId: member.id, tagId, createdById: adminDesa.id } });
+    }
+  }
+  await db.activityTag.create({ data: { activityId: activityA.id, tagId: prioritasTinggi.id, createdById: adminDesa.id } });
+  await db.activityTag.create({ data: { activityId: activityA.id, tagId: fokus.id, createdById: userKelompok.id } });
+
+  // --- Family relations --------------------------------------------------
+
+  // Through the real link logic (scope, pair rules, audit). The first Kelompok A member (the viewport audit's
+  // member) gets a parent, a child and a sibling in Kelompok B, which a Kelompok A user sees as plain text.
+  const desaSession = {
+    id: String(adminDesa.id),
+    username: adminDesa.username,
+    name: adminDesa.name,
+    role: "ADMIN" as const,
+    groupId: desaMenteng.id,
+    groupPath: desaMenteng.path,
+    organizationId: organization.id,
+    timeZone: DEFAULT_TIMEZONE,
+    mustChangePassword: false,
+  };
+  const [familyHead, familyChild, familyParent] = taggedMembers;
+  const siblingInB = await db.member.findFirstOrThrow({
+    where: { groupId: kelompokB_Menteng.id, deletedAt: null },
+    orderBy: { id: "asc" },
+  });
+  if (familyHead && familyChild && familyParent) {
+    await linkMembers(desaSession, { fromMemberId: familyHead.id, toMemberId: familyChild.id, type: "ORANG_TUA" });
+    await linkMembers(desaSession, { fromMemberId: familyParent.id, toMemberId: familyHead.id, type: "ORANG_TUA" });
+    await linkMembers(desaSession, { fromMemberId: familyHead.id, toMemberId: siblingInB.id, type: "SAUDARA" });
+  }
+
+  await seedSecondOrganization();
+  // Members are created above without codes; the production backfill assigns them all (soft-deleted too).
+  await backfillMemberCodes(new Map());
+
   console.log(
-    `Seed complete: ${index + 2} members, ${kelompokGroups.length} kelompok groups, 7 activities (1 conflicted, 1 monthly-edge, 1 ended, 1 split, 1 upcoming, 1 soft-deleted), 1 survey with responses, 2 member views, historical attendance over ${historyDatesA.length} weeks.`,
+    `Seed complete: ${index + 2} members, ${kelompokGroups.length} kelompok groups, 7 activities (1 conflicted, 1 monthly-edge, 1 ended, 1 split, 1 upcoming, 1 soft-deleted), 1 survey with responses, 2 member views, 4 tags (+1 in the second organization), historical attendance over ${historyDatesA.length} weeks. Second organization \"Majelis An-Nur\" (admin_annur): 6 members, 2 activities.`,
   );
 }
 

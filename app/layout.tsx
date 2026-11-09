@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Roboto } from "next/font/google";
 import { auth } from "@/auth";
-import { getOrganizationName } from "@/lib/organization";
+import { getOrganization } from "@/lib/organization";
 import "./globals.css";
 
 const roboto = Roboto({
@@ -23,7 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
   if (!session) {
     return { title: { default: "Dahan", template: "%s · Dahan" }, description: DESCRIPTION };
   }
-  const organizationName = await getOrganizationName();
+  const { name: organizationName } = await getOrganization(session);
   return {
     title: { default: `${organizationName} · Dahan`, template: `%s · ${organizationName}` },
     description: DESCRIPTION,

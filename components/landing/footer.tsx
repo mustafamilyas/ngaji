@@ -12,7 +12,7 @@ export function Footer() {
       <p>Dahan, manajemen anggota dan kegiatan organisasi berjenjang.</p>
       <nav aria-label="Tautan" className="flex flex-wrap gap-x-5 gap-y-1">
         {LINKS.map((link) => (
-          <Link key={link.href} href={link.href} className="py-1.5 underline-offset-4 hover:text-(--l-ink) hover:underline">
+          <Link key={link.href} href={link.href} className="inline-flex min-h-11 items-center underline-offset-4 hover:text-(--l-ink) hover:underline">
             {link.label}
           </Link>
         ))}

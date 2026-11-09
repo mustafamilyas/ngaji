@@ -20,17 +20,17 @@ describe("GroupTreePage", () => {
 
     const html = renderToStaticMarkup(await GroupTreePage());
     expect(html).toContain("Root");
-    expect(html).toContain("Pengaturan jenjang");
+    expect(html).toContain('href="/dashboard/pengaturan"');
   });
 
-  it("renders without crashing for a non-root session (no jenjang link)", async () => {
+  it("renders without crashing for a non-root session (no settings link)", async () => {
     const fixture = await buildPageFixture("grup-tree-leaf");
     const session = sessionFor(fixture.actorId, "USER", fixture.leaf);
     mockAuthSession(auth, { user: session });
 
     const html = renderToStaticMarkup(await GroupTreePage());
     expect(html).toContain("Leaf");
-    expect(html).not.toContain("Pengaturan jenjang");
+    expect(html).not.toContain('href="/dashboard/pengaturan"');
   });
 
   it("redirects to /login when there is no session", async () => {

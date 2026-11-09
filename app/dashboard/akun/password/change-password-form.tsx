@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
+import { touchField } from "@/components/ui/touch";
 import { changePasswordAction, type ChangePasswordState } from "./actions";
 
 const initialState: ChangePasswordState = { error: null };
@@ -21,7 +22,7 @@ export function ChangePasswordForm() {
           type="password"
           autoComplete="current-password"
           required
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className={touchField}
         />
       </div>
       <div className="flex flex-col gap-1.5">
@@ -35,7 +36,7 @@ export function ChangePasswordForm() {
           autoComplete="new-password"
           minLength={8}
           required
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className={touchField}
         />
         <p className="text-xs text-muted-foreground">Minimal 8 karakter.</p>
       </div>

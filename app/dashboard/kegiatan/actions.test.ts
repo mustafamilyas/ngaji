@@ -28,7 +28,7 @@ describe("updateActivityAction id validation", () => {
   });
 
   it("activityId 'abc' rejected with the generic validation error", async () => {
-    mockAuthSession(auth, { user: sessionFor(1, "ADMIN", { id: 1, path: "1/" }) });
+    mockAuthSession(auth, { user: sessionFor(1, "ADMIN", { id: 1, path: "1/", organizationId: 1 }) });
 
     const result = await updateActivityAction("abc", validInput);
 

@@ -41,7 +41,7 @@ export default async function SplitActivityPage({ params }: { params: Promise<{ 
     interval: activity.interval,
     weekdays: activity.weekdays as number[],
     monthDay: activity.monthDay ?? undefined,
-    startsOn: today(),
+    startsOn: today(session.user.timeZone),
     endsOn: activity.endsOn ?? undefined,
   };
 

@@ -4,9 +4,20 @@
     {
       "name": "ngaji-dev",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["dev"],
+      "runtimeArgs": [
+        "dev"
+      ],
       "port": 3000,
       "autoPort": true
+    },
+    {
+      "name": "ngaji-scratch",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "dev:scratch"
+      ],
+      "port": 3100,
+      "autoPort": false
     }
   ]
 }

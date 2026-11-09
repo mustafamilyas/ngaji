@@ -2,16 +2,23 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { emptyDefinition, type Definition } from "@/lib/validation/member-view";
+import type { Summary } from "@/lib/validation/summary";
 import {
   resolveDefinitionGroupsLenient,
   resolveDefinitionGroupsStrict,
+  resolveDefinitionTagsLenient,
+  resolveDefinitionSummariesLenient,
+  resolveDefinitionSummariesStrict,
+  resolveDefinitionTagsStrict,
   resolveMemberView,
   resolveActivity,
   resolveGroup,
   resolveMember,
   resolveOccurrence,
   resolveSurvey,
+  resolveTag,
   resolveUser,
+  resolveVisibleTags,
 } from "./resolve";
 import type { SessionUser } from "./auth/session-user";
 
@@ -23,6 +30,8 @@ function sessionAt(groupId: number, groupPath: string): SessionUser {
     role: "ADMIN",
     groupId,
     groupPath,
+    organizationId: 0,
+    timeZone: "Asia/Jakarta",
     mustChangePassword: false,
   };
 }
@@ -497,6 +506,298 @@ describe("lib/resolve", () => {
         await resolveDefinitionGroupsLenient(session, definition);
         expect(definition).toEqual(snapshot);
       });
+    });
+  });
+
+  describe("definition tag resolution", () => {
+    const newTag = (groupId: number, key: string, extra: { deletedAt?: Date } = {}) =>
+      db.tag.create({ data: { groupId, key, color: "blue", createdById: owner.id, ...extra } });
+
+    function definitionWith(...ruleValues: number[][]): Definition {
+      const definition = emptyDefinition();
+      definition.filter.groups = ruleValues.map((value) => ({
+        op: "AND" as const,
+        rules: [{ field: "tag" as const, operator: "hasAnyOf" as const, value }],
+      }));
+      return definition;
+    }
+    const tagValues = (definition: Definition) => definition.filter.groups.map((g) => g.rules[0].value);
+
+    describe("strict", () => {
+      it("accepts own, inherited and descendant tags", async () => {
+        const own = await newTag(branchA.id, "strict-own");
+        const inherited = await newTag(root.id, "strict-inherited");
+        const below = await newTag(leafA.id, "strict-below");
+        const session = sessionAt(branchA.id, branchA.path);
+        await expect(
+          resolveDefinitionTagsStrict(session, definitionWith([own.id, inherited.id, below.id])),
+        ).resolves.toBeUndefined();
+      });
+
+      it("accepts a definition without tag rules", async () => {
+        await expect(resolveDefinitionTagsStrict(sessionAt(branchA.id, branchA.path), emptyDefinition())).resolves.toBeUndefined();
+      });
+
+      it("rejects a sibling-branch tag", async () => {
+        const sibling = await newTag(branchB.id, "strict-sibling");
+        await expect(
+          resolveDefinitionTagsStrict(sessionAt(branchA.id, branchA.path), definitionWith([sibling.id])),
+        ).rejects.toBeInstanceOf(ValidationError);
+      });
+
+      it("rejects an unknown id and a deleted tag with the same error", async () => {
+        const deleted = await newTag(branchA.id, "strict-gone", { deletedAt: new Date() });
+        const session = sessionAt(branchA.id, branchA.path);
+        const unknown = await resolveDefinitionTagsStrict(session, definitionWith([999_999_999])).catch((e) => e);
+        const gone = await resolveDefinitionTagsStrict(session, definitionWith([deleted.id])).catch((e) => e);
+        expect(unknown).toBeInstanceOf(ValidationError);
+        expect(gone).toBeInstanceOf(ValidationError);
+        expect(gone.message).toBe(unknown.message);
+      });
+
+      it("rejects a tag of another organization with the same error as an unknown id", async () => {
+        const otherOrg = await db.organization.create({ data: { name: "Other Rule Tag Org" } });
+        const otherRoot = await db.group.create({ data: { organizationId: otherOrg.id, depth: 0, name: "Other Root", path: "" } });
+        await db.group.update({ where: { id: otherRoot.id }, data: { path: `${otherRoot.id}/` } });
+        const foreign = await newTag(otherRoot.id, "strict-foreign");
+        const session = sessionAt(branchA.id, branchA.path);
+        const foreignError = await resolveDefinitionTagsStrict(session, definitionWith([foreign.id])).catch((e) => e);
+        const unknownError = await resolveDefinitionTagsStrict(session, definitionWith([999_999_999])).catch((e) => e);
+        expect(foreignError).toBeInstanceOf(ValidationError);
+        expect(foreignError.message).toBe(unknownError.message);
+      });
+
+      it("rejects when one id of several is unusable", async () => {
+        const own = await newTag(branchA.id, "strict-mixed-own");
+        const sibling = await newTag(branchB.id, "strict-mixed-sibling");
+        await expect(
+          resolveDefinitionTagsStrict(sessionAt(branchA.id, branchA.path), definitionWith([own.id, sibling.id])),
+        ).rejects.toBeInstanceOf(ValidationError);
+      });
+    });
+
+    describe("lenient", () => {
+      it("keeps visible tags and reports nothing dropped", async () => {
+        const own = await newTag(branchA.id, "lenient-own");
+        const inherited = await newTag(root.id, "lenient-inherited");
+        const result = await resolveDefinitionTagsLenient(sessionAt(branchA.id, branchA.path), definitionWith([own.id, inherited.id]));
+        expect(result.dropped).toBe(false);
+        expect(tagValues(result.definition)).toEqual([[own.id, inherited.id]]);
+      });
+
+      it("removes unusable ids from a rule and keeps the rest", async () => {
+        const own = await newTag(branchA.id, "lenient-keep");
+        const sibling = await newTag(branchB.id, "lenient-sibling");
+        const deleted = await newTag(branchA.id, "lenient-gone", { deletedAt: new Date() });
+        const result = await resolveDefinitionTagsLenient(
+          sessionAt(branchA.id, branchA.path),
+          definitionWith([own.id, sibling.id, deleted.id, 999_999_999]),
+        );
+        expect(result.dropped).toBe(true);
+        expect(tagValues(result.definition)).toEqual([[own.id]]);
+      });
+
+      it("drops a rule left with no ids, and its group, but keeps other rules", async () => {
+        const gone = await newTag(branchA.id, "lenient-only", { deletedAt: new Date() });
+        const definition = definitionWith([gone.id]);
+        definition.filter.groups.push({ op: "AND", rules: [{ field: "sex", operator: "isAnyOf", value: ["L"] }] });
+        const result = await resolveDefinitionTagsLenient(sessionAt(branchA.id, branchA.path), definition);
+        expect(result.dropped).toBe(true);
+        expect(result.definition.filter.groups).toEqual([{ op: "AND", rules: [{ field: "sex", operator: "isAnyOf", value: ["L"] }] }]);
+      });
+
+      it("does not mutate its input", async () => {
+        const gone = await newTag(branchA.id, "lenient-nomutate", { deletedAt: new Date() });
+        const definition = definitionWith([gone.id]);
+        await resolveDefinitionTagsLenient(sessionAt(branchA.id, branchA.path), definition);
+        expect(tagValues(definition)).toEqual([[gone.id]]);
+      });
+    });
+  });
+
+  describe("definition summary resolution", () => {
+    const newTag = (groupId: number, key: string, value: string | null, extra: { deletedAt?: Date } = {}) =>
+      db.tag.create({ data: { groupId, key, value, color: "blue", createdById: owner.id, ...extra } });
+
+    function definitionWith(...dimensions: Summary["dimension"][]): Definition {
+      return { ...emptyDefinition(), summaries: dimensions.map((dimension) => ({ dimension })) };
+    }
+    const kinds = (definition: Definition) => (definition.summaries ?? []).map((s) => s.dimension.kind);
+
+    describe("strict", () => {
+      it("accepts a definition without summaries and summaries without tags", async () => {
+        const session = sessionAt(branchA.id, branchA.path);
+        await expect(resolveDefinitionSummariesStrict(session, emptyDefinition())).resolves.toBeUndefined();
+        await expect(
+          resolveDefinitionSummariesStrict(session, definitionWith({ kind: "property", field: "sex" })),
+        ).resolves.toBeUndefined();
+      });
+
+      it("accepts own, inherited and descendant tags as key anchor and as simple tag", async () => {
+        const own = await newTag(branchA.id, "sum-strict-own", "a");
+        const inherited = await newTag(root.id, "sum-strict-inh", null);
+        const below = await newTag(leafA.id, "sum-strict-below", "b");
+        await expect(
+          resolveDefinitionSummariesStrict(
+            sessionAt(branchA.id, branchA.path),
+            definitionWith({ kind: "tagKey", tagId: own.id }, { kind: "tag", tagId: inherited.id }, { kind: "tagKey", tagId: below.id }),
+          ),
+        ).resolves.toBeUndefined();
+      });
+
+      it("rejects an org level above the viewer's group and accepts their own and below", async () => {
+        const session = sessionAt(branchA.id, branchA.path);
+        const level = (depth: number) => definitionWith({ kind: "groupLevel", depth });
+        await expect(resolveDefinitionSummariesStrict(session, level(0))).rejects.toBeInstanceOf(ValidationError);
+        await expect(resolveDefinitionSummariesStrict(session, level(1))).resolves.toBeUndefined();
+        await expect(resolveDefinitionSummariesStrict(session, level(2))).resolves.toBeUndefined();
+      });
+
+      it("rejects a sibling-branch tag", async () => {
+        const sibling = await newTag(branchB.id, "sum-strict-sibling", "x");
+        await expect(
+          resolveDefinitionSummariesStrict(sessionAt(branchA.id, branchA.path), definitionWith({ kind: "tagKey", tagId: sibling.id })),
+        ).rejects.toBeInstanceOf(ValidationError);
+      });
+
+      it("rejects an unknown id and a deleted tag with the same error", async () => {
+        const deleted = await newTag(branchA.id, "sum-strict-gone", "x", { deletedAt: new Date() });
+        const session = sessionAt(branchA.id, branchA.path);
+        const unknown = await resolveDefinitionSummariesStrict(session, definitionWith({ kind: "tagKey", tagId: 999_999_999 })).catch((e) => e);
+        const gone = await resolveDefinitionSummariesStrict(session, definitionWith({ kind: "tagKey", tagId: deleted.id })).catch((e) => e);
+        expect(unknown).toBeInstanceOf(ValidationError);
+        expect(gone.message).toBe(unknown.message);
+      });
+
+      it("rejects a tag of another organization with the same error as an unknown id", async () => {
+        const otherOrg = await db.organization.create({ data: { name: "Other Summary Tag Org" } });
+        const otherRoot = await db.group.create({ data: { organizationId: otherOrg.id, depth: 0, name: "Other Root", path: "" } });
+        await db.group.update({ where: { id: otherRoot.id }, data: { path: `${otherRoot.id}/` } });
+        const foreign = await newTag(otherRoot.id, "sum-strict-foreign", "x");
+        const session = sessionAt(branchA.id, branchA.path);
+        const foreignError = await resolveDefinitionSummariesStrict(session, definitionWith({ kind: "tagKey", tagId: foreign.id })).catch((e) => e);
+        const unknownError = await resolveDefinitionSummariesStrict(session, definitionWith({ kind: "tagKey", tagId: 999_999_999 })).catch((e) => e);
+        expect(foreignError).toBeInstanceOf(ValidationError);
+        expect(foreignError.message).toBe(unknownError.message);
+      });
+
+      it("rejects a key summary anchored on a simple tag and a simple-tag summary on a key value", async () => {
+        const simple = await newTag(branchA.id, "sum-strict-simple", null);
+        const valued = await newTag(branchA.id, "sum-strict-valued", "v");
+        const session = sessionAt(branchA.id, branchA.path);
+        await expect(
+          resolveDefinitionSummariesStrict(session, definitionWith({ kind: "tagKey", tagId: simple.id })),
+        ).rejects.toBeInstanceOf(ValidationError);
+        await expect(
+          resolveDefinitionSummariesStrict(session, definitionWith({ kind: "tag", tagId: valued.id })),
+        ).rejects.toBeInstanceOf(ValidationError);
+      });
+    });
+
+    describe("lenient", () => {
+      it("keeps usable summaries in order and reports nothing dropped", async () => {
+        const own = await newTag(branchA.id, "sum-len-own", "a");
+        const result = await resolveDefinitionSummariesLenient(
+          sessionAt(branchA.id, branchA.path),
+          definitionWith({ kind: "property", field: "sex" }, { kind: "tagKey", tagId: own.id }),
+        );
+        expect(result.dropped).toBe(false);
+        expect(kinds(result.definition)).toEqual(["property", "tagKey"]);
+      });
+
+      it("drops summaries of sibling, deleted, unknown and mismatched tags and flags it", async () => {
+        const sibling = await newTag(branchB.id, "sum-len-sibling", "x");
+        const deleted = await newTag(branchA.id, "sum-len-gone", null, { deletedAt: new Date() });
+        const valued = await newTag(branchA.id, "sum-len-valued", "v");
+        const result = await resolveDefinitionSummariesLenient(
+          sessionAt(branchA.id, branchA.path),
+          definitionWith(
+            { kind: "tagKey", tagId: sibling.id },
+            { kind: "tag", tagId: deleted.id },
+            { kind: "tagKey", tagId: 999_999_999 },
+            { kind: "tag", tagId: valued.id },
+            { kind: "property", field: "status" },
+          ),
+        );
+        expect(result.dropped).toBe(true);
+        expect(kinds(result.definition)).toEqual(["property"]);
+      });
+
+      it("drops a key summary whose anchor value was deleted, even if the key has other values", async () => {
+        const anchor = await newTag(branchA.id, "sum-len-anchor", "a", { deletedAt: new Date() });
+        await newTag(branchA.id, "sum-len-anchor", "b");
+        const result = await resolveDefinitionSummariesLenient(
+          sessionAt(branchA.id, branchA.path),
+          definitionWith({ kind: "tagKey", tagId: anchor.id }),
+        );
+        expect(result.dropped).toBe(true);
+        expect(result.definition.summaries).toEqual([]);
+      });
+
+      it("does not mutate its input", async () => {
+        const gone = await newTag(branchA.id, "sum-len-nomutate", null, { deletedAt: new Date() });
+        const definition = definitionWith({ kind: "tag", tagId: gone.id });
+        await resolveDefinitionSummariesLenient(sessionAt(branchA.id, branchA.path), definition);
+        expect(definition.summaries).toHaveLength(1);
+      });
+    });
+  });
+
+  describe("resolveTag / resolveVisibleTags", () => {
+    const newTag = (groupId: number, key: string, extra: { deletedAt?: Date } = {}) =>
+      db.tag.create({ data: { groupId, key, color: "blue", createdById: owner.id, ...extra } });
+
+    it("resolves a tag owned by the caller's group, an ancestor, or a descendant", async () => {
+      const own = await newTag(branchA.id, "own");
+      const inherited = await newTag(root.id, "inherited");
+      const below = await newTag(leafA.id, "below");
+      const session = sessionAt(branchA.id, branchA.path);
+      for (const tag of [own, inherited, below]) {
+        expect((await resolveTag(session, tag.id)).id).toBe(tag.id);
+      }
+    });
+
+    it("includes the owner group so callers can run the pure access rules", async () => {
+      const tag = await newTag(root.id, "with-group");
+      const resolved = await resolveTag(sessionAt(branchA.id, branchA.path), tag.id);
+      expect(resolved.group.path).toBe(root.path);
+    });
+
+    it("throws NotFoundError for a sibling-branch tag", async () => {
+      const tag = await newTag(branchB.id, "sibling");
+      await expect(resolveTag(sessionAt(branchA.id, branchA.path), tag.id)).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it("throws NotFoundError for a missing id and a soft-deleted tag", async () => {
+      const deleted = await newTag(branchA.id, "gone", { deletedAt: new Date() });
+      const session = sessionAt(branchA.id, branchA.path);
+      await expect(resolveTag(session, 999_999)).rejects.toBeInstanceOf(NotFoundError);
+      await expect(resolveTag(session, deleted.id)).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it("throws NotFoundError for a tag of another organization", async () => {
+      const otherOrg = await db.organization.create({ data: { name: "Other Tag Org" } });
+      const otherRoot = await db.group.create({
+        data: { organizationId: otherOrg.id, depth: 0, name: "Other Root", path: "" },
+      });
+      await db.group.update({ where: { id: otherRoot.id }, data: { path: `${otherRoot.id}/` } });
+      const tag = await newTag(otherRoot.id, "foreign");
+      await expect(resolveTag(sessionAt(root.id, root.path), tag.id)).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it("list variant keeps visible tags in input order, de-duplicated, and drops the rest without throwing", async () => {
+      const a = await newTag(root.id, "list-a");
+      const b = await newTag(leafA.id, "list-b");
+      const sibling = await newTag(branchB.id, "list-sibling");
+      const deleted = await newTag(branchA.id, "list-gone", { deletedAt: new Date() });
+      const session = sessionAt(branchA.id, branchA.path);
+
+      const tags = await resolveVisibleTags(session, [b.id, sibling.id, a.id, 999_999, deleted.id, b.id]);
+      expect(tags.map((t) => t.id)).toEqual([b.id, a.id]);
+    });
+
+    it("list variant returns [] for an empty input", async () => {
+      expect(await resolveVisibleTags(sessionAt(root.id, root.path), [])).toEqual([]);
     });
   });
 });

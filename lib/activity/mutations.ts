@@ -5,7 +5,8 @@ import { authorize } from "@/lib/authz";
 import { addDays } from "@/lib/dates";
 import { db } from "@/lib/db";
 import { ValidationError } from "@/lib/errors";
-import { resolveActivity } from "@/lib/resolve";
+import { resolveActivity, resolveGroup } from "@/lib/resolve";
+import { endingDeletesActivity } from "./end";
 import type {
   ActivityInput,
   ActivitySplitInput,
@@ -37,7 +38,9 @@ function templateData(input: TemplateFields) {
 }
 
 export async function createActivity(session: SessionUser, input: ActivityInput) {
-  authorize(session, "activity.create", { groupId: input.groupId });
+  // The owning group comes from the client: resolve it (scope check, 404) before the ADMIN+ check.
+  const group = await resolveGroup(session, input.groupId);
+  authorize(session, "activity.create", { groupId: group.id });
 
   const activity = await db.$transaction(async (tx) => {
     const created = await tx.activity.create({
@@ -54,7 +57,7 @@ export async function createActivity(session: SessionUser, input: ActivityInput)
     return created;
   });
 
-  const hasConflict = await activityHasConflict(activity.id, session.groupPath);
+  const hasConflict = await activityHasConflict(activity.id, group.path, session.timeZone);
   return { activity, hasConflict };
 }
 
@@ -76,7 +79,7 @@ export async function updateActivity(session: SessionUser, activityId: number, i
     return updated;
   });
 
-  const hasConflict = await activityHasConflict(activity.id, group.path);
+  const hasConflict = await activityHasConflict(activity.id, group.path, session.timeZone);
   return { activity, hasConflict };
 }
 
@@ -85,7 +88,7 @@ export async function endActivity(session: SessionUser, input: EndActivityInput)
   const before = withoutGroup(await resolveActivity(session, input.activityId));
   authorize(session, "activity.update", { groupId: before.groupId });
 
-  if (input.fromDate <= before.startsOn) {
+  if (endingDeletesActivity(before.startsOn, input.fromDate)) {
     return db.$transaction(async (tx) => {
       const deleted = await tx.activity.update({
         where: { id: before.id },
@@ -174,7 +177,7 @@ export async function splitActivity(session: SessionUser, input: ActivitySplitIn
       });
       return result;
     });
-    const hasConflict = await activityHasConflict(updated.id, group.path);
+    const hasConflict = await activityHasConflict(updated.id, group.path, session.timeZone);
     return { activity: updated, splitCreated: false as const, hasConflict };
   }
 
@@ -198,18 +201,32 @@ export async function splitActivity(session: SessionUser, input: ActivitySplitIn
       data: { activityId: newActivity.id },
     });
 
+    // The continuation keeps the original's labels (links to deleted tags are not carried over).
+    const tagLinks = await tx.activityTag.findMany({
+      where: { activityId: original.id, tag: { deletedAt: null } },
+      select: { tagId: true, createdById: true },
+    });
+    if (tagLinks.length > 0) {
+      await tx.activityTag.createMany({ data: tagLinks.map((link) => ({ ...link, activityId: newActivity.id })) });
+    }
+
     await audit(tx, {
       actorId: Number(session.id),
       action: "activity.split",
       entity: "Activity",
       entityId: original.id,
       groupId: original.groupId,
-      after: { fromActivityId: original.id, toActivityId: newActivity.id, fromDate },
+      after: {
+        fromActivityId: original.id,
+        toActivityId: newActivity.id,
+        fromDate,
+        copiedTagIds: tagLinks.map((link) => link.tagId),
+      },
     });
 
     return newActivity;
   });
 
-  const hasConflict = await activityHasConflict(created.id, group.path);
+  const hasConflict = await activityHasConflict(created.id, group.path, session.timeZone);
   return { activity: created, splitCreated: true as const, hasConflict };
 }

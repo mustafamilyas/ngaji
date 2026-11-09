@@ -31,7 +31,7 @@ export function DateRangeFilter({
   range: DateRange;
   modes: readonly DateRangeMode[];
   defaultMode: DateRangeMode;
-  /** Server's "today" (Asia/Jakarta), so the label matches what the server computed. */
+  /** Server's "today" in the organization timezone, so the label matches what the server computed. */
   today: string;
 }) {
   const formRef = useRef<HTMLSpanElement>(null);
@@ -81,7 +81,7 @@ export function DateRangeFilter({
             type="button"
             aria-label="Rentang sebelumnya"
             onClick={() => step(-1)}
-            className={cn(filterTriggerClass(), "rounded-r-none border-r-0 px-2")}
+            className={cn(filterTriggerClass(), "min-w-11 justify-center rounded-r-none border-r-0 px-2 xl:min-w-0")}
           >
             <ChevronLeft className="size-4" />
           </button>
@@ -119,7 +119,7 @@ export function DateRangeFilter({
                     <button
                       type="button"
                       onClick={() => submit({ range: mode, anchor: "", from: "", to: "" })}
-                      className="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm hover:bg-muted"
+                      className="flex min-h-11 w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-base hover:bg-muted xl:min-h-0 xl:text-sm"
                     >
                       {DATE_RANGE_LABELS[mode]}
                       {selected && <Check className="size-4" />}
@@ -139,7 +139,7 @@ export function DateRangeFilter({
                       value={customFrom}
                       max={customTo || undefined}
                       onChange={(event) => setCustomFrom(event.target.value)}
-                      className="h-8 rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring"
+                      className="h-11 rounded-md border border-input bg-background px-2 text-base text-foreground outline-none focus-visible:border-ring xl:h-8 xl:text-sm"
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-muted-foreground">
@@ -149,7 +149,7 @@ export function DateRangeFilter({
                       value={customTo}
                       min={customFrom || undefined}
                       onChange={(event) => setCustomTo(event.target.value)}
-                      className="h-8 rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring"
+                      className="h-11 rounded-md border border-input bg-background px-2 text-base text-foreground outline-none focus-visible:border-ring xl:h-8 xl:text-sm"
                     />
                   </label>
                 </div>
@@ -157,7 +157,7 @@ export function DateRangeFilter({
                   type="button"
                   disabled={!customValid}
                   onClick={() => submit({ range: "custom", anchor: "", from: customFrom, to: customTo })}
-                  className="h-8 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/80 disabled:opacity-50"
+                  className="h-11 rounded-md bg-primary px-3 text-base font-medium text-primary-foreground hover:bg-primary/80 disabled:opacity-50 xl:h-8 xl:text-sm"
                 >
                   Terapkan
                 </button>
@@ -170,7 +170,7 @@ export function DateRangeFilter({
             type="button"
             aria-label="Rentang berikutnya"
             onClick={() => step(1)}
-            className={cn(filterTriggerClass(), "rounded-l-none border-l-0 px-2")}
+            className={cn(filterTriggerClass(), "min-w-11 justify-center rounded-l-none border-l-0 px-2 xl:min-w-0")}
           >
             <ChevronRight className="size-4" />
           </button>

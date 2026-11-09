@@ -1,5 +1,6 @@
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 
@@ -38,6 +39,81 @@ describe("ActivityListPage", () => {
     expect(html).toContain("Kegiatan");
   });
 
+  describe("tag filter control (task 5.6)", () => {
+    it("offers the visible tags, shows the selection in the trigger, and drops ids the user cannot see", async () => {
+      const fixture = await buildPageFixture("activities-tag-filter-ui");
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "USER", fixture.leaf) });
+      const mine = await db.tag.create({ data: { groupId: fixture.root.id, key: "filter-ui-satu", color: "blue", createdById: fixture.actorId } });
+      const other = await buildPageFixture("activities-tag-filter-ui-other");
+      const foreign = await db.tag.create({ data: { groupId: other.root.id, key: "filter-ui-asing", color: "red", createdById: other.actorId } });
+
+      const html = renderToStaticMarkup(await ActivityListPage({ searchParams: Promise.resolve({ tag: `${mine.id},${foreign.id}` }) }));
+      expect(html).toContain('data-slot="tag-filter"');
+      expect(html).toContain("filter-ui-satu");
+      expect(html).not.toContain("filter-ui-asing");
+      expect(html).toContain(`value="${mine.id}"`);
+    });
+
+    it("hides the tag filter when the user sees no tag at all", async () => {
+      const fixture = await buildPageFixture("activities-tag-filter-none");
+      mockAuthSession(auth, { user: sessionFor(fixture.actorId, "USER", fixture.leaf) });
+
+      const html = renderToStaticMarkup(await ActivityListPage({ searchParams: Promise.resolve({}) }));
+      expect(html).not.toContain('data-slot="tag-filter"');
+    });
+  });
+
+  it("filters by the tag param, dropping ids the user cannot see", async () => {
+    const fixture = await buildPageFixture("kegiatan-list-tag");
+    const session = sessionFor(fixture.actorId, "OWNER", fixture.root);
+    mockAuthSession(auth, { user: session });
+    const tag = await db.tag.create({ data: { groupId: fixture.root.id, key: "fokus", color: "blue", createdById: fixture.actorId } });
+    const other = await buildPageFixture("kegiatan-list-tag-other");
+    const foreign = await db.tag.create({ data: { groupId: other.root.id, key: "asing", color: "red", createdById: other.actorId } });
+
+    const without = renderToStaticMarkup(await ActivityListPage({ searchParams: Promise.resolve({ tag: String(tag.id) }) }));
+    expect(without).not.toContain("Kajian Uji");
+
+    await db.activityTag.create({ data: { activityId: fixture.activityId, tagId: tag.id, createdById: fixture.actorId } });
+    const withTag = renderToStaticMarkup(
+      await ActivityListPage({ searchParams: Promise.resolve({ tag: `${tag.id},${foreign.id}` }) }),
+    );
+    expect(withTag).toContain("Kajian Uji");
+  });
+
+  it("shows each row's visible tags with a compact picker (task 5.4)", async () => {
+    const fixture = await buildPageFixture("kegiatan-list-tag-row");
+    const usable = await db.tag.create({ data: { groupId: fixture.root.id, key: "fokus-baris", color: "blue", createdById: fixture.actorId } });
+    await db.activityTag.create({ data: { activityId: fixture.activityId, tagId: usable.id, createdById: fixture.actorId } });
+
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "USER", fixture.leaf) });
+    const withPicker = renderToStaticMarkup(await ActivityListPage({ searchParams: Promise.resolve({}) }));
+    expect(withPicker).toContain("fokus-baris");
+    expect(withPicker).toContain("Atur tag Kajian Uji");
+  });
+
+  it("shows chips only when the user can neither use nor create any tag (task 5.4)", async () => {
+    const fixture = await buildPageFixture("kegiatan-list-tag-row-ro");
+    const below = await db.tag.create({ data: { groupId: fixture.leaf.id, key: "binaan-baris", color: "blue", createdById: fixture.actorId } });
+    await db.activityTag.create({ data: { activityId: fixture.activityId, tagId: below.id, createdById: fixture.actorId } });
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "USER", fixture.branch) });
+
+    const readOnly = renderToStaticMarkup(await ActivityListPage({ searchParams: Promise.resolve({}) }));
+    expect(readOnly).toContain("binaan-baris");
+    expect(readOnly).not.toContain("Atur tag");
+  });
+
+  it("carries the tag filter into the Cetak link", async () => {
+    const fixture = await buildPageFixture("kegiatan-list-tag-cetak");
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "OWNER", fixture.root) });
+    const tag = await db.tag.create({ data: { groupId: fixture.root.id, key: "fokus", color: "blue", createdById: fixture.actorId } });
+
+    const html = renderToStaticMarkup(await ActivityListPage({ searchParams: Promise.resolve({ tag: String(tag.id), q: "uji" }) }));
+    const cetak = html.match(/href="(\/dashboard\/kegiatan\/cetak\?[^"]*)"/)?.[1] ?? "";
+    expect(cetak).toContain(`tag=${tag.id}`);
+    expect(cetak).toContain("q=uji");
+  });
+
   it("redirects to /login when there is no session", async () => {
     mockAuthSession(auth, null);
     await expect(ActivityListPage({ searchParams: Promise.resolve({}) })).rejects.toMatchObject({
@@ -56,8 +132,8 @@ describe("ActivityListPage", () => {
       durationMinutes: 60,
       freq: "WEEKLY",
       interval: 1,
-      weekdays: [weekdayOf(today())],
-      startsOn: addDays(today(), -30),
+      weekdays: [weekdayOf(today(DEFAULT_TIMEZONE))],
+      startsOn: addDays(today(DEFAULT_TIMEZONE), -30),
     });
 
     const branchAdmin = sessionFor(fixture.actorId, "ADMIN", fixture.branch);
@@ -86,8 +162,8 @@ describe("ActivityListPage", () => {
       durationMinutes: 60,
       freq: "WEEKLY",
       interval: 1,
-      weekdays: [weekdayOf(today())],
-      startsOn: addDays(today(), -30),
+      weekdays: [weekdayOf(today(DEFAULT_TIMEZONE))],
+      startsOn: addDays(today(DEFAULT_TIMEZONE), -30),
     });
 
     const session = sessionFor(fixtureA.actorId, "ADMIN", fixtureA.leaf);
@@ -111,7 +187,7 @@ describe("ActivityListPage", () => {
     const html = renderToStaticMarkup(
       await ActivityListPage({ searchParams: Promise.resolve({ range: "hari" }) }),
     );
-    expect(html).toContain(formatDateRange(today(), today()));
+    expect(html).toContain(formatDateRange(today(DEFAULT_TIMEZONE), today(DEFAULT_TIMEZONE)));
   });
 
   it("computes the calendar month bounds for range=bulan", async () => {
@@ -122,7 +198,7 @@ describe("ActivityListPage", () => {
     const html = renderToStaticMarkup(
       await ActivityListPage({ searchParams: Promise.resolve({ range: "bulan" }) }),
     );
-    expect(html).toContain(formatDateRange(monthStartOf(today()), monthEndOf(today())));
+    expect(html).toContain(formatDateRange(monthStartOf(today(DEFAULT_TIMEZONE)), monthEndOf(today(DEFAULT_TIMEZONE))));
   });
 
   it("keeps the given from/to as-is for range=custom", async () => {
@@ -138,7 +214,37 @@ describe("ActivityListPage", () => {
     expect(html).toContain("1–31 Jan 2024");
   });
 
-  it("renders the calendar view with the expected number of day cells and occurrence badges", async () => {
+  it("renders the calendar of the default week range as an agenda of full activity entries", async () => {
+    const fixture = await buildPageFixture("kegiatan-list-agenda");
+    const branchAdmin = sessionFor(fixture.actorId, "ADMIN", fixture.branch);
+    await createActivity(branchAdmin, {
+      groupId: fixture.branch.id,
+      name: "Kajian Cabang",
+      location: "Aula Cabang",
+      startTime: "19:00",
+      durationMinutes: 60,
+      freq: "ONCE",
+      interval: 1,
+      weekdays: [],
+      startsOn: today(DEFAULT_TIMEZONE),
+      endsOn: today(DEFAULT_TIMEZONE),
+    });
+
+    mockAuthSession(auth, { user: sessionFor(fixture.actorId, "ADMIN", fixture.leaf) });
+
+    const html = renderToStaticMarkup(
+      await ActivityListPage({ searchParams: Promise.resolve({ view: "calendar" }) }),
+    );
+
+    expect(html).not.toContain("min-h-16");
+    expect(html).toContain("Kajian Cabang");
+    expect(html).toContain("Aula Cabang");
+    expect(html).toContain("Warisan");
+    expect(html).toContain("Hari ini");
+    expect((html.match(/Tidak ada kegiatan\./g) ?? []).length).toBe(6);
+  });
+
+  it("renders the calendar of a month range as a grid with the expected number of day cells", async () => {
     const fixture = await buildPageFixture("kegiatan-list-calendar");
     const branchAdmin = sessionFor(fixture.actorId, "ADMIN", fixture.branch);
     await createActivity(branchAdmin, {
@@ -150,18 +256,18 @@ describe("ActivityListPage", () => {
       freq: "ONCE",
       interval: 1,
       weekdays: [],
-      startsOn: today(),
-      endsOn: today(),
+      startsOn: today(DEFAULT_TIMEZONE),
+      endsOn: today(DEFAULT_TIMEZONE),
     });
 
     const session = sessionFor(fixture.actorId, "ADMIN", fixture.leaf);
     mockAuthSession(auth, { user: session });
 
     const html = renderToStaticMarkup(
-      await ActivityListPage({ searchParams: Promise.resolve({ view: "calendar" }) }),
+      await ActivityListPage({ searchParams: Promise.resolve({ view: "calendar", range: "bulan" }) }),
     );
 
-    const month = sundayOf(today());
+    const month = today(DEFAULT_TIMEZONE);
     const gridStart = sundayOf(monthStartOf(month));
     const gridEnd = addDays(sundayOf(monthEndOf(month)), 6);
     const expectedCells = daysBetween(gridStart, gridEnd) + 1;

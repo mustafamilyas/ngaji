@@ -16,7 +16,7 @@ export async function resetOwnerPassword(
   { activate }: { activate: boolean },
 ): Promise<{ temporaryPassword: string }> {
   const user = await db.user.findUnique({
-    where: { username: username.trim() },
+    where: { username: username.trim().toLowerCase() },
     include: { role: true },
   });
   if (!user || user.role?.role !== "OWNER") {

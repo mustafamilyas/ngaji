@@ -12,7 +12,7 @@ Every Server Action that writes SHALL call `audit(tx, { action, entity, entityId
 - **THEN** an entry with `action = "group.create"`, `entity = "Group"`, `entityId`, `groupId` and `after` snapshot exists
 
 ### Requirement: Logged actions
-The following actions SHALL be logged: `auth.login`, `auth.login_failed`, `auth.logout`; `user.create`, `user.update_role`, `user.move`, `user.set_active`, `user.reset_password`, `user.change_password`; `group.create/update/delete`, `level.rename`; `member.create/update/delete`; `activity.create/update/delete/split`; `occurrence.override`; `attendance.save`.
+The following actions SHALL be logged: `auth.login`, `auth.login_failed`, `auth.logout`; `user.create`, `user.update_role`, `user.add_extra_role`, `user.remove_extra_role`, `user.move`, `user.set_active`, `user.reset_password`, `user.change_password`; `group.create/update/delete`, `level.rename`; `member.create/update/delete`; `activity.create/update/delete/split`; `occurrence.override`; `attendance.save`.
 
 #### Scenario: Split records lineage
 - **WHEN** an activity is split at date X

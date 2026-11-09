@@ -22,20 +22,29 @@ import { buttonVariants } from "@/components/ui/button";
 import { Pagination } from "@/components/pagination";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { FilterBar, SearchFilter } from "@/components/filters/filter-bar";
+import { TagFilter } from "@/components/filters/tag-filter";
 import { GroupFilter } from "@/components/filters/group-filter";
+import { SortSelect } from "@/components/filters/sort-select";
 import { ActivityCalendar } from "./activity-calendar";
+import { RowTags } from "@/components/tags/row-tags";
+import { TagOptionsProvider } from "@/components/tags/tag-options-context";
+import { OccurrenceNotes } from "./occurrence-notes";
 import { WEEKDAY_LABELS } from "@/lib/activity/labels";
 import { listActivityOccurrences } from "@/lib/activity/list";
 import { ACTIVITY_SORT_KEYS, type ActivitySortKey, DEFAULT_ACTIVITY_SORT, sortActivityEntries } from "@/lib/activity/list-sort";
-import { visibleGroupsWhere } from "@/lib/authz";
-import { ACTIVITY_LIST_DATE_RANGE, PAGE_SIZE } from "@/lib/constants";
+import { canRecordDate, visibleGroupsWhere } from "@/lib/authz";
+import { ACTIVITY_CALENDAR_DATE_RANGE, ACTIVITY_LIST_DATE_RANGE, PAGE_SIZE } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { today, weekdayOf } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
-import { formatDate, formatDateRange, parseGroupIds, parsePage, parseSearch, resolveDateRange } from "@/lib/filters";
+import { canPickTags, loadTagOptions, visibleTagIds } from "@/lib/tag/entity";
+import { formatDate, formatDateRange, parseGroupIds, parsePage, parseSearch, parseTagIds, resolveDateRange } from "@/lib/filters";
 import { pageHref, paginate } from "@/lib/pagination";
 import { parseSort, sortHref, sortPreserve } from "@/lib/sort";
 import { cn } from "@/lib/utils";
+
+/** Table cell that becomes a plain stacked block below md. */
+const stackedCell = "block px-0 py-0 whitespace-normal md:table-cell md:px-4 md:py-2.5 md:whitespace-nowrap";
 
 export default async function ActivityListPage({
   searchParams,
@@ -47,23 +56,25 @@ export default async function ActivityListPage({
 
   const params = await searchParams;
 
-  const now = today();
-  const dateRange = resolveDateRange(params, ACTIVITY_LIST_DATE_RANGE, now);
+  const now = today(session.user.timeZone);
+  const view = params.view === "calendar" ? "calendar" : "list";
+  // The calendar only shows whole calendar periods (day, week, month), so it has no free from–to range.
+  const rangeConfig = view === "calendar" ? ACTIVITY_CALENDAR_DATE_RANGE : ACTIVITY_LIST_DATE_RANGE;
+  const dateRange = resolveDateRange(params, rangeConfig, now);
   const { mode: range, anchor } = dateRange;
   // ACTIVITY_LIST_DATE_RANGE has no open-ended mode, so both bounds are always set.
   const from = dateRange.from!;
   const to = dateRange.to!;
 
-  const view = params.view === "calendar" ? "calendar" : "list";
-
   const groupIds = parseGroupIds(params.grup);
   const q = parseSearch(params.q);
+  const tagIds = parseTagIds(params.tag);
   const page = parsePage(params.page);
 
-  const [{ entries, groups }, visibleGroups] = await Promise.all([
+  const [{ entries, groups }, visibleGroups, tagOptions] = await Promise.all([
     (async () => {
       try {
-        return await listActivityOccurrences(session.user, { from, to, groupIds, search: q });
+        return await listActivityOccurrences(session.user, { from, to, groupIds, search: q, tagIds });
       } catch (error) {
         if (error instanceof NotFoundError) notFound();
         throw error;
@@ -74,7 +85,9 @@ export default async function ActivityListPage({
       orderBy: [{ depth: "asc" }, { name: "asc" }],
       select: { id: true, parentId: true, name: true, path: true },
     }),
+    loadTagOptions(session.user),
   ]);
+  const canPick = canPickTags(tagOptions);
 
   const sort = parseSort(params, ACTIVITY_SORT_KEYS, DEFAULT_ACTIVITY_SORT);
 
@@ -82,6 +95,7 @@ export default async function ActivityListPage({
     const sp = new URLSearchParams();
     if (groupIds) sp.set("grup", groupIds.join(","));
     if (q) sp.set("q", q);
+    if (tagIds) sp.set("tag", tagIds.join(","));
     sp.set("range", range);
     if (range === "custom") {
       sp.set("from", from);
@@ -111,7 +125,7 @@ export default async function ActivityListPage({
   const listPage = paginate(sorted, page, PAGE_SIZE);
 
   const groupsLabel = groups.length === 1 ? groups[0].name : `${groups.length} grup`;
-  const isFiltered = Boolean(groupIds || q || range !== ACTIVITY_LIST_DATE_RANGE.defaultMode || anchor !== now);
+  const isFiltered = Boolean(groupIds || q || tagIds || range !== ACTIVITY_LIST_DATE_RANGE.defaultMode || anchor !== now);
   const todayCount = entries.filter((e) => e.effectiveDate === now && e.status !== "CANCELLED").length;
   const conflictCount = entries.filter((e) => e.hasConflict).length;
   const cancelledCount = entries.filter((e) => e.status === "CANCELLED").length;
@@ -135,11 +149,11 @@ export default async function ActivityListPage({
         }
         actions={
           <>
-            <Link href={printHref} className={buttonVariants({ size: "lg", variant: "outline" })}>
+            <Link href={printHref} className={cn(buttonVariants({ size: "lg", variant: "outline" }), "h-11 text-base xl:h-9 xl:text-sm")}>
               <Printer />
               Cetak
             </Link>
-            <Link href="/dashboard/kegiatan/baru" className={buttonVariants({ size: "lg" })}>
+            <Link href="/dashboard/kegiatan/baru" className={cn(buttonVariants({ size: "lg" }), "h-11 text-base xl:h-9 xl:text-sm")}>
               <Plus />
               Kegiatan baru
             </Link>
@@ -170,7 +184,7 @@ export default async function ActivityListPage({
                   scroll={false}
                   aria-current={view === key ? "page" : undefined}
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm",
+                    "inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 py-1 text-base xl:min-h-0 xl:px-2.5 xl:text-sm",
                     view === key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
@@ -189,22 +203,43 @@ export default async function ActivityListPage({
         toolbar={
           <FilterBar
             action="/dashboard/kegiatan"
-            preserve={{
-              view: view === "calendar" ? "calendar" : undefined,
-              ...sortPreserve(sort, DEFAULT_ACTIVITY_SORT),
-            }}
+            preserve={{ view: view === "calendar" ? "calendar" : undefined }}
             isFiltered={isFiltered}
             resetHref={view === "calendar" ? "/dashboard/kegiatan?view=calendar" : "/dashboard/kegiatan"}
+            activeCount={[groupIds, tagIds].filter(Boolean).length}
+            more={
+              <>
+                <GroupFilter
+                  groups={visibleGroups}
+                  selected={groupIds ?? [session.user.groupId]}
+                  active={Boolean(groupIds)}
+                  withDescendantsAction
+                  hint="Menampilkan kegiatan yang berlaku untuk grup terpilih, termasuk dari grup induknya."
+                />
+                {(tagOptions.visible.length > 0 || tagIds) && (
+                  <TagFilter tags={tagOptions.visible} selected={visibleTagIds(tagOptions.visible, tagIds)} />
+                )}
+                {view === "list" && (
+                  <SortSelect
+                    options={[
+                      { key: "tanggal", label: "Tanggal" },
+                      { key: "kegiatan", label: "Kegiatan" },
+                      { key: "grup", label: "Grup" },
+                      { key: "lokasi", label: "Lokasi" },
+                    ]}
+                    current={sort}
+                    fallback={DEFAULT_ACTIVITY_SORT}
+                  />
+                )}
+              </>
+            }
           >
             <SearchFilter value={q} placeholder="Cari kegiatan…" />
-            <GroupFilter
-              groups={visibleGroups}
-              selected={groupIds ?? [session.user.groupId]}
-              active={Boolean(groupIds)}
-              withDescendantsAction
-              hint="Menampilkan kegiatan yang berlaku untuk grup terpilih, termasuk dari grup induknya."
-            />
-            <DateRangeFilter range={dateRange} {...ACTIVITY_LIST_DATE_RANGE} today={now} />
+            {/* The date navigator stays inline (stepping through weeks is frequent); below lg it sits after the
+                Filter button, so search and Filter share the first row. */}
+            <div className="order-1 lg:order-none">
+              <DateRangeFilter range={dateRange} {...rangeConfig} today={now} />
+            </div>
           </FilterBar>
         }
         footer={
@@ -214,13 +249,15 @@ export default async function ActivityListPage({
         }
       >
         {view === "calendar" ? (
-          <div className="p-4">
-            <ActivityCalendar entries={entries} month={from} dayHref={dayHref} />
+          <div className="p-1 sm:p-4">
+            <ActivityCalendar entries={entries} from={from} to={to} today={now} dayHref={dayHref} />
           </div>
         ) : entries.length > 0 ? (
+          <TagOptionsProvider options={tagOptions.options} canCreate={tagOptions.canCreate}>
           <div className="overflow-x-auto">
-            <table className={tableClass}>
-              <thead>
+            {/* Below md the same table markup is laid out as stacked rows (no sideways scrolling); sort headers are table-only. */}
+            <table className={cn(tableClass, "block md:table")}>
+              <thead className="hidden md:table-header-group">
                 <tr className={theadRowClass}>
                   {th("tanggal", "Tanggal")}
                   {th("kegiatan", "Kegiatan")}
@@ -231,21 +268,27 @@ export default async function ActivityListPage({
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody data-records className="block md:table-row-group">
                 {listPage.items.map((entry) => {
                   const cancelled = entry.status === "CANCELLED";
                   const attendanceHref = `/dashboard/kegiatan/${entry.activityId}/${entry.key}`;
-                  const canRecordNow = entry.canRecord && !cancelled && entry.effectiveDate <= now;
+                  const canRecordNow = entry.canRecord && !cancelled && canRecordDate(session.user, entry.effectiveDate, now);
                   return (
-                    <tr key={`${entry.activityId}:${entry.key}`} className={trClass}>
-                      <td className={cn(tdClass, "tabular-nums")}>
+                    <tr
+                      key={`${entry.activityId}:${entry.key}`}
+                      className={cn(trClass, "grid grid-cols-[1fr_auto] gap-x-2 px-4 py-3 md:table-row md:p-0")}
+                    >
+                      <td className={cn(tdClass, stackedCell, "col-start-1 tabular-nums")}>
                         <span className={cn(cancelled && "text-muted-foreground line-through")}>
                           {WEEKDAY_LABELS[weekdayOf(entry.effectiveDate)].slice(0, 3)}, {formatDate(entry.effectiveDate)}
                         </span>
                         <span className="block text-xs text-muted-foreground">{entry.effectiveStartTime}</span>
                       </td>
-                      <td className={tdClass}>
-                        <Link href={`/dashboard/kegiatan/${entry.activityId}`} className="font-medium hover:underline">
+                      <td className={cn(tdClass, stackedCell, "col-start-1")}>
+                        <Link
+                          href={`/dashboard/kegiatan/${entry.activityId}`}
+                          className="inline-flex min-h-11 items-center font-medium hover:underline xl:min-h-0"
+                        >
                           {entry.activityName}
                         </Link>
                         <span className="mt-0.5 flex flex-wrap gap-1">
@@ -257,13 +300,28 @@ export default async function ActivityListPage({
                             <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300">Konflik</Badge>
                           )}
                         </span>
+                        <OccurrenceNotes notes={entry.effectiveNotes} />
+                        <div className="mt-1 empty:hidden">
+                          <RowTags
+                            target={{ kind: "activity", id: entry.activityId }}
+                            attached={entry.tags}
+                            canPick={canPick}
+                            label={entry.activityName}
+                          />
+                        </div>
                       </td>
-                      <td className={tdClass}>{entry.groupName}</td>
-                      <td className={cn(tdClass, "max-w-56 truncate text-muted-foreground")} title={entry.effectiveLocation}>
+                      <td className={cn(tdClass, stackedCell, "col-start-1 text-xs text-muted-foreground md:text-sm md:text-foreground")}>
+                        {entry.groupName}
+                      </td>
+                      <td
+                        className={cn(tdClass, stackedCell, "col-start-1 text-xs text-muted-foreground md:max-w-56 md:truncate md:text-sm")}
+                        title={entry.effectiveLocation}
+                      >
                         {entry.effectiveLocation}
                       </td>
-                      <td className="px-2 py-1 text-right">
+                      <td className="col-start-2 row-start-1 row-span-2 self-start px-0 py-0 text-right md:px-2 md:py-1">
                         <RowActions
+                          className="size-11 xl:size-8"
                           label={`${entry.activityName} ${formatDate(entry.effectiveDate)}`}
                           actions={[
                             {
@@ -282,6 +340,7 @@ export default async function ActivityListPage({
               </tbody>
             </table>
           </div>
+          </TagOptionsProvider>
         ) : (
           <p className="px-4 py-10 text-center text-sm text-muted-foreground">
             {q ? "Tidak ada kegiatan yang cocok." : "Tidak ada kegiatan pada rentang ini."}

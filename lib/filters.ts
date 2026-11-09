@@ -1,12 +1,12 @@
 /**
  * Parsers for the shared list filter URL contract (`components/filters/*`):
- * `q` (name search), `grup` (comma-separated group ids), `range` / `anchor`
+ * `q` (name search), `grup` / `tag` (comma-separated group / tag ids), `range` / `anchor`
  * / `from` / `to` (date range), `page`. Everything from the URL is untrusted:
  * these only normalize shape — group ids must still be resolved and
- * scope-checked server-side by the caller.
+ * scope-checked server-side by the caller (tag ids via `resolveVisibleTags`).
  */
-import { MAX_GROUP_FILTER_IDS } from "@/lib/constants";
-import { addDays, addMonthsOnDay, daysBetween, isDateString, monthStartOf, rangeForMode, today as todayInJakarta } from "@/lib/dates";
+import { MAX_GROUP_FILTER_IDS, MAX_TAG_FILTER_IDS } from "@/lib/constants";
+import { addDays, addMonthsOnDay, daysBetween, isDateString, monthStartOf, rangeForMode } from "@/lib/dates";
 
 type Param = string | string[] | undefined;
 
@@ -16,15 +16,51 @@ function first(param: Param): string | undefined {
   return Array.isArray(param) ? param[0] : param;
 }
 
-export function parseGroupIds(param: Param): number[] | undefined {
+function parseIdList(param: Param, max: number): number[] | undefined {
   const raw = first(param);
   if (!raw) return undefined;
   const ids = raw
     .split(",")
     .map((part) => Number(part))
     .filter((n) => Number.isInteger(n) && n > 0);
-  const unique = [...new Set(ids)].slice(0, MAX_GROUP_FILTER_IDS);
+  const unique = [...new Set(ids)].slice(0, max);
   return unique.length > 0 ? unique : undefined;
+}
+
+export function parseGroupIds(param: Param): number[] | undefined {
+  return parseIdList(param, MAX_GROUP_FILTER_IDS);
+}
+
+export function parseTagIds(param: Param): number[] | undefined {
+  return parseIdList(param, MAX_TAG_FILTER_IDS);
+}
+
+/** `?tag=` holding exactly one tag id (Statistik → Anggota "Per tag"); anything else is ignored. */
+export function parseTagId(param: Param): number | undefined {
+  const raw = first(param);
+  return raw && /^[1-9]\d*$/.test(raw) ? Number(raw) : undefined;
+}
+
+/** What `?rincian=` may hold: a fixed member dimension or `tag:<tagId>`. Resolved to a full dimension (and tag visibility checked) by the caller. */
+export type BreakdownChoice = { kind: "sex" | "age" | "marital" | "work" } | { kind: "tag"; tagId: number };
+
+const FIXED_BREAKDOWNS = ["sex", "age", "marital", "work"] as const;
+
+/** The `?rincian=` value for a choice (inverse of `parseBreakdown`). */
+export function breakdownParam(choice: BreakdownChoice): string {
+  return choice.kind === "tag" ? `tag:${choice.tagId}` : choice.kind;
+}
+
+export function parseBreakdown(param: Param): BreakdownChoice | undefined {
+  const raw = first(param);
+  if (!raw) return undefined;
+  const fixed = FIXED_BREAKDOWNS.find((kind) => kind === raw);
+  if (fixed) return { kind: fixed };
+  if (raw.startsWith("tag:")) {
+    const tagId = parseTagId(raw.slice(4));
+    return tagId === undefined ? undefined : { kind: "tag", tagId };
+  }
+  return undefined;
 }
 
 export function parseSearch(param: Param): string | undefined {
@@ -82,7 +118,7 @@ function rangeOf(mode: Exclude<DateRangeMode, "custom">, anchor: string): { from
 export function resolveDateRange(
   params: { range?: Param; anchor?: Param; from?: Param; to?: Param },
   config: DateRangeConfig,
-  today: string = todayInJakarta(),
+  today: string,
 ): DateRange {
   const rawMode = first(params.range);
   const rawFrom = first(params.from);

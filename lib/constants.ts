@@ -24,6 +24,8 @@ export const EMBEDDED_PAGE_SIZE = 10;
 
 /** Date range presets per page for the shared filter (`lib/filters.ts`); first listed = shown first. */
 export const ACTIVITY_LIST_DATE_RANGE: DateRangeConfig = { modes: ["hari", "minggu", "bulan", "custom"], defaultMode: "minggu" };
+/** The activity calendar shows whole calendar periods only, so no free from–to range. */
+export const ACTIVITY_CALENDAR_DATE_RANGE: DateRangeConfig = { modes: ["hari", "minggu", "bulan"], defaultMode: "minggu" };
 /** Longest range the printable schedule accepts, in calendar months. */
 export const PRINT_MAX_MONTHS = 3;
 /** Statistics default to the last `DEFAULT_STATS_RANGE_DAYS` (30) days — keep `defaultMode` in step with it. */
@@ -34,7 +36,11 @@ export const AUDIT_DATE_RANGE: DateRangeConfig = { modes: ["semua", "hari", "7h"
 export const MAX_NAME_LENGTH = 200;
 export const MAX_LOCATION_LENGTH = 200;
 export const MAX_NOTES_LENGTH = 1000;
+/** Notes this long (or multi-line) get a "Selengkapnya" toggle in the activity list; shorter ones are shown as is. */
+export const OCCURRENCE_NOTES_EXPAND_FROM = 60;
 export const MAX_ATTENDANCE_ENTRIES = 1000;
+/** Reason (alasan) stored with an IZIN attendance row. */
+export const MAX_ATTENDANCE_NOTE_LENGTH = 500;
 export const MAX_WEEKDAYS = 7;
 export const MAX_GROUP_FILTER_IDS = 50;
 
@@ -69,8 +75,21 @@ export const VIEW_SECTION_PAGE_SIZE = 25;
 export const VIEW_EXPANDED_SECTIONS = 5;
 /** Most in-scope groups offered in the view editor's group picker. */
 export const VIEW_GROUP_OPTIONS_LIMIT = 500;
+/** Most visible tags offered in the view editor's tag picker. */
+export const VIEW_TAG_OPTIONS_LIMIT = 500;
 /** Max length (characters) of the base64url `?d=` URL draft. */
 export const VIEW_MAX_DRAFT_LENGTH = 4000;
+/** Most summaries ("Ringkasan") one member view may hold. */
+export const VIEW_MAX_SUMMARIES = 6;
+/** Buckets drawn in a summary chart; a summary with more buckets also gets a paginated table. */
+export const SUMMARY_MAX_BARS = 12;
+
+/** Member CSV import limits (member-csv-import spec). The file size stays under the 1MB Server Action body limit. */
+export const MAX_IMPORT_FILE_BYTES = 900_000;
+export const MAX_IMPORT_ROWS = 2000;
+export const MAX_IMPORT_ERRORS_SHOWN = 100;
+/** About 5x the slowest measured 2000-row import (373 ms); see member-csv-import design.md decision 4. */
+export const IMPORT_TRANSACTION_TIMEOUT_MS = 2_000;
 
 /** bcrypt work factor for password hashing (DESIGN.md §4.1). */
 export const BCRYPT_COST = 12;
@@ -80,6 +99,15 @@ export const LOGIN_RATE_LIMIT_WINDOW_MINUTES = 15;
 export const LOGIN_RATE_LIMIT_MAX_PER_USERNAME = 5;
 export const LOGIN_RATE_LIMIT_MAX_PER_IP = 20;
 
+/** Public interest form (/daftar) rate limiting, computed from AuditLog `lead.create` rows per IP. */
+export const INTEREST_RATE_LIMIT_MAX_PER_IP = 5;
+export const INTEREST_RATE_LIMIT_WINDOW_MINUTES = 60;
+
+/** Bounds for the public interest form fields. */
+export const INTEREST_MAX_FIELD_LENGTH = 100;
+export const INTEREST_MAX_MESSAGE_LENGTH = 1000;
+export const INTEREST_MAX_MEMBER_COUNT = 100_000;
+
 /** Every `AuditLog.action` value the app writes (audit-log spec "Logged actions"), for the `/dashboard/audit` action filter. */
 export const AUDIT_ACTIONS = [
   "auth.login",
@@ -87,6 +115,8 @@ export const AUDIT_ACTIONS = [
   "auth.logout",
   "user.create",
   "user.update_role",
+  "user.add_extra_role",
+  "user.remove_extra_role",
   "user.move",
   "user.set_active",
   "user.reset_password",
@@ -113,4 +143,35 @@ export const AUDIT_ACTIONS = [
   "member_view.update",
   "member_view.delete",
   "member_view.transfer",
+  "tag.create",
+  "tag.update",
+  "tag.delete",
+  "member.tag",
+  "member.untag",
+  "activity.tag",
+  "activity.untag",
 ] as const;
+
+/** Tag limits (tags spec). Reject, never truncate. */
+export const TAG_MAX_PART_LENGTH = 30;
+export const TAG_MAX_PER_GROUP = 100;
+export const TAG_MAX_PER_ENTITY = 20;
+export const MAX_TAG_FILTER_IDS = 50;
+/** Fixed tag palette; `components/tags/tag-chip.tsx` maps each token to checked-contrast classes. */
+/** Color of a tag created from the picker; the owner group recolors it from its Tag tab. */
+export const TAG_DEFAULT_COLOR = "slate" as const;
+export const TAG_COLORS = ["slate", "red", "orange", "amber", "green", "teal", "blue", "indigo", "purple", "pink"] as const;
+
+/** Member relationship limits (member-relations spec). Reject, never truncate. */
+export const RELATION_MAX_PER_MEMBER = 20;
+/** Most members offered by the "Tambah keluarga" picker. */
+export const RELATION_PICKER_LIMIT = 10;
+
+/** Random part of `Member.code` (`<PREFIX>-XXXXXX`, Crockford base32); see member-code spec. */
+export const MEMBER_CODE_LENGTH = 6;
+/** Retries when a generated code collides with an existing one (unique index on `Member.code`). */
+export const MEMBER_CODE_MAX_ATTEMPTS = 5;
+/** Members coded per lookup round by `pnpm member-codes:backfill`; keeps each `IN (...)` query bounded. */
+export const MEMBER_CODE_BACKFILL_BATCH = 500;
+/** One transaction per organization; generous because the backfill runs offline, before the app starts. */
+export const MEMBER_CODE_BACKFILL_TIMEOUT_MS = 60_000;

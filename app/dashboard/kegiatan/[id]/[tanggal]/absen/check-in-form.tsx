@@ -20,8 +20,10 @@ export function CheckInForm({
   activityName,
   date,
   ruleDate,
+  today,
   startTime,
   closedReason,
+  notice,
   leafGroups,
   breadcrumb,
   initialGroupId,
@@ -32,8 +34,12 @@ export function CheckInForm({
   date: string;
   /** The rule's key date — what the server resolves the occurrence by. */
   ruleDate: string;
+  /** The organization's "today" (`YYYY-MM-DD`), computed on the server. */
+  today: string;
   startTime: string;
   closedReason?: string;
+  /** Shown above the open form, e.g. that an admin is recording a future date. */
+  notice?: string;
   /** Every group the user may check people into; `isDefault` ones (under the owning group) are suggested first. */
   leafGroups: LeafGroupOption[];
   /** Owning group's ancestry, outermost first, shown before the group field. */
@@ -170,6 +176,12 @@ export function CheckInForm({
           </p>
         </header>
 
+        {notice && (
+          <p role="note" className="rounded-xl border bg-muted/40 px-4 py-3 text-center text-sm text-muted-foreground">
+            {notice}
+          </p>
+        )}
+
         {closedReason ? (
           <p className="rounded-xl border bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">
             {closedReason}
@@ -254,6 +266,7 @@ export function CheckInForm({
               groupId={groupId}
               groupName={leafGroups.find((g) => g.id === groupId)?.name ?? ""}
               occurrenceDate={date}
+              today={today}
               onRegistered={onRegistered}
             />
           </div>

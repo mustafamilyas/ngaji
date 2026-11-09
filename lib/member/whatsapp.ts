@@ -7,8 +7,8 @@ const MAX_DIGITS = 15; // E.164 maximum
  * (0…, 62…, +62…, or a bare 8…) become 62…; any other number must be
  * written with "+" to be trusted as international. Null when unusable.
  */
-export function whatsappNumber(phone: string): string | null {
-  const trimmed = phone.trim();
+export function whatsappNumber(phone: string | null | undefined): string | null {
+  const trimmed = (phone ?? "").trim();
   const digits = trimmed.replace(/\D/g, "");
   if (!digits) return null;
 
@@ -22,7 +22,7 @@ export function whatsappNumber(phone: string): string | null {
   return normalized.length >= MIN_DIGITS && normalized.length <= MAX_DIGITS ? normalized : null;
 }
 
-export function whatsappUrl(phone: string): string | null {
+export function whatsappUrl(phone: string | null | undefined): string | null {
   const number = whatsappNumber(phone);
   return number ? `https://wa.me/${number}` : null;
 }

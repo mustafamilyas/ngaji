@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { visibleGroupsWhere } from "@/lib/authz";
 import { db } from "@/lib/db";
@@ -26,7 +27,7 @@ function GroupTreeNode({
     <li>
       <Link
         href={`/dashboard/grup/${group.id}`}
-        className="flex items-center justify-between gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted"
+        className="flex min-h-11 items-center justify-between gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted xl:min-h-0"
       >
         <span className="flex min-w-0 items-center gap-2">
           <Network className="size-4 shrink-0 text-muted-foreground" />
@@ -88,9 +89,9 @@ export default async function GroupTreePage() {
         meta={`${groups.length} grup dalam scope Anda${levelNames.length > 0 ? ` · ${levelNames.join(" › ")}` : ""}`}
         actions={
           isRootOwner && (
-            <Link href="/dashboard/pengaturan/jenjang" className={buttonVariants({ variant: "outline", size: "lg" })}>
+            <Link href="/dashboard/pengaturan" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-11 text-base xl:h-9 xl:text-sm")}>
               <Settings />
-              Pengaturan jenjang
+              Pengaturan
             </Link>
           )
         }

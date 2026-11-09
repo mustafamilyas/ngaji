@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { Trash2 } from "lucide-react";
 import { deleteActivityAction } from "@/app/dashboard/kegiatan/actions";
 import { Button } from "@/components/ui/button";
+
 import type { ActionResult } from "@/lib/errors";
 
 export function DeleteActivityForm({ activityId }: { activityId: number }) {

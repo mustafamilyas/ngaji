@@ -1,0 +1,144 @@
+import { describe, expect, it } from "vitest";
+import { PAGE_SIZE, TAG_COLORS, TAG_MAX_PART_LENGTH } from "@/lib/constants";
+import {
+  activityTagSchema,
+  bulkTagMembersSchema,
+  createTagSchema,
+  deleteTagSchema,
+  memberTagSchema,
+  parseTagInput,
+  recolorTagSchema,
+  renameKeySchema,
+  renameValueSchema,
+  tagColorSchema,
+} from "./tag";
+
+describe("parseTagInput", () => {
+  it("reads a bare word as a simple tag", () => {
+    expect(parseTagInput("fokus")).toEqual({ ok: true, key: "fokus", value: null });
+  });
+
+  it("reads `a:b` as key and value, trimmed and lowercased", () => {
+    expect(parseTagInput(" Prioritas : Tinggi ")).toEqual({ ok: true, key: "prioritas", value: "tinggi" });
+  });
+
+  it("collapses runs of inner spaces to one", () => {
+    expect(parseTagInput("kader   baru")).toEqual({ ok: true, key: "kader baru", value: null });
+    expect(parseTagInput("a  b : c   d")).toEqual({ ok: true, key: "a b", value: "c d" });
+  });
+
+  it("allows digits, hyphen and underscore", () => {
+    expect(parseTagInput("kelas-1_a:2025")).toEqual({ ok: true, key: "kelas-1_a", value: "2025" });
+  });
+
+  it("accepts a part of exactly the maximum length", () => {
+    const part = "a".repeat(TAG_MAX_PART_LENGTH);
+    expect(parseTagInput(`${part}:${part}`)).toEqual({ ok: true, key: part, value: part });
+  });
+
+  it("rejects a part longer than the maximum", () => {
+    const tooLong = "a".repeat(TAG_MAX_PART_LENGTH + 1);
+    expect(parseTagInput(tooLong).ok).toBe(false);
+    expect(parseTagInput(`k:${tooLong}`).ok).toBe(false);
+  });
+
+  it.each(["", "   ", ":", "a:", ":b", " : ", "a: "])("rejects empty key or value: %j", (input) => {
+    expect(parseTagInput(input).ok).toBe(false);
+  });
+
+  it("rejects more than one colon", () => {
+    expect(parseTagInput("a:b:c").ok).toBe(false);
+  });
+
+  it.each(["a/b", "a.b", "a,b", "a#b", "tag!", "<b>", "emoji😀", "ustazah é"])(
+    "rejects characters outside letters, digits, space, - and _: %j",
+    (input) => {
+      expect(parseTagInput(input).ok).toBe(false);
+    },
+  );
+
+  it("returns a validation message when rejecting", () => {
+    const result = parseTagInput("a:b:c");
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.length).toBeGreaterThan(0);
+  });
+});
+
+describe("tagColorSchema", () => {
+  it.each(TAG_COLORS)("accepts palette color %s", (color) => {
+    expect(tagColorSchema.safeParse(color).success).toBe(true);
+  });
+
+  it.each(["#ff00ff", "magenta", "", "RED"])("rejects a color outside the palette: %j", (color) => {
+    expect(tagColorSchema.safeParse(color).success).toBe(false);
+  });
+});
+
+describe("createTagSchema", () => {
+  it("parses the input into key, value and color", () => {
+    const result = createTagSchema.parse({ input: " Prioritas : Tinggi ", color: "red" });
+    expect(result).toEqual({ key: "prioritas", value: "tinggi", color: "red" });
+  });
+
+  it("reports the name error on the `input` field", () => {
+    const result = createTagSchema.safeParse({ input: "a:b:c", color: "red" });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues[0].path).toEqual(["input"]);
+  });
+
+  it("rejects a color outside the palette", () => {
+    expect(createTagSchema.safeParse({ input: "fokus", color: "#ff00ff" }).success).toBe(false);
+  });
+});
+
+describe("recolorTagSchema", () => {
+  it("coerces the id and checks the palette", () => {
+    expect(recolorTagSchema.parse({ tagId: "7", color: "teal" })).toEqual({ tagId: 7, color: "teal" });
+    expect(recolorTagSchema.safeParse({ tagId: 7, color: "nope" }).success).toBe(false);
+  });
+});
+
+describe("renameKeySchema / renameValueSchema", () => {
+  it("normalizes the new name and coerces the id", () => {
+    expect(renameKeySchema.parse({ tagId: "3", newKey: " Prioritas " })).toEqual({ tagId: 3, newKey: "prioritas" });
+    expect(renameValueSchema.parse({ tagId: 3, newValue: " Mendesak " })).toEqual({ tagId: 3, newValue: "mendesak" });
+  });
+
+  it("rejects empty, over-long and ':' names", () => {
+    expect(renameKeySchema.safeParse({ tagId: 3, newKey: "  " }).success).toBe(false);
+    expect(renameKeySchema.safeParse({ tagId: 3, newKey: "a:b" }).success).toBe(false);
+    expect(renameValueSchema.safeParse({ tagId: 3, newValue: "x".repeat(TAG_MAX_PART_LENGTH + 1) }).success).toBe(false);
+  });
+});
+
+describe("deleteTagSchema", () => {
+  it("coerces the id", () => {
+    expect(deleteTagSchema.parse({ tagId: "9" })).toEqual({ tagId: 9 });
+  });
+});
+
+describe("memberTagSchema / activityTagSchema", () => {
+  it("coerces ids and rejects non-positive ones", () => {
+    expect(memberTagSchema.parse({ memberId: "4", tagId: "5" })).toEqual({ memberId: 4, tagId: 5 });
+    expect(activityTagSchema.parse({ activityId: 4, tagId: 5 })).toEqual({ activityId: 4, tagId: 5 });
+    expect(memberTagSchema.safeParse({ memberId: 0, tagId: 5 }).success).toBe(false);
+    expect(activityTagSchema.safeParse({ activityId: 4 }).success).toBe(false);
+  });
+});
+
+describe("bulkTagMembersSchema", () => {
+  it("coerces ids, de-duplicates them and keeps the order", () => {
+    expect(bulkTagMembersSchema.parse({ memberIds: ["3", 1, 3], tagId: "9", op: "add" })).toEqual({
+      memberIds: [3, 1],
+      tagId: 9,
+      op: "add",
+    });
+  });
+
+  it("rejects an empty selection, more than PAGE_SIZE ids and an unknown op", () => {
+    expect(bulkTagMembersSchema.safeParse({ memberIds: [], tagId: 1, op: "add" }).success).toBe(false);
+    const tooMany = Array.from({ length: PAGE_SIZE + 1 }, (_, i) => i + 1);
+    expect(bulkTagMembersSchema.safeParse({ memberIds: tooMany, tagId: 1, op: "add" }).success).toBe(false);
+    expect(bulkTagMembersSchema.safeParse({ memberIds: [1], tagId: 1, op: "toggle" }).success).toBe(false);
+  });
+});

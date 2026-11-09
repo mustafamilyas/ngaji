@@ -11,12 +11,19 @@ import { STATS_DATE_RANGE } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { today } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
-import { formatDateRange, parseGroupIds, parseSearch, resolveDateRange } from "@/lib/filters";
+import { breakdownParam, formatDateRange, parseBreakdown, parseGroupIds, parsePage, parseSearch, parseTagId, resolveDateRange } from "@/lib/filters";
+import { resolveBreakdown } from "@/lib/summary/breakdown";
+import { participationPage } from "@/lib/participation/page";
+import { DEFAULT_PARTICIPATION_SORT, PARTICIPATION_SORT_KEYS, parseSort, sortPreserve } from "@/lib/sort";
 import { parseTab } from "@/lib/tabs";
+import { tagChoices } from "@/lib/tag/choices";
+import { loadTagOptions } from "@/lib/tag/entity";
 import { activityStatistics, memberStatistics, participationStatistics } from "@/lib/stats";
+import { BreakdownSection } from "@/components/breakdown/breakdown-section";
 import { ActivityCharts } from "./activity-charts";
 import { MemberCharts } from "./member-charts";
 import { ParticipationTable } from "./participation-table";
+import { TagBreakdownCard } from "./tag-breakdown-card";
 
 const TABS = [
   { key: "anggota", label: "Anggota", icon: Users },
@@ -36,7 +43,7 @@ export default async function StatisticsPage({
 
   const params = await searchParams;
   const tab = parseTab(params.tab, TABS.map((t) => t.key), "anggota" as TabKey);
-  const now = today();
+  const now = today(session.user.timeZone);
   const range = resolveDateRange(params, STATS_DATE_RANGE, now);
   // STATS_DATE_RANGE has no open-ended mode, so both bounds are always set.
   const from = range.from!;
@@ -44,6 +51,7 @@ export default async function StatisticsPage({
   // Statistics are computed for one scope group (breakdowns are per direct sub-group), so only the first id counts.
   const grup = parseGroupIds(params.grup)?.[0];
   const q = tab === "partisipasi" ? parseSearch(params.q) : undefined;
+  const participationSort = parseSort(params, PARTICIPATION_SORT_KEYS, DEFAULT_PARTICIPATION_SORT);
 
   const groups = await db.group.findMany({
     where: visibleGroupsWhere(session.user),
@@ -68,32 +76,59 @@ export default async function StatisticsPage({
 
   const rangeFiltered = range.mode !== STATS_DATE_RANGE.defaultMode || range.anchor !== now;
 
+  let rincian: string | undefined;
   let data:
     | { tab: "anggota"; stats: Awaited<ReturnType<typeof memberStatistics>> }
     | { tab: "kegiatan"; stats: Awaited<ReturnType<typeof activityStatistics>> }
-    | { tab: "partisipasi"; rows: Awaited<ReturnType<typeof participationStatistics>> };
+    | { tab: "partisipasi"; page: ReturnType<typeof participationPage> };
   try {
     if (tab === "anggota") {
-      data = { tab, stats: await memberStatistics(session.user, grup) };
+      data = { tab, stats: await memberStatistics(session.user, grup, { tagId: parseTagId(params.tag) }) };
     } else if (tab === "kegiatan") {
-      data = { tab, stats: await activityStatistics(session.user, { from, to, groupId: grup }) };
+      const choice = parseBreakdown(params.rincian);
+      const breakdown = await resolveBreakdown(session.user, choice);
+      // An unusable choice (invisible tag…) resolves to none: no breakdown, no error.
+      rincian = breakdown && choice ? breakdownParam(choice) : undefined;
+      data = { tab, stats: await activityStatistics(session.user, { from, to, groupId: grup, breakdown }) };
     } else {
       const rows = await participationStatistics(session.user, { from, to, groupId: grup });
-      const needle = q?.toLocaleLowerCase("id-ID");
-      data = { tab, rows: needle ? rows.filter((r) => r.memberName.toLocaleLowerCase("id-ID").includes(needle)) : rows };
+      data = { tab, page: participationPage(rows, { sort: participationSort, page: parsePage(params.page), q }) };
     }
   } catch (error) {
     if (error instanceof NotFoundError) notFound();
     throw error;
   }
 
+  // "Per tag" only needs the tags the viewer can see; an id outside them was already ignored by memberStatistics.
+  const tagCardQuery: Record<string, string> = { tab };
+  if (grup) tagCardQuery.grup = String(grup);
+
   const content =
     data.tab === "anggota" ? (
-      <MemberCharts stats={data.stats} />
+      <div className="flex flex-col gap-6">
+        <MemberCharts stats={data.stats} />
+        <TagBreakdownCard
+          choices={tagChoices((await loadTagOptions(session.user)).visible)}
+          breakdown={data.stats.byTag}
+          total={data.stats.total}
+          basePath="/dashboard/statistik"
+          query={tagCardQuery}
+        />
+      </div>
     ) : data.tab === "kegiatan" ? (
-      <ActivityCharts stats={data.stats} />
+      <div className="flex flex-col gap-6">
+        <ActivityCharts stats={data.stats} />
+        <BreakdownSection
+          choices={tagChoices((await loadTagOptions(session.user)).visible)}
+          breakdown={data.stats.breakdown}
+          selected={rincian}
+          basePath="/dashboard/statistik"
+          searchParams={{ ...params, tab }}
+          page={parsePage(params.rincianhal)}
+        />
+      </div>
     ) : (
-      <ParticipationTable rows={data.rows} />
+      <ParticipationTable page={data.page} sort={participationSort} basePath="/dashboard/statistik" searchParams={{ ...params, tab }} />
     );
 
   return (
@@ -122,6 +157,10 @@ export default async function StatisticsPage({
             tab,
             // The anggota tab has no date filter; keep the chosen range for the other tabs.
             ...(tab === "anggota" ? rangeParams : {}),
+            // The breakdown choice survives a range or group change.
+            ...(tab === "kegiatan" && rincian ? { rincian } : {}),
+            // A filter change keeps the chosen order (and, because `page` is not preserved, starts at page 1).
+            ...(tab === "partisipasi" ? sortPreserve(participationSort, DEFAULT_PARTICIPATION_SORT) : {}),
           }}
           isFiltered={Boolean(grup || q || (tab !== "anggota" && rangeFiltered))}
           resetHref={`/dashboard/statistik?tab=${tab}`}

@@ -13,7 +13,7 @@ export default function NotFound() {
       <p className="text-sm text-muted-foreground">
         Data yang Anda cari tidak ada atau di luar akses Anda.
       </p>
-      <Link href={DASHBOARD_PATH} className="text-sm text-primary hover:underline">
+      <Link href={DASHBOARD_PATH} className="inline-flex min-h-11 items-center text-sm text-primary hover:underline xl:min-h-0">
         Kembali ke dasbor
       </Link>
     </div>

@@ -50,6 +50,17 @@ describe("verifyCredentials", () => {
     await db.$disconnect();
   });
 
+  it("matches the username case-insensitively", async () => {
+    const result = await verifyCredentials({
+      username: "Active-User",
+      password: "correct-password",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("expected ok result");
+    expect(result.user.id).toBe(String(activeUserId));
+  });
+
   it("succeeds on correct credentials for an active user", async () => {
     const result = await verifyCredentials({
       username: "active-user",

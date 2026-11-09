@@ -1,5 +1,6 @@
 import { ForbiddenError, NotFoundError } from "./errors";
 import { isAncestorOf, isInScope } from "./scope";
+import { canUseTag } from "./tag/access";
 import type { SessionUser } from "./auth/session-user";
 import type { Role } from "./validation/enums";
 
@@ -12,6 +13,7 @@ export type Action =
   | "member.create"
   | "member.update"
   | "member.delete"
+  | "member.relate"
   | "activity.view"
   | "activity.create"
   | "activity.update"
@@ -33,14 +35,19 @@ export type Action =
   | "user.setActive"
   | "user.resetPassword"
   | "level.rename"
+  | "organization.update"
   | "audit.view"
   | "member_view.view"
   | "member_view.create"
   | "member_view.update"
   | "member_view.delete"
-  | "member_view.transfer";
+  | "member_view.transfer"
+  | "tag.manage"
+  | "tag.use";
 
 type ScopeTarget = { groupPath: string };
+/** Both members of a link, already resolved (non-deleted, own organization) by `resolveMember`. */
+type MemberPairTarget = { groupPath: string; relativeGroupPath: string };
 type ActivityGroupTarget = { groupId: number };
 type AttendanceTarget = { activityGroupPath: string; leafGroupPath: string; isLeaf: boolean };
 type SurveyViewTarget = { surveyGroupPath: string };
@@ -83,9 +90,21 @@ export function canViewActivity(session: SessionUser, activityGroupPath: string)
   );
 }
 
-/** DESIGN.md §3.3 "Ubah": strictly the owning group, role >= ADMIN. No override for root OWNER. */
+/**
+ * Groups where the session holds ADMIN or higher: its own group (primary role) and every
+ * additional ADMIN role (DESIGN.md §3.2a). Never derived from scope.
+ */
+export function adminGroupIds(session: SessionUser): number[] {
+  const ids = atLeast(session.role, "ADMIN") ? [session.groupId] : [];
+  for (const extra of session.extraRoles ?? []) {
+    if (atLeast(extra.role, "ADMIN")) ids.push(extra.groupId);
+  }
+  return ids;
+}
+
+/** DESIGN.md §3.3 "Ubah": strictly a group where the user holds ADMIN+ (own group or an additional role). No override for root OWNER. */
 export function canEditActivity(session: SessionUser, activityGroupId: number): boolean {
-  return session.groupId === activityGroupId && atLeast(session.role, "ADMIN");
+  return adminGroupIds(session).includes(activityGroupId);
 }
 
 /**
@@ -104,6 +123,19 @@ export function canRecordAttendance(
   const leafInOwnScope = leafGroup.isLeaf && isInScope(leafGroup.path, session.groupPath);
   const activityAppliesToLeaf = isInScope(leafGroup.path, activityGroupPath);
   return sessionAtOrBelowActivityGroup && leafInOwnScope && activityAppliesToLeaf;
+}
+
+/**
+ * DESIGN.md §3.3 "Absensi" condition 4 exception: ADMIN and OWNER may record
+ * a date that has not happened yet (e.g. an IZIN given in advance); USER may not.
+ */
+export function canRecordFutureAttendance(session: SessionUser): boolean {
+  return atLeast(session.role, "ADMIN");
+}
+
+/** Date rule of §3.3 condition 4 for a caller already allowed to record the activity: today or earlier, or any date for ADMIN+. */
+export function canRecordDate(session: SessionUser, date: string, now: string): boolean {
+  return date <= now || canRecordFutureAttendance(session);
 }
 
 /** Surveys inherit exactly like activities: visible = ancestor-or-scope. */
@@ -184,7 +216,10 @@ export function authorize(
   action: "member_view.view" | "member_view.update" | "member_view.delete" | "member_view.transfer",
   target: MemberViewTarget,
 ): void;
-export function authorize(session: SessionUser, action: "level.rename"): void;
+export function authorize(session: SessionUser, action: "member.relate", target: MemberPairTarget): void;
+export function authorize(session: SessionUser, action: "tag.manage", target: ActivityGroupTarget): void;
+export function authorize(session: SessionUser, action: "tag.use", target: ScopeTarget): void;
+export function authorize(session: SessionUser, action: "level.rename" | "organization.update"): void;
 export function authorize(session: SessionUser, action: "audit.view"): void;
 export function authorize(session: SessionUser, action: Action, target?: unknown): void {
   switch (action) {
@@ -205,6 +240,14 @@ export function authorize(session: SessionUser, action: Action, target?: unknown
       return;
     }
 
+    // Link or unlink (member-relations spec): any role, both members in scope.
+    case "member.relate": {
+      const { groupPath, relativeGroupPath } = target as MemberPairTarget;
+      assertInScope(session, groupPath);
+      assertInScope(session, relativeGroupPath);
+      return;
+    }
+
     case "group.create":
     case "group.update":
     case "group.delete": {
@@ -222,8 +265,7 @@ export function authorize(session: SessionUser, action: Action, target?: unknown
 
     case "activity.create": {
       const { groupId } = target as ActivityGroupTarget;
-      if (!atLeast(session.role, "ADMIN")) throw new ForbiddenError();
-      if (groupId !== session.groupId) throw new ForbiddenError();
+      if (!canEditActivity(session, groupId)) throw new ForbiddenError();
       return;
     }
 
@@ -334,7 +376,23 @@ export function authorize(session: SessionUser, action: Action, target?: unknown
       return;
     }
 
-    case "level.rename": {
+    case "tag.manage": {
+      // Primary role only: extra ADMIN roles never grant tag management (DESIGN.md §13.2).
+      const { groupId } = target as ActivityGroupTarget;
+      if (!atLeast(session.role, "ADMIN") || groupId !== session.groupId) throw new ForbiddenError();
+      return;
+    }
+
+    case "tag.use": {
+      // Existence/visibility (404) is settled earlier by `resolveTag`; here a visible tag is usable or 403.
+      const { groupPath } = target as ScopeTarget;
+      if (!canUseTag(session, groupPath)) throw new ForbiddenError();
+      return;
+    }
+
+    case "level.rename":
+    case "organization.update": {
+      // Always the caller's own organization; no target to name another one.
       if (session.role !== "OWNER" || !isRootPath(session.groupPath)) {
         throw new ForbiddenError();
       }

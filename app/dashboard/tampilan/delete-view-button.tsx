@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { deleteMemberViewAction } from "@/app/dashboard/tampilan/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 /** Danger-zone button that confirms in a dialog before soft-deleting the view. */
 export function DeleteViewButton({ viewId, viewName }: { viewId: number; viewName: string }) {
@@ -38,12 +39,12 @@ export function DeleteViewButton({ viewId, viewName }: { viewId: number; viewNam
             {error}
           </p>
         )}
-        <div className="mt-5 flex justify-end gap-2">
+        <DialogFooter className="mt-5">
           <DialogClose className={buttonVariants({ variant: "outline", size: "lg" })}>Batal</DialogClose>
           <Button variant="destructive" size="lg" onClick={confirm} disabled={pending}>
             {pending ? "Menghapus…" : "Hapus"}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

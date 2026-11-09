@@ -3,7 +3,7 @@ import { loadOccurrenceRows } from "@/lib/activity/rows";
 import { toActivityTemplate } from "@/lib/activity/template";
 import { audit } from "@/lib/audit";
 import type { SessionUser } from "@/lib/auth/session-user";
-import { authorize } from "@/lib/authz";
+import { authorize, canRecordFutureAttendance } from "@/lib/authz";
 import { today } from "@/lib/dates";
 import { db } from "@/lib/db";
 import { NotFoundError, ValidationError } from "@/lib/errors";
@@ -14,10 +14,11 @@ import type { AttendanceSaveInput } from "@/lib/validation/attendance";
 import type { MemberStatus } from "@/lib/validation/enums";
 
 /**
- * Everything both attendance writers (bulk save, single check-in) must
+ * Everything every attendance writer (table, bulk save, check-in) must
  * establish before touching `Attendance` — DESIGN.md §3.3 `canRecordAttendance`
- * plus the occurrence rules (valid key, not future, not cancelled) — and the
- * members expected on that date. Ids are resolved here, never trusted.
+ * plus the occurrence rules (valid key, not cancelled, not future unless
+ * `canRecordFutureAttendance`) — and the members expected on that date. Ids
+ * are resolved here, never trusted.
  */
 export async function loadRecordingContext(
   session: SessionUser,
@@ -43,7 +44,7 @@ export async function loadRecordingContext(
     (o) => o.key === input.date,
   );
   if (!occurrence) throw new NotFoundError();
-  if (occurrence.effectiveDate > today()) {
+  if (occurrence.effectiveDate > today(session.timeZone) && !canRecordFutureAttendance(session)) {
     throw new ValidationError("Tidak bisa mengisi absensi untuk tanggal yang akan datang");
   }
   if (occurrence.status === "CANCELLED") {
@@ -100,7 +101,7 @@ export async function saveAttendance(session: SessionUser, input: AttendanceSave
       await tx.attendance.upsert({
         where: { occurrenceId_memberId: { occurrenceId: occurrenceRow.id, memberId } },
         create: { occurrenceId: occurrenceRow.id, memberId, status, recordedById: Number(session.id) },
-        update: { status, recordedById: Number(session.id) },
+        update: { status, recordedById: Number(session.id), ...(status !== "IZIN" && { note: null }) },
       });
       set.push({ memberId, status });
     }

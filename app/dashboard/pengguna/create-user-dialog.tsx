@@ -4,14 +4,16 @@ import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { GroupAutocomplete, withParentNames } from "@/components/group-autocomplete";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { touchField } from "@/components/ui/touch";
+import { useKeepValues } from "@/lib/forms/use-keep-values";
+import { cn } from "@/lib/utils";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { CreatedUserDto } from "@/lib/user/dto";
 import type { ActionResult } from "@/lib/errors";
 import type { Role } from "@/lib/validation/enums";
 import { createUserAction } from "./actions";
 
-const inputClass =
-  "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+const inputClass = touchField;
 
 type GroupOption = { id: number; name: string; parentId: number | null };
 
@@ -38,6 +40,7 @@ export function CreateUserDialog({
     ActionResult<{ user: CreatedUserDto; temporaryPassword: string }> | null,
     FormData
   >(createUserAction, null);
+  const onSubmit = useKeepValues(formAction);
   const formRef = useRef<HTMLFormElement>(null);
   const [groupId, setGroupId] = useState<number | undefined>();
   // Remounting the picker clears its text after a successful create.
@@ -59,15 +62,15 @@ export function CreateUserDialog({
 
   return (
     <Dialog>
-      <DialogTrigger className={buttonVariants({ size: "lg" })}>
+      <DialogTrigger className={cn(buttonVariants({ size: "lg" }), "h-11 w-full text-base sm:w-auto xl:h-9 xl:text-sm")}>
         <UserPlus />
         Tambah pengguna
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="w-[min(36rem,calc(100vw-2rem))]">
         <DialogTitle>Tambah pengguna</DialogTitle>
         <DialogDescription>Password sementara dibuat otomatis dan wajib diganti saat pertama masuk.</DialogDescription>
 
-        <form ref={formRef} action={formAction} className="mt-4 flex flex-col gap-3">
+        <form ref={formRef} onSubmit={onSubmit} className="mt-4 flex flex-col gap-3">
           <GroupAutocomplete
             key={pickerKey}
             id="new-user-group"
@@ -75,11 +78,12 @@ export function CreateUserDialog({
             value={groupId}
             onChange={setGroupId}
             name="groupId"
+            inlineList
           />
           <Field label="Nama" htmlFor="new-user-name">
             <input id="new-user-name" name="name" required className={inputClass} />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Username" htmlFor="new-user-username">
               <input id="new-user-username" name="username" required className={inputClass} />
             </Field>
@@ -113,12 +117,12 @@ export function CreateUserDialog({
             </div>
           )}
 
-          <div className="flex justify-end gap-2">
+          <DialogFooter>
             <DialogClose className={buttonVariants({ variant: "ghost", size: "lg" })}>Tutup</DialogClose>
             <Button type="submit" size="lg" disabled={pending || groupId === undefined}>
               {pending ? "Menyimpan…" : "Buat pengguna"}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

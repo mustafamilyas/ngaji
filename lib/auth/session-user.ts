@@ -5,6 +5,8 @@ import type { Role } from "@/lib/validation/enums";
  * small; `role`/`groupId`/`isActive` are re-read from the DB on every
  * request rather than trusted from the token long-term.
  */
+export type ExtraRole = { groupId: number; role: Role };
+
 export type SessionUser = {
   /** Prisma `User.id`, stringified — Auth.js requires `User.id: string`. */
   id: string;
@@ -13,7 +15,13 @@ export type SessionUser = {
   role: Role;
   groupId: number;
   groupPath: string;
+  /** `Group.organizationId` of the user's group; re-read on every request. */
+  organizationId: number;
+  /** IANA zone of the user's organization (`Organization.timezone`); re-read on every request. */
+  timeZone: string;
   mustChangePassword: boolean;
+  /** Additional roles at groups below `groupId` (DESIGN.md §3.2a); absent on hand-built test sessions. */
+  extraRoles?: ExtraRole[];
   /** Copied into the JWT at sign-in; a mismatch with the DB value revokes the session. Absent on hand-built test sessions. */
   sessionVersion?: number;
 };
@@ -25,7 +33,12 @@ export type ResolvedUser = {
   name: string;
   mustChangePassword: boolean;
   sessionVersion: number;
-  role: { role: string; groupId: number; group: { path: string } };
+  extraRoles: { groupId: number; role: string }[];
+  role: {
+    role: string;
+    groupId: number;
+    group: { path: string; organizationId: number; organization: { timezone: string } };
+  };
 };
 
 export function toSessionUser(user: ResolvedUser): SessionUser {
@@ -36,7 +49,15 @@ export function toSessionUser(user: ResolvedUser): SessionUser {
     role: user.role.role as Role,
     groupId: user.role.groupId,
     groupPath: user.role.group.path,
+    organizationId: user.role.group.organizationId,
+    timeZone: user.role.group.organization.timezone,
     mustChangePassword: user.mustChangePassword,
+    extraRoles: user.extraRoles.map((r) => ({ groupId: r.groupId, role: r.role as Role })),
     sessionVersion: user.sessionVersion,
   };
+}
+
+/** DESIGN.md §3.2/§3.5: an OWNER whose own group is the organization's root (path holds only its own id). */
+export function isRootOwner(session: Pick<SessionUser, "role" | "groupPath">): boolean {
+  return session.role === "OWNER" && session.groupPath.split("/").filter(Boolean).length === 1;
 }

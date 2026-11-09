@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { AppSidebar, BrandMark, SidebarNav } from "@/components/app-sidebar";
 import { CHECK_IN_PATH_RE } from "@/lib/attendance/paths";
-import type { SessionUser } from "@/lib/auth/session-user";
+import { isRootOwner, type SessionUser } from "@/lib/auth/session-user";
 import { SIDEBAR_COLLAPSED_COOKIE } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +21,7 @@ export function NavShell({
 }: {
   children: React.ReactNode;
   organizationName?: string;
-  user?: Pick<SessionUser, "name" | "role">;
+  user?: Pick<SessionUser, "name" | "role" | "groupPath">;
   initialCollapsed?: boolean;
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -69,13 +69,14 @@ export function NavShell({
           organizationName={organizationName}
           userName={user.name}
           userRole={user.role}
+          isRootOwner={isRootOwner(user)}
           collapsed={collapsed}
           onToggleCollapsed={toggleCollapsed}
         />
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col print:block">
-        <header className="flex h-14 shrink-0 items-center justify-between border-b bg-background px-4 lg:hidden print:hidden">
+        <header className="flex h-16 shrink-0 items-center justify-between border-b bg-background px-4 lg:hidden print:hidden">
           <BrandMark organizationName={organizationName} />
           <button
             type="button"
@@ -83,7 +84,7 @@ export function NavShell({
             aria-expanded={drawerOpen}
             aria-controls="mobile-nav"
             onClick={() => setDrawerOpen(true)}
-            className="inline-flex size-9 items-center justify-center rounded-md hover:bg-muted"
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-md hover:bg-muted"
           >
             <Menu className="size-5" />
           </button>
@@ -115,7 +116,7 @@ export function NavShell({
           aria-label="Menu utama"
           inert={!drawerOpen}
           className={cn(
-            "absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-6 overflow-y-auto bg-card px-3 py-4 shadow-xl transition-transform duration-200",
+            "absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-6 bg-card px-3 py-4 shadow-xl [@media(max-height:500px)]:gap-2 [@media(max-height:500px)]:py-2 transition-transform duration-200",
             drawerOpen ? "translate-x-0" : "-translate-x-full",
           )}
         >
@@ -125,12 +126,12 @@ export function NavShell({
               type="button"
               aria-label="Tutup menu"
               onClick={() => setDrawerOpen(false)}
-              className="inline-flex size-9 items-center justify-center rounded-md hover:bg-muted"
+              className="inline-flex size-11 shrink-0 items-center justify-center rounded-md hover:bg-muted"
             >
               <X className="size-5" />
             </button>
           </div>
-          <SidebarNav userName={user.name} userRole={user.role} onNavigate={() => setDrawerOpen(false)} />
+          <SidebarNav userName={user.name} userRole={user.role} isRootOwner={isRootOwner(user)} onNavigate={() => setDrawerOpen(false)} />
         </nav>
       </div>
     </div>

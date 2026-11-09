@@ -6,8 +6,8 @@ import { useForm } from "react-hook-form";
 import { UserPlus } from "lucide-react";
 import { createMemberAction } from "@/app/dashboard/anggota/actions";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { today } from "@/lib/dates";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+
 import { SEX_LABELS } from "@/lib/member/labels";
 import { SEXES } from "@/lib/validation/enums";
 import { memberFormSchema, type MemberFormValues } from "@/lib/validation/member";
@@ -40,11 +40,14 @@ export function QuickRegisterDialog({
   groupId,
   groupName,
   occurrenceDate,
+  today,
   onRegistered,
 }: {
   groupId: number | undefined;
   groupName: string;
   occurrenceDate: string;
+  /** The organization's "today" (`YYYY-MM-DD`), computed on the server. */
+  today: string;
   onRegistered: (member: { id: number; name: string }) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -68,7 +71,7 @@ export function QuickRegisterDialog({
       workStatus: "BEKERJA",
       email: undefined,
       status: "AKTIF",
-      joinedAt: occurrenceDate < today() ? occurrenceDate : today(),
+      joinedAt: occurrenceDate < today ? occurrenceDate : today,
       exitedAt: undefined,
     },
   });
@@ -90,7 +93,7 @@ export function QuickRegisterDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         disabled={groupId === undefined}
-        className="inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium text-primary outline-none hover:bg-primary/5 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
+        className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-base font-medium text-primary xl:min-h-10 xl:text-sm outline-none hover:bg-primary/5 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
       >
         <UserPlus className="size-4" />
         Daftar sebagai anggota baru
@@ -119,7 +122,7 @@ export function QuickRegisterDialog({
               <input id="qr-birthDate" type="date" className={inputClass} {...register("birthDate")} />
             </Field>
           </div>
-          <Field label="No. HP" htmlFor="qr-phone" error={errors.phone?.message}>
+          <Field label="No. HP (opsional)" htmlFor="qr-phone" error={errors.phone?.message}>
             <input id="qr-phone" type="tel" inputMode="tel" className={inputClass} {...register("phone")} />
           </Field>
           <Field label="Alamat" htmlFor="qr-address" error={errors.address?.message}>
@@ -130,14 +133,14 @@ export function QuickRegisterDialog({
               {errors.root.message}
             </p>
           )}
-          <div className="mt-1 flex justify-end gap-2">
-            <Button type="button" variant="outline" size="lg" className="h-10" onClick={() => setOpen(false)}>
+          <DialogFooter>
+            <Button type="button" variant="outline" size="lg" onClick={() => setOpen(false)}>
               Batal
             </Button>
-            <Button type="submit" size="lg" className="h-10" disabled={pending}>
+            <Button type="submit" size="lg" disabled={pending}>
               {pending ? "Menyimpan…" : "Daftar"}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

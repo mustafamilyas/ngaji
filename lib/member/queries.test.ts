@@ -14,6 +14,8 @@ function sessionAt(groupId: number, groupPath: string): SessionUser {
     role: "USER",
     groupId,
     groupPath,
+    organizationId: 0,
+    timeZone: "Asia/Jakarta",
     mustChangePassword: false,
   };
 }
@@ -98,6 +100,50 @@ describe("lib/member/queries listMembers", () => {
     expect(members[0].name).toBe("Scope A");
   });
 
+  describe("search by member code", () => {
+    it("matches a code typed lowercase and without the dash", async () => {
+      await makeMember(leafA.id, { name: "Kode Satu", code: "MQT-7K3MQ9" });
+
+      const { members } = await listMembers(sessionAt(leafA.id, leafA.path), { search: "mqt7k3mq9" });
+
+      expect(members.map((m) => m.name)).toEqual(["Kode Satu"]);
+    });
+
+    it("maps O to 0 and I/L to 1 in the random part", async () => {
+      await makeMember(leafA.id, { name: "Kode Dua", code: "MQT-7K3M10" });
+
+      const { members } = await listMembers(sessionAt(leafA.id, leafA.path), { search: "MQT-7K3MLO" });
+
+      expect(members.map((m) => m.name)).toEqual(["Kode Dua"]);
+    });
+
+    it("does not show a member of a sibling leaf group by code", async () => {
+      await makeMember(leafB.id, { name: "Kode Sebelah", code: "MQT-8K3MQ9" });
+
+      const { total } = await listMembers(sessionAt(leafA.id, leafA.path), { search: "MQT-8K3MQ9" });
+
+      expect(total).toBe(0);
+    });
+
+    it("lists code and name matches together, each once", async () => {
+      await makeMember(leafA.id, { name: "Gabung", code: "MQT-9K3MQ9" });
+      await makeMember(leafA.id, { name: "Gabung MQT-9K3MQ9", code: "MQT-9K3MQ8" });
+
+      const { members, total } = await listMembers(sessionAt(leafA.id, leafA.path), { search: "MQT-9K3MQ9" });
+
+      expect(total).toBe(2);
+      expect(members.map((m) => m.name)).toEqual(["Gabung", "Gabung MQT-9K3MQ9"]);
+    });
+
+    it("treats a partial code as a name search only", async () => {
+      await makeMember(leafA.id, { name: "Kode Sebagian", code: "MQT-AK3MQ9" });
+
+      const { total } = await listMembers(sessionAt(leafA.id, leafA.path), { search: "MQT-AK3M" });
+
+      expect(total).toBe(0);
+    });
+  });
+
   it("filters by status", async () => {
     await makeMember(leafA.id, { name: "Filter Active", status: "AKTIF" });
     await makeMember(leafA.id, { name: "Filter Exited", status: "KELUAR", exitedAt: "2025-01-01" });
@@ -167,5 +213,86 @@ describe("lib/member/queries listMembers", () => {
     const pastEnd = await listMembers(session, { page: 9, search: "Pg " });
     expect(pastEnd.page).toBe(3);
     expect(pastEnd.members[0].name).toBe("Pg 101");
+  });
+
+  describe("tags", () => {
+    let tagSeq = 0;
+    const makeTag = (groupId: number, key: string, value: string | null = null, deletedAt: Date | null = null) =>
+      db.tag.create({ data: { groupId, key, value, color: "blue", createdById: actorId, deletedAt } });
+    const link = (memberId: number, tagId: number) =>
+      db.memberTag.create({ data: { memberId, tagId, createdById: actorId } });
+    const names = (members: { name: string }[]) => members.map((m) => m.name).sort();
+
+    it("matches members with any selected tag, ANDed with the other filters, without duplicates", async () => {
+      const label = `any${++tagSeq}`;
+      const focus = await makeTag(branch.id, `${label}-fokus`);
+      const prio = await makeTag(branch.id, `${label}-prio`, "tinggi");
+      const m1 = await makeMember(leafA.id, { name: `${label} M1` });
+      const m2 = await makeMember(leafA.id, { name: `${label} M2` });
+      const both = await makeMember(leafB.id, { name: `${label} M3 both` });
+      await makeMember(leafA.id, { name: `${label} M4 none` });
+      await link(m1.id, focus.id);
+      await link(m2.id, prio.id);
+      await link(both.id, focus.id);
+      await link(both.id, prio.id);
+
+      const session = sessionAt(branch.id, branch.path);
+      const result = await listMembers(session, { search: label, tagIds: [focus.id, prio.id] });
+      expect(names(result.members)).toEqual([`${label} M1`, `${label} M2`, `${label} M3 both`]);
+      expect(result.total).toBe(3);
+
+      const narrowed = await listMembers(session, { search: "M3", tagIds: [focus.id] });
+      expect(names(narrowed.members)).toEqual([`${label} M3 both`]);
+    });
+
+    it("never widens the scope: an ancestor's tag on members outside the caller's scope adds nothing", async () => {
+      const label = `scope${++tagSeq}`;
+      const tag = await makeTag(branch.id, `${label}-fokus`);
+      const mine = await makeMember(leafA.id, { name: `${label} mine` });
+      const theirs = await makeMember(leafB.id, { name: `${label} theirs` });
+      await link(mine.id, tag.id);
+      await link(theirs.id, tag.id);
+
+      const { members } = await listMembers(sessionAt(leafA.id, leafA.path), { tagIds: [tag.id] });
+      expect(names(members)).toEqual([`${label} mine`]);
+    });
+
+    it("drops tag ids that are invisible or deleted, and treats a filter with none left as empty", async () => {
+      const label = `drop${++tagSeq}`;
+      const visible = await makeTag(branch.id, `${label}-visible`);
+      const sibling = await makeTag(leafB.id, `${label}-sibling`);
+      const deleted = await makeTag(leafA.id, `${label}-gone`, null, new Date());
+      const tagged = await makeMember(leafA.id, { name: `${label} tagged` });
+      const plain = await makeMember(leafA.id, { name: `${label} plain` });
+      await link(tagged.id, visible.id);
+      await link(plain.id, sibling.id);
+      await link(plain.id, deleted.id);
+
+      const session = sessionAt(leafA.id, leafA.path);
+      const filtered = await listMembers(session, { search: label, tagIds: [visible.id, sibling.id, deleted.id, 999_999] });
+      expect(names(filtered.members)).toEqual([`${label} tagged`]);
+
+      const none = await listMembers(session, { search: label, tagIds: [sibling.id, deleted.id] });
+      expect(names(none.members)).toEqual([`${label} plain`, `${label} tagged`]);
+    });
+
+    it("includes only the tag links the caller may see, ordered by key then value", async () => {
+      const label = `inc${++tagSeq}`;
+      const b = await makeTag(branch.id, `${label}-b`, "z");
+      const a2 = await makeTag(leafA.id, `${label}-a`, "2");
+      const a1 = await makeTag(leafA.id, `${label}-a`, "1");
+      const sibling = await makeTag(leafB.id, `${label}-sibling`);
+      const deleted = await makeTag(leafA.id, `${label}-gone`, null, new Date());
+      const member = await makeMember(leafA.id, { name: `${label} member` });
+      for (const t of [b, a2, a1, sibling, deleted]) await link(member.id, t.id);
+
+      const { members } = await listMembers(sessionAt(leafA.id, leafA.path), { search: label });
+      expect(members[0].tags.map((l) => [l.tag.key, l.tag.value])).toEqual([
+        [`${label}-a`, "1"],
+        [`${label}-a`, "2"],
+        [`${label}-b`, "z"],
+      ]);
+      expect(members[0].tags[0].tag).toMatchObject({ id: a1.id, color: "blue", groupId: leafA.id });
+    });
   });
 });

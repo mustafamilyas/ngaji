@@ -1,10 +1,11 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createActivity } from "@/lib/activity/mutations";
 import type { SessionUser } from "@/lib/auth/session-user";
 import { db } from "@/lib/db";
 import { addDays, today } from "@/lib/dates";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 import { saveAttendance } from "./save";
+import { DEFAULT_TIMEZONE } from "@/lib/validation/enums";
 
 let actorId: number;
 
@@ -16,6 +17,8 @@ function sessionAt(role: SessionUser["role"], groupId: number, groupPath: string
     role,
     groupId,
     groupPath,
+    organizationId: 0,
+    timeZone: "Asia/Jakarta",
     mustChangePassword: false,
   };
 }
@@ -194,6 +197,73 @@ describe("lib/attendance/save saveAttendance", () => {
     ).rejects.toBeInstanceOf(ValidationError);
   });
 
+  it("lets an ADMIN save a future date (task 6.2)", async () => {
+    const admin = sessionAt("ADMIN", kelompok.id, kelompok.path);
+    const { activity } = await createActivity(admin, {
+      groupId: kelompok.id,
+      name: "Kajian Izin Awal",
+      location: "A",
+      startTime: "19:00",
+      durationMinutes: 60,
+      freq: "WEEKLY",
+      interval: 1,
+      weekdays: [1],
+      startsOn: "2020-01-06",
+    });
+    const member = await makeMember(kelompok.id, "Anggota Izin Awal");
+
+    await expect(
+      saveAttendance(admin, {
+        activityId: activity.id,
+        groupId: kelompok.id,
+        date: futureMonday(),
+        entries: [{ memberId: member.id, status: "IZIN" }],
+      }),
+    ).resolves.toMatchObject({ set: [expect.objectContaining({ memberId: member.id, status: "IZIN" })] });
+  });
+
+  describe("organization timezone decides what 'today' is", () => {
+    // 2026-10-18T16:30Z is Sunday 23:30 in WIB but already Monday 01:30 in WIT.
+    const MONDAY = "2026-10-19";
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    async function recordOnMonday(timeZone: string) {
+      vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-18T16:30:00Z") });
+      const admin = { ...sessionAt("ADMIN", kelompok.id, kelompok.path), timeZone };
+      // A USER, because ADMIN may record future dates (task 6.2).
+      const user = { ...sessionAt("USER", kelompok.id, kelompok.path), timeZone };
+      const { activity } = await createActivity(admin, {
+        groupId: kelompok.id,
+        name: `Kajian ${timeZone}`,
+        location: "A",
+        startTime: "19:00",
+        durationMinutes: 60,
+        freq: "WEEKLY",
+        interval: 1,
+        weekdays: [1],
+        startsOn: "2020-01-06",
+      });
+      const member = await makeMember(kelompok.id, `Anggota ${timeZone}`);
+      return saveAttendance(user, {
+        activityId: activity.id,
+        groupId: kelompok.id,
+        date: MONDAY,
+        entries: [{ memberId: member.id, status: "HADIR" }],
+      });
+    }
+
+    it("rejects Monday as future for a WIB organization at Sunday 23:30", async () => {
+      await expect(recordOnMonday("Asia/Jakarta")).rejects.toThrow(ValidationError);
+    });
+
+    it("accepts Monday for a WIT organization at Monday 01:30", async () => {
+      await expect(recordOnMonday("Asia/Jayapura")).resolves.toMatchObject({ set: [expect.anything()] });
+    });
+  });
+
   it("responds 404 for a date the rule does not generate and that has no attendance", async () => {
     const kelompokUser = sessionAt("USER", kelompok.id, kelompok.path);
     const { activity } = await createActivity(sessionAt("ADMIN", kelompok.id, kelompok.path), {
@@ -311,17 +381,17 @@ describe("lib/attendance/save saveAttendance", () => {
   });
 });
 
-/** A Monday in the past relative to `today()`, always a valid key for the WEEKLY(weekdays=[1]) fixtures above. */
+/** A Monday in the past relative to `today(DEFAULT_TIMEZONE)`, always a valid key for the WEEKLY(weekdays=[1]) fixtures above. */
 function pastMonday(): string {
-  const base = today();
+  const base = today(DEFAULT_TIMEZONE);
   const weekday = new Date(`${base}T00:00:00Z`).getUTCDay();
   const daysSinceMonday = (weekday + 6) % 7;
   return addDays(base, -(daysSinceMonday === 0 ? 7 : daysSinceMonday));
 }
 
-/** The next Monday strictly after `today()` (1-7 days out). */
+/** The next Monday strictly after `today(DEFAULT_TIMEZONE)` (1-7 days out). */
 function futureMonday(): string {
-  const base = today();
+  const base = today(DEFAULT_TIMEZONE);
   const weekday = new Date(`${base}T00:00:00Z`).getUTCDay();
   const daysUntilNextMonday = ((1 - weekday + 7) % 7) || 7;
   return addDays(base, daysUntilNextMonday);

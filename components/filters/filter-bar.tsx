@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Form from "next/form";
 import Link from "next/link";
-import { ChevronDown, Search, X } from "lucide-react";
+import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** Shared look of every filter control's trigger; `active` = the filter narrows the list. */
 export function filterTriggerClass(active = false) {
   return cn(
-    "inline-flex h-9 max-w-full items-center gap-1.5 rounded-lg border bg-background px-3 text-sm whitespace-nowrap transition-colors outline-none hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+    "inline-flex h-11 max-w-full items-center gap-1.5 rounded-lg border bg-background px-3 text-base whitespace-nowrap xl:h-9 xl:text-sm transition-colors outline-none hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
     active && "border-primary/40 bg-primary/5 hover:bg-primary/10",
   );
 }
@@ -31,6 +31,8 @@ export function FilterBar({
   preserve,
   isFiltered,
   resetHref,
+  more,
+  activeCount = 0,
   children,
 }: {
   action: string;
@@ -38,7 +40,12 @@ export function FilterBar({
   preserve?: Record<string, string | undefined>;
   isFiltered: boolean;
   resetHref: string;
-  children: React.ReactNode;
+  /** Secondary controls: a bottom panel behind a "Filter" button below `lg`, inline from `lg`. */
+  more?: React.ReactNode;
+  /** Secondary filters in effect (one per filter; search and sort do not count). */
+  activeCount?: number;
+  /** Primary controls, always inline (e.g. search). */
+  children?: React.ReactNode;
 }) {
   function dropEmptyFields(event: React.FormEvent<HTMLFormElement>) {
     const disabled: (HTMLInputElement | HTMLSelectElement)[] = [];
@@ -70,17 +77,120 @@ export function FilterBar({
           value ? <input key={name} type="hidden" name={name} value={value} /> : null,
         )}
       {children}
-      {isFiltered && (
-        <Link
-          href={resetHref}
-          scroll={false}
-          className="inline-flex h-9 items-center gap-1 rounded-lg px-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-        >
-          <X className="size-4" />
-          Reset
-        </Link>
+      {more && (
+        <FilterPanel activeCount={activeCount} reset={isFiltered && <ResetLink href={resetHref} className="lg:hidden" />}>
+          {more}
+        </FilterPanel>
       )}
+      {/* With a panel, the inline Reset shows below `lg` only when search alone filters; otherwise it is in the panel. */}
+      {isFiltered && <ResetLink href={resetHref} className={more && activeCount > 0 ? "hidden lg:inline-flex" : undefined} />}
     </Form>
+  );
+}
+
+function ResetLink({ href, className }: { href: string; className?: string }) {
+  return (
+    <Link
+      href={href}
+      scroll={false}
+      className={cn(
+        "inline-flex h-11 items-center gap-1 rounded-lg px-2 text-base text-muted-foreground hover:bg-muted hover:text-foreground xl:h-9 xl:text-sm",
+        className,
+      )}
+    >
+      <X className="size-4" />
+      Reset
+    </Link>
+  );
+}
+
+/**
+ * Below `lg`: a "Filter" button opening a bottom panel. From `lg` the panel is
+ * `display: contents`, so its controls sit inline. It is rendered inside the
+ * form (not a portaled Sheet) so its controls still submit it; popovers (z-50)
+ * open above it (z-40).
+ */
+function FilterPanel({
+  activeCount,
+  reset,
+  children,
+}: {
+  activeCount: number;
+  reset: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const panelId = useId();
+
+  function close() {
+    setOpen(false);
+    buttonRef.current?.focus();
+  }
+
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!open || !panel) return;
+    panel.focus();
+    const root = document.documentElement;
+    const previousOverflow = root.style.overflow;
+    root.style.overflow = "hidden";
+    // A DOM listener on the panel, so Escape inside a portaled popover closes only that popover.
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      buttonRef.current?.focus();
+    }
+    panel.addEventListener("keydown", onKeyDown);
+    return () => {
+      panel.removeEventListener("keydown", onKeyDown);
+      root.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen(true)}
+        className={cn(filterTriggerClass(activeCount > 0), "lg:hidden")}
+      >
+        <SlidersHorizontal className="size-4" />
+        {activeCount > 0 ? `Filter (${activeCount})` : "Filter"}
+      </button>
+      {open && <div data-filter-backdrop aria-hidden className="fixed inset-0 z-40 bg-black/10 lg:hidden" onClick={close} />}
+      <div
+        ref={panelRef}
+        id={panelId}
+        data-filter-panel
+        tabIndex={-1}
+        {...(open && { role: "dialog", "aria-label": "Filter" })}
+        className={cn(
+          open
+            ? "fixed inset-x-0 bottom-0 z-40 flex max-h-[85dvh] flex-col gap-3 overflow-y-auto rounded-t-xl border-t bg-popover p-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-popover-foreground shadow-lg outline-none"
+            : "hidden",
+          "lg:contents",
+        )}
+      >
+        <div className="flex items-center justify-between lg:hidden">
+          <h2 className="text-base font-medium">Filter</h2>
+          <button
+            type="button"
+            aria-label="Tutup"
+            onClick={close}
+            className="inline-flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 lg:contents">{children}</div>
+        {reset}
+      </div>
+    </>
   );
 }
 
@@ -119,7 +229,7 @@ export function SearchFilter({
   }
 
   return (
-    <div className="relative w-full sm:w-64">
+    <div className="relative min-w-44 flex-1 sm:w-64 sm:flex-none">
       <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
       <input
         ref={inputRef}
@@ -135,7 +245,7 @@ export function SearchFilter({
         placeholder={placeholder}
         aria-label={placeholder}
         autoComplete="off"
-        className="h-9 w-full rounded-lg border border-input bg-background pr-8 pl-9 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-search-cancel-button]:hidden"
+        className="h-11 w-full rounded-lg border border-input bg-background pr-11 pl-9 text-base outline-none xl:h-9 xl:pr-8 xl:text-sm placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-search-cancel-button]:hidden"
       />
       {text && (
         <button
@@ -147,7 +257,7 @@ export function SearchFilter({
             // Let React flush the cleared value into the input before submitting.
             setTimeout(() => submitFilterForm(inputRef.current));
           }}
-          className="absolute top-1/2 right-2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="absolute top-1/2 right-0 inline-flex size-11 -translate-y-1/2 xl:right-2 xl:size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           <X className="size-3.5" />
         </button>

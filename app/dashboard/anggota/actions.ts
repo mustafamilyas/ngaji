@@ -4,15 +4,18 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth/require-session";
-import type { Member } from "@/lib/generated/prisma/client";
+import type { Member, MemberRelation } from "@/lib/generated/prisma/client";
 import { MEMBER_COLUMNS, MEMBER_COLUMNS_COOKIE, serializeMemberColumns } from "@/lib/member/columns";
 import { createMember, deleteMember, updateMember } from "@/lib/member/mutations";
+import { linkMembers, unlinkMembers } from "@/lib/member/relation-mutations";
+import { searchRelativeCandidates } from "@/lib/member/relation-queries";
 import { type ActionResult, ValidationError, runAction } from "@/lib/errors";
 import {
   createMemberSchema,
   deleteMemberSchema,
   updateMemberSchema,
 } from "@/lib/validation/member";
+import { linkMembersSchema, searchRelativeCandidatesSchema, unlinkMembersSchema } from "@/lib/validation/member-relation";
 
 /**
  * `input` arrives as the plain object react-hook-form validated client-side
@@ -50,6 +53,51 @@ export async function updateMemberAction(input: unknown): Promise<ActionResult<M
     revalidatePath(`/dashboard/grup/${result.data.groupId}`);
   }
   return result;
+}
+
+function revalidateRelation(relation: Pick<MemberRelation, "fromMemberId" | "toMemberId">) {
+  revalidatePath(`/dashboard/anggota/${relation.fromMemberId}`);
+  revalidatePath(`/dashboard/anggota/${relation.toMemberId}`);
+}
+
+/** Links two members as family (member-relations spec); both ids are resolved and scope-checked server-side. */
+export async function linkMembersAction(input: unknown): Promise<ActionResult<MemberRelation>> {
+  const session = await requireSession();
+  const result = await runAction(async () => {
+    const parsed = linkMembersSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.issues[0]?.message ?? "Data tidak valid");
+    }
+    return linkMembers(session, parsed.data);
+  });
+  if (result.ok) revalidateRelation(result.data);
+  return result;
+}
+
+export async function unlinkMembersAction(input: unknown): Promise<ActionResult<null>> {
+  const session = await requireSession();
+  return runAction(async () => {
+    const parsed = unlinkMembersSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.issues[0]?.message ?? "Data tidak valid");
+    }
+    revalidateRelation(await unlinkMembers(session, parsed.data));
+    return null;
+  });
+}
+
+/** Add-dialog picker (member-relations spec "Choosing a relative"); read-only, scope-filtered server-side. */
+export async function searchRelativeCandidatesAction(
+  input: unknown,
+): Promise<ActionResult<Awaited<ReturnType<typeof searchRelativeCandidates>>>> {
+  const session = await requireSession();
+  return runAction(async () => {
+    const parsed = searchRelativeCandidatesSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.issues[0]?.message ?? "Data tidak valid");
+    }
+    return searchRelativeCandidates(session, parsed.data.memberId, parsed.data.query);
+  });
 }
 
 /** Redirects to `/dashboard/anggota` on success, so it never resolves to `{ ok: true }`. */

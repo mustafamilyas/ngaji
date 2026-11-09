@@ -53,8 +53,16 @@ Every ID received from the client (`groupId`, `memberId`, `activityId`, `occurre
 - **WHEN** an ADMIN calls `user.setActive` for a USER in scope
 - **THEN** the system responds 403
 
-### Requirement: Activity edit rights belong to the owning group only
-`activity.create` SHALL require `groupId === session.groupId`. `activity.update`, `activity.delete`, `activity.split` and `occurrence.override` SHALL require `activity.groupId === session.groupId` and role ≥ ADMIN. No role, including a root OWNER, SHALL edit an activity owned by a different group.
+### Requirement: Activity edit rights belong to groups where the user is ADMIN
+`activity.create`, `activity.update`, `activity.delete`, `activity.split` and `occurrence.override` SHALL require that the owning group is one where the user holds role ≥ ADMIN: the user's own group (primary role) or a group with an additional ADMIN role. On create the owning group SHALL be chosen by the user, resolved in scope on the server (404 outside scope) and then checked. No role, including a root OWNER, SHALL edit an activity owned by a group where they hold no ADMIN role.
+
+#### Scenario: USER with an additional ADMIN role creates below
+- **WHEN** a user who is USER at daerah D and has an additional ADMIN role at kelompok K (below D) creates an activity with `groupId` K
+- **THEN** the activity is created, owned by K
+
+#### Scenario: Additional role does not extend to siblings
+- **WHEN** the same user creates an activity for another kelompok L in scope
+- **THEN** the system responds 403
 
 #### Scenario: Root OWNER cannot edit a kelompok's activity
 - **WHEN** the root OWNER attempts to change the start time of an activity owned by kelompok K

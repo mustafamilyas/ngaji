@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { UserCheck, UserPlus, Users, UsersRound } from "lucide-react";
@@ -7,21 +6,26 @@ import { ColumnToggle } from "@/components/column-toggle";
 import { StatTile, StatTiles, TableCard } from "@/components/data-table";
 import { FilterBar, SearchFilter, SelectFilter } from "@/components/filters/filter-bar";
 import { GroupFilter } from "@/components/filters/group-filter";
+import { TagFilter } from "@/components/filters/tag-filter";
+import { SortSelect } from "@/components/filters/sort-select";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
-import { buttonVariants } from "@/components/ui/button";
 import { visibleGroupsWhere } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { monthStartOf, today } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
-import { parseGroupIds, parsePage, parseSearch } from "@/lib/filters";
+import { parseGroupIds, parsePage, parseSearch, parseTagIds } from "@/lib/filters";
 import { MEMBER_COLUMNS_COOKIE, MEMBER_COLUMNS, parseMemberColumns } from "@/lib/member/columns";
 import { MEMBER_STATUS_LABELS } from "@/lib/member/labels";
 import { DEFAULT_MEMBER_SORT, listMembers, MEMBER_SORT_KEYS } from "@/lib/member/queries";
 import { pageHref } from "@/lib/pagination";
-import { parseSort, sortHref, sortPreserve } from "@/lib/sort";
+import { parseSort, sortHref } from "@/lib/sort";
 import { MEMBER_STATUSES, type MemberStatus } from "@/lib/validation/enums";
 import { setMemberColumnsAction } from "./actions";
+import { MemberHeaderActions } from "./member-header-actions";
+import { BulkTagBar } from "@/components/tags/bulk-tag-bar";
+import { MemberTagProviders } from "@/components/tags/member-tag-providers";
+import { canPickTags, loadTagOptions, visibleTagIds } from "@/lib/tag/entity";
 import { MembersTable } from "./members-table";
 
 function isMemberStatus(value: string): value is MemberStatus {
@@ -39,6 +43,7 @@ export default async function MembersPage({
   const params = await searchParams;
   const q = parseSearch(params.q);
   const groupIds = parseGroupIds(params.grup);
+  const tagIds = parseTagIds(params.tag);
   const status = typeof params.status === "string" && isMemberStatus(params.status) ? params.status : undefined;
   const page = parsePage(params.page);
   const columns = parseMemberColumns((await cookies()).get(MEMBER_COLUMNS_COOKIE)?.value);
@@ -47,11 +52,11 @@ export default async function MembersPage({
   const sort = parseSort(params, sortable, DEFAULT_MEMBER_SORT);
 
   const scope = { group: { path: { startsWith: session.user.groupPath } } };
-  const [{ members, total, page: currentPage, pageSize }, groups, scopeTotal, activeTotal, joinedThisMonth] =
+  const [{ members, total, page: currentPage, pageSize }, groups, scopeTotal, activeTotal, joinedThisMonth, tagOptions] =
     await Promise.all([
       (async () => {
         try {
-          return await listMembers(session.user, { search: q, groupIds, status, page, sort });
+          return await listMembers(session.user, { search: q, groupIds, tagIds, status, page, sort });
         } catch (error) {
           if (error instanceof NotFoundError) notFound();
           throw error;
@@ -64,21 +69,20 @@ export default async function MembersPage({
       }),
       db.member.count({ where: scope }),
       db.member.count({ where: { ...scope, status: "AKTIF" } }),
-      db.member.count({ where: { ...scope, joinedAt: { gte: monthStartOf(today()) } } }),
+      db.member.count({ where: { ...scope, joinedAt: { gte: monthStartOf(today(session.user.timeZone)) } } }),
+      loadTagOptions(session.user),
     ]);
-  const isFiltered = Boolean(q || groupIds || status);
+  const isFiltered = Boolean(q || groupIds || tagIds || status);
+  // Row pickers need the Tag column; bulk selection only needs a tag to choose from (a bar without one is a dead end).
+  const canPickRowTags = columns.includes("tag") && canPickTags(tagOptions);
+  const selectable = tagOptions.options.length > 0;
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Anggota"
         meta="Data anggota di semua grup dalam scope Anda."
-        actions={
-          <Link href="/dashboard/anggota/baru" className={buttonVariants({ size: "lg" })}>
-            <UserPlus />
-            Tambah anggota
-          </Link>
-        }
+        actions={<MemberHeaderActions />}
       />
 
       <StatTiles>
@@ -93,6 +97,18 @@ export default async function MembersPage({
         <StatTile icon={UsersRound} label="Tidak aktif" value={scopeTotal - activeTotal} hint="Keluar, pindah, meninggal" />
       </StatTiles>
 
+      <MemberTagProviders
+        options={tagOptions.options}
+        canCreate={tagOptions.canCreate}
+        bulk={
+          selectable
+            ? {
+                memberIds: members.map((m) => m.id),
+                memberTags: Object.fromEntries(members.map((m) => [m.id, m.tags.map((link) => link.tag)])),
+              }
+            : null
+        }
+      >
       <TableCard
         title={
           <>
@@ -100,25 +116,39 @@ export default async function MembersPage({
           </>
         }
         toolbar={
-          <>
-            <FilterBar
-              action="/dashboard/anggota"
-              preserve={sortPreserve(sort, DEFAULT_MEMBER_SORT)}
-              isFiltered={isFiltered}
-              resetHref="/dashboard/anggota"
-            >
-              <SearchFilter value={q} placeholder="Cari nama anggota…" />
-              <GroupFilter groups={groups} selected={groupIds ?? []} hint="Termasuk semua grup di bawahnya." />
-              <SelectFilter
-                name="status"
-                value={status}
-                label="Status"
-                allLabel="Semua status"
-                options={MEMBER_STATUSES.map((value) => ({ value, label: MEMBER_STATUS_LABELS[value] }))}
-              />
-            </FilterBar>
-            <ColumnToggle columns={MEMBER_COLUMNS} visible={columns} action={setMemberColumnsAction} />
-          </>
+          <FilterBar
+            action="/dashboard/anggota"
+            isFiltered={isFiltered}
+            resetHref="/dashboard/anggota"
+            activeCount={[groupIds, tagIds, status].filter(Boolean).length}
+            more={
+              <>
+                <GroupFilter groups={groups} selected={groupIds ?? []} hint="Termasuk semua grup di bawahnya." />
+                {(tagOptions.visible.length > 0 || tagIds) && (
+                  <TagFilter tags={tagOptions.visible} selected={visibleTagIds(tagOptions.visible, tagIds)} />
+                )}
+                <SelectFilter
+                  name="status"
+                  value={status}
+                  label="Status"
+                  allLabel="Semua status"
+                  options={MEMBER_STATUSES.map((value) => ({ value, label: MEMBER_STATUS_LABELS[value] }))}
+                />
+                <SortSelect
+                  options={sortable.map((key) => ({
+                    key,
+                    label: key === "nama" ? "Nama" : (MEMBER_COLUMNS.find((c) => c.key === key)?.label ?? key),
+                  }))}
+                  current={sort}
+                  fallback={DEFAULT_MEMBER_SORT}
+                />
+                {/* Its own form is portaled, so the DOM has no nested form. */}
+                <ColumnToggle columns={MEMBER_COLUMNS} visible={columns} action={setMemberColumnsAction} />
+              </>
+            }
+          >
+            <SearchFilter value={q} placeholder="Cari nama anggota…" />
+          </FilterBar>
         }
         footer={
           total > pageSize ? (
@@ -137,11 +167,16 @@ export default async function MembersPage({
             columns={columns}
             sort={sort}
             sortHrefFor={(key) => sortHref("/dashboard/anggota", params, key, sort, DEFAULT_MEMBER_SORT)}
+            today={today(session.user.timeZone)}
+            canPickRowTags={canPickRowTags}
+            selectable={selectable}
           />
         ) : (
           <p className="px-4 py-10 text-center text-sm text-muted-foreground">Tidak ada anggota yang cocok.</p>
         )}
       </TableCard>
+      {selectable && <BulkTagBar />}
+      </MemberTagProviders>
     </div>
   );
 }

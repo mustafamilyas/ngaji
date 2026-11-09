@@ -1,0 +1,31 @@
+# Dahan on Docker. Nginx and the backup timer stay on the host (DEPLOYMENT.md §6-7);
+# the app listens on 127.0.0.1:3000 only, so nginx is the only way in.
+# Settings come from `.env` next to this file (AUTH_SECRET, AUTH_TRUST_HOST, ...).
+services:
+  app:
+    build: .
+    image: dahan:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    env_file: .env
+    environment:
+      DATABASE_URL: file:/data/production.db
+    # Run as the host's `dahan` user (see `id dahan`) so the database file belongs to it and
+    # scripts/backup.sh, which runs on the host as `dahan`, can read it.
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
+    volumes:
+      - /var/lib/dahan:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next/cache
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s

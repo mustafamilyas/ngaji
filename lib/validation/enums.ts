@@ -2,8 +2,13 @@
 // type, so these are plain String columns in prisma/schema.prisma; these
 // unions + zod schemas built from them are what actually enforce validity.
 
+import type { TAG_COLORS } from "@/lib/constants";
+
 export const ROLES = ["OWNER", "ADMIN", "USER"] as const;
 export type Role = (typeof ROLES)[number];
+
+/** Roles that can be held as an additional role at a lower group (DESIGN.md §3.2a). */
+export const EXTRA_ROLES = ["ADMIN"] as const;
 
 export const SEXES = ["L", "P"] as const;
 export type Sex = (typeof SEXES)[number];
@@ -31,6 +36,13 @@ export type WorkStatus = (typeof WORK_STATUSES)[number];
 export const MEMBER_STATUSES = ["AKTIF", "KELUAR", "PINDAH", "MENINGGAL"] as const;
 export type MemberStatus = (typeof MEMBER_STATUSES)[number];
 
+/**
+ * Member relationship types (DESIGN.md §14). ORANG_TUA and WALI are directed (from = parent/guardian);
+ * PASANGAN and SAUDARA are symmetric (from = smaller member id).
+ */
+export const RELATION_TYPES = ["ORANG_TUA", "WALI", "PASANGAN", "SAUDARA"] as const;
+export type RelationType = (typeof RELATION_TYPES)[number];
+
 export const FREQS = ["ONCE", "DAILY", "WEEKLY", "MONTHLY"] as const;
 export type Freq = (typeof FREQS)[number];
 
@@ -55,3 +67,18 @@ export type ViewSource = (typeof VIEW_SOURCES)[number];
 
 export const VIEW_VISIBILITIES = ["GROUP"] as const;
 export type ViewVisibility = (typeof VIEW_VISIBILITIES)[number];
+
+export type TagColor = (typeof TAG_COLORS)[number];
+
+/** IANA zones an organization may use; `Organization.timezone` stays a plain String column. */
+export const TIMEZONES = ["Asia/Jakarta", "Asia/Makassar", "Asia/Jayapura"] as const;
+export type Timezone = (typeof TIMEZONES)[number];
+
+/** Interim zone for callers that do not have the session timezone yet (removed in multi-org task 3.3). */
+export const DEFAULT_TIMEZONE: Timezone = "Asia/Jakarta";
+
+export const TIMEZONE_LABELS: Record<Timezone, string> = {
+  "Asia/Jakarta": "WIB",
+  "Asia/Makassar": "WITA",
+  "Asia/Jayapura": "WIT",
+};

@@ -1,4 +1,4 @@
-const PUBLIC_PATHS: ReadonlySet<string> = new Set(["/", "/ormas", "/login"]);
+const PUBLIC_PATHS: ReadonlySet<string> = new Set(["/", "/ormas", "/daftar", "/login"]);
 
 /**
  * Routes reachable without a session. Exact match only: no prefix or

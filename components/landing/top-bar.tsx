@@ -8,10 +8,10 @@ const SECTIONS = [
 
 export function TopBar({ segmentLink }: { segmentLink: { href: string; label: string } | null }) {
   const linkClass =
-    "rounded-full px-3 py-2 text-sm text-(--l-muted) transition-colors hover:text-(--l-ink) focus-visible:outline-2 focus-visible:outline-(--l-leaf)";
+    "inline-flex min-h-11 items-center rounded-full px-3 text-sm text-(--l-muted) transition-colors hover:text-(--l-ink) focus-visible:outline-2 focus-visible:outline-(--l-leaf)";
   return (
     <header className="flex items-center justify-between gap-4 py-5">
-      <Link href="/" className="flex items-center gap-2.5 rounded-md outline-offset-4 focus-visible:outline-2 focus-visible:outline-(--l-leaf)">
+      <Link href="/" className="flex min-h-11 items-center gap-2.5 rounded-md outline-offset-4 focus-visible:outline-2 focus-visible:outline-(--l-leaf)">
         <Logo className="size-9" />
         <span className="font-(family-name:--font-landing) text-xl font-semibold tracking-tight">Dahan</span>
       </Link>

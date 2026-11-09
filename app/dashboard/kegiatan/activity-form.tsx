@@ -2,20 +2,19 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useTransition } from "react";
+import { type ReactNode, useState, useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { Save } from "lucide-react";
 import { createActivityAction, splitActivityAction, updateActivityAction } from "@/app/dashboard/kegiatan/actions";
 import { Button } from "@/components/ui/button";
-import { today } from "@/lib/dates";
+import { touchField } from "@/components/ui/touch";
 import { cn } from "@/lib/utils";
 import { activityUpdateSchema, type ActivityUpdateInput } from "@/lib/validation/activity";
 import { FREQS } from "@/lib/validation/enums";
 
-const inputClass =
-  "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+const inputClass = touchField;
 const textareaClass =
-  "min-h-16 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+  "min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 xl:min-h-16 xl:text-sm";
 
 const FREQ_LABELS: Record<(typeof FREQS)[number], string> = {
   ONCE: "Sekali",
@@ -56,11 +55,17 @@ function Field({
 }
 
 type ActivityFormProps =
-  | { mode: "create" }
+  | {
+      mode: "create";
+      /** The organization's "today" (`YYYY-MM-DD`), computed on the server. */
+      today: string;
+      /** Groups the user may own an activity for (ADMIN+ role there); the first is preselected. */
+      ownerGroups: { id: number; name: string; parentName?: string }[];
+    }
   | { mode: "edit"; activityId: number; defaultValues: ActivityUpdateInput }
   | { mode: "split"; activityId: number; defaultValues: ActivityUpdateInput };
 
-const emptyDefaults: ActivityUpdateInput = {
+const emptyDefaults = (today: string): ActivityUpdateInput => ({
   name: "",
   location: "",
   notes: undefined,
@@ -70,13 +75,14 @@ const emptyDefaults: ActivityUpdateInput = {
   interval: 1,
   weekdays: [0],
   monthDay: undefined,
-  startsOn: today(),
+  startsOn: today,
   endsOn: undefined,
-};
+});
 
 export function ActivityForm(props: ActivityFormProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [ownerGroupId, setOwnerGroupId] = useState(props.mode === "create" ? props.ownerGroups[0]?.id : undefined);
   const {
     register,
     handleSubmit,
@@ -86,7 +92,7 @@ export function ActivityForm(props: ActivityFormProps) {
     formState: { errors },
   } = useForm<ActivityUpdateInput>({
     resolver: zodResolver(activityUpdateSchema),
-    defaultValues: props.mode === "create" ? emptyDefaults : props.defaultValues,
+    defaultValues: props.mode === "create" ? emptyDefaults(props.today) : props.defaultValues,
   });
   const freq = useWatch({ control, name: "freq" });
   const weekdays = useWatch({ control, name: "weekdays" });
@@ -100,7 +106,7 @@ export function ActivityForm(props: ActivityFormProps) {
     startTransition(async () => {
       const result =
         props.mode === "create"
-          ? await createActivityAction(values)
+          ? await createActivityAction({ ...values, groupId: ownerGroupId })
           : props.mode === "edit"
             ? await updateActivityAction(props.activityId, values)
             : await splitActivityAction({ ...values, activityId: props.activityId });
@@ -117,6 +123,24 @@ export function ActivityForm(props: ActivityFormProps) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 sm:grid-cols-2">
+      {props.mode === "create" && (
+        <Field label="Grup pemilik" htmlFor="ownerGroupId" wide>
+          <select
+            id="ownerGroupId"
+            className={inputClass}
+            value={ownerGroupId}
+            onChange={(event) => setOwnerGroupId(Number(event.target.value))}
+          >
+            {props.ownerGroups.map((group) => (
+              <option key={group.id} value={group.id}>
+                {group.parentName ? `${group.name} (${group.parentName})` : group.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">Kegiatan berlaku untuk grup ini dan semua turunannya.</p>
+        </Field>
+      )}
+
       <Field label="Nama" htmlFor="name" error={errors.name?.message}>
         <input id="name" className={inputClass} {...register("name")} />
       </Field>
@@ -172,10 +196,11 @@ export function ActivityForm(props: ActivityFormProps) {
             {WEEKDAY_LABELS.map((label, day) => (
               <label
                 key={day}
-                className="flex items-center gap-1.5 rounded-md border border-input px-2 py-1 text-sm"
+                className="flex min-h-11 items-center gap-2 rounded-md border border-input px-3 text-base xl:min-h-8 xl:px-2 xl:text-sm"
               >
                 <input
                   type="checkbox"
+                  className="size-5 xl:size-4"
                   checked={weekdays.includes(day)}
                   onChange={() => toggleWeekday(day)}
                 />

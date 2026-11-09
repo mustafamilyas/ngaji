@@ -13,7 +13,7 @@ export function WhatsAppButton({
   compact = false,
   className,
 }: {
-  phone: string;
+  phone: string | null | undefined;
   /** Recipient's name, for the accessible label. */
   name: string;
   /** Icon-only, for table cells. */
@@ -39,7 +39,7 @@ export function WhatsAppButton({
       className={cn(
         "inline-flex items-center justify-center gap-1.5 rounded-lg text-sm font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
         "bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400",
-        compact ? "size-8" : "h-9 px-3",
+        compact ? "size-11 xl:size-8" : "h-11 px-3 xl:h-9",
         className,
       )}
     >

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
 import { ForbiddenError } from "@/lib/errors";
-import { mockAuthSession, sessionFor } from "@/lib/test/fixtures";
+import { type FixtureGroup, mockAuthSession, sessionFor } from "@/lib/test/fixtures";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -12,7 +12,7 @@ import { auth } from "@/auth";
 import { createMemberAction } from "./actions";
 
 describe("member actions while mustChangePassword is set", () => {
-  let group: { id: number; path: string };
+  let group: FixtureGroup;
   let userId: number;
 
   beforeAll(async () => {
@@ -21,7 +21,7 @@ describe("member actions while mustChangePassword is set", () => {
     const created = await db.group.create({
       data: { organizationId: organization.id, depth: 0, name: "Leaf", path: "gate-0/" },
     });
-    group = { id: created.id, path: created.path };
+    group = { id: created.id, path: created.path, organizationId: created.organizationId };
     const user = await db.user.create({
       data: { username: "gate-user", passwordHash: "x", name: "Gate", mustChangePassword: true },
     });

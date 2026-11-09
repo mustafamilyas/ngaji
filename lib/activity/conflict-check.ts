@@ -13,8 +13,8 @@ import { ancestorPathsOf } from "@/lib/scope";
  * every occurrence of every activity owned by an ancestor, self, or
  * descendant of its group in the same window. Never blocks saving.
  */
-export async function activityHasConflict(activityId: number, groupPath: string): Promise<boolean> {
-  const from = today();
+export async function activityHasConflict(activityId: number, groupPath: string, timeZone: string): Promise<boolean> {
+  const from = today(timeZone);
   const to = addDays(from, CONFLICT_HORIZON_DAYS);
 
   const relatedGroups = await db.group.findMany({

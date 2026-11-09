@@ -31,7 +31,7 @@ Every day at 02:00 Asia/Jakarta the server SHALL take a consistent online copy o
 
 #### Scenario: Nightly run
 - **WHEN** the 02:00 backup runs while users are recording attendance
-- **THEN** an encrypted object `daily/ngaji-<YYYY-MM-DD>.db.gz.age` appears in the bucket and the application keeps serving requests
+- **THEN** an encrypted object `daily/dahan-<YYYY-MM-DD>.db.gz.age` appears in the bucket and the application keeps serving requests
 
 #### Scenario: Corrupt snapshot not uploaded
 - **WHEN** the integrity check of the fresh copy fails

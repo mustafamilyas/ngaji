@@ -2,6 +2,7 @@
 
 import { FileJson } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 /** Snapshot of one audit entry (already redacted when written, DESIGN.md §4.4). */

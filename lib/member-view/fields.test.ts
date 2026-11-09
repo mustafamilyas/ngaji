@@ -19,7 +19,7 @@ describe("member view field registry", () => {
 
   it("lists the rule fields from the spec", () => {
     expect([...RULE_FIELD_KEYS].sort()).toEqual(
-      ["age", "birthDate", "birthPlace", "exitedAt", "group", "joinedAt", "maritalStatus", "name", "sex", "status", "workStatus"].sort(),
+      ["age", "birthDate", "birthPlace", "exitedAt", "group", "joinedAt", "maritalStatus", "name", "sex", "status", "tag", "workStatus"].sort(),
     );
   });
 
@@ -40,6 +40,7 @@ describe("member view field registry", () => {
     expect(OPERATORS_BY_TYPE.nullableDate).toEqual([...OPERATORS_BY_TYPE.date, "isEmpty", "isNotEmpty"]);
     expect(OPERATORS_BY_TYPE.age).toEqual(["eq", "neq", "gt", "gte", "lt", "lte", "between"]);
     expect(OPERATORS_BY_TYPE.group).toEqual(["inSubtreeOf"]);
+    expect(OPERATORS_BY_TYPE.tag).toEqual(["hasAnyOf", "hasNoneOf"]);
     expect(MEMBER_VIEW_FIELDS.exitedAt.type).toBe("nullableDate");
     expect(MEMBER_VIEW_FIELDS.age.type).toBe("age");
   });
@@ -49,6 +50,15 @@ describe("member view field registry", () => {
     expect(MEMBER_VIEW_FIELDS.status.values).toEqual(MEMBER_STATUSES);
     expect(MEMBER_VIEW_FIELDS.maritalStatus.values).toEqual(MARITAL_STATUSES);
     expect(MEMBER_VIEW_FIELDS.workStatus.values).toEqual(WORK_STATUSES);
+  });
+
+  it("makes tag a rule field that is neither sortable nor groupable", () => {
+    expect(MEMBER_VIEW_FIELDS.tag.type).toBe("tag");
+    expect(isRuleField("tag")).toBe(true);
+    expect(isSortField("tag")).toBe(false);
+    expect(isGroupable("tag")).toBe(false);
+    expect(SORT_FIELD_KEYS as readonly string[]).not.toContain("tag");
+    expect(GROUPABLE_FIELDS as readonly string[]).not.toContain("tag");
   });
 
   it("does not collide with /anggota column keys for PII", () => {

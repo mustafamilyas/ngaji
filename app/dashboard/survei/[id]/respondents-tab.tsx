@@ -10,10 +10,21 @@ import { dateOf } from "@/lib/dates";
 import { formatDate } from "@/lib/filters";
 import { pageHref } from "@/lib/pagination";
 import type { listRespondents } from "@/lib/survey/respondents";
+
 import { cn } from "@/lib/utils";
 import { DeleteResponseButton } from "./delete-response-button";
 
-const timeFormat = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" });
+// Below md the same table markup is laid out as one card per respondent (no sideways scrolling); header cells are table-only.
+const stackedCell =
+  "col-span-2 flex items-center justify-between gap-3 px-0 py-0 text-sm whitespace-normal md:table-cell md:px-4 md:py-2.5 md:whitespace-nowrap";
+
+function PhoneLabel({ children }: { children: React.ReactNode }) {
+  return <span className="shrink-0 text-xs text-muted-foreground md:hidden">{children}</span>;
+}
+
+function formatTime(instant: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone }).format(instant);
+}
 
 /** "Responden" tab: who answered, who saved it last, with edit/delete for users allowed to record. */
 export function RespondentsTab({
@@ -23,6 +34,7 @@ export function RespondentsTab({
   params,
   search,
   groupIds,
+  timeZone,
 }: {
   surveyId: number;
   list: Awaited<ReturnType<typeof listRespondents>>;
@@ -30,6 +42,8 @@ export function RespondentsTab({
   params: Record<string, string | string[] | undefined>;
   search?: string;
   groupIds?: number[];
+  /** Organization timezone the "updated at" stamps are shown in. */
+  timeZone: string;
 }) {
   const path = `/dashboard/survei/${surveyId}`;
   const isFiltered = Boolean(search || groupIds);
@@ -65,9 +79,9 @@ export function RespondentsTab({
       }
     >
       {respondents.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className={tableClass}>
-            <thead>
+        <div className="relative overflow-x-auto">
+          <table className={cn(tableClass, "block md:table")}>
+            <thead className="hidden md:table-header-group">
               <tr className={theadRowClass}>
                 <th scope="col" className={thClass}>Nama</th>
                 <th scope="col" className={thClass}>Grup</th>
@@ -80,10 +94,13 @@ export function RespondentsTab({
                 )}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="block md:table-row-group">
               {respondents.map((r) => (
-                <tr key={r.memberId} className={trClass}>
-                  <td className={tdClass}>
+                <tr
+                  key={r.memberId}
+                  className={cn(trClass, "grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1 px-4 py-2 md:table-row md:p-0")}
+                >
+                  <td className={cn(tdClass, "block min-w-0 p-0 whitespace-normal md:table-cell md:px-4 md:py-2.5 md:whitespace-nowrap")}>
                     <span className="font-medium">{r.name}</span>
                     {r.memberStatus !== "AKTIF" && (
                       <Badge variant="secondary" className="ml-2">
@@ -91,13 +108,22 @@ export function RespondentsTab({
                       </Badge>
                     )}
                   </td>
-                  <td className={tdClass}>{r.groupName}</td>
-                  <td className={tdClass}>{r.recordedByName}</td>
-                  <td className={cn(tdClass, "tabular-nums text-muted-foreground")}>
-                    {formatDate(dateOf(r.updatedAt))} {timeFormat.format(r.updatedAt)}
+                  <td className={stackedCell}>
+                    <PhoneLabel>Grup</PhoneLabel>
+                    <span>{r.groupName}</span>
+                  </td>
+                  <td className={stackedCell}>
+                    <PhoneLabel>Disimpan oleh</PhoneLabel>
+                    <span>{r.recordedByName}</span>
+                  </td>
+                  <td className={cn(stackedCell, "tabular-nums text-muted-foreground")}>
+                    <PhoneLabel>Waktu</PhoneLabel>
+                    <span>
+                      {formatDate(dateOf(r.updatedAt, timeZone))} {formatTime(r.updatedAt, timeZone)}
+                    </span>
                   </td>
                   {canRecord && (
-                    <td className="px-2 py-1 text-right whitespace-nowrap">
+                    <td className="col-start-2 row-start-1 flex p-0 text-right whitespace-nowrap md:table-cell md:px-2 md:py-1">
                       {r.memberStatus === "AKTIF" && (
                         <Link
                           href={`${path}/isi?anggota=${r.memberId}`}

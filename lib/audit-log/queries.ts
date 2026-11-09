@@ -1,6 +1,7 @@
 import type { SessionUser } from "@/lib/auth/session-user";
 import { visibleGroupsWhere } from "@/lib/authz";
 import { PAGE_SIZE } from "@/lib/constants";
+import { endOfDayIn, startOfDayIn } from "@/lib/dates";
 import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
 import { clampPage } from "@/lib/pagination";
@@ -23,24 +24,14 @@ export type AuditLogFilter = {
   page?: number;
   action?: string;
   actorId?: number;
-  /** YYYY-MM-DD, inclusive, interpreted in Asia/Jakarta. */
+  /** YYYY-MM-DD, inclusive, interpreted in the session's organization timezone. */
   from?: string;
-  /** YYYY-MM-DD, inclusive, interpreted in Asia/Jakarta. */
+  /** YYYY-MM-DD, inclusive, interpreted in the session's organization timezone. */
   to?: string;
   /** Only entries scoped to these groups or their descendants (drops group-less `auth.*` entries). */
   groupIds?: number[];
   sort?: SortState<AuditSortKey>;
 };
-
-const JAKARTA_UTC_OFFSET = "+07:00";
-
-function startOfDayJakarta(date: string): Date {
-  return new Date(`${date}T00:00:00${JAKARTA_UTC_OFFSET}`);
-}
-
-function endOfDayJakarta(date: string): Date {
-  return new Date(`${date}T23:59:59.999${JAKARTA_UTC_OFFSET}`);
-}
 
 /**
  * `/dashboard/audit` viewer query (audit-log spec "Viewer"): OWNER only, entries
@@ -78,8 +69,8 @@ export async function listAuditLog(session: SessionUser, filter: AuditLogFilter 
     ...(filter.from || filter.to
       ? {
           createdAt: {
-            ...(filter.from ? { gte: startOfDayJakarta(filter.from) } : {}),
-            ...(filter.to ? { lte: endOfDayJakarta(filter.to) } : {}),
+            ...(filter.from ? { gte: startOfDayIn(filter.from, session.timeZone) } : {}),
+            ...(filter.to ? { lte: endOfDayIn(filter.to, session.timeZone) } : {}),
           },
         }
       : {}),

@@ -53,7 +53,7 @@ A module-level bcrypt hash of a random string (cost 12, computed once at startup
 Inside each `setUserActive` / `updateUserRole` / `moveUser` transaction: perform the update, then count active OWNERs of the root group. If the count is 0, throw `ForbiddenError`, which rolls back. SQLite serializes write transactions, so the second of two concurrent requests sees the first one's commit. This replaces the pre-check (`isLastActiveRootOwner`) and also covers self-move.
 
 ### 8. Peer-OWNER reset
-For `user.resetPassword`, when the target role is OWNER, the target group path must be strictly below the caller's (`isAncestorOf(session.groupPath, target.groupPath)`). Root recovery goes through `scripts/reset-owner-password.ts` (tsx; run as the `ngaji` user on the server).
+For `user.resetPassword`, when the target role is OWNER, the target group path must be strictly below the caller's (`isAncestorOf(session.groupPath, target.groupPath)`). Root recovery goes through `scripts/reset-owner-password.ts` (tsx; run as the `dahan` user on the server).
 
 ### 9. Headers
 Add `base-uri 'none'; object-src 'none'; form-action 'self'` to `buildCsp`. HSTS moves from `next.config.ts` into a production-only branch. Nginx does not add duplicate security headers.
@@ -69,18 +69,18 @@ Add `base-uri 'none'; object-src 'none'; form-action 'self'` to `buildCsp`. HSTS
 | Patching | `unattended-upgrades` (security only), monthly reboot window | |
 | TLS | Nginx + certbot (Let's Encrypt), auto-renew timer | |
 | Time | `timedatectl set-timezone Asia/Jakarta` | Cron and timers line up with the app's day boundary |
-| Runtime | Node 24 LTS via NodeSource, pnpm via corepack, systemd `ngaji.service` with `ExecStart=pnpm start -H 127.0.0.1 -p 3000` and hardening (`ProtectSystem=strict`, `ReadWritePaths=/var/lib/ngaji /var/backups/ngaji`, `NoNewPrivileges`, `PrivateTmp`) | |
-| Data | `/var/lib/ngaji/production.db`, dir mode 700, owner `ngaji` | |
+| Runtime | Node 24 LTS via NodeSource, pnpm via corepack, systemd `dahan.service` with `ExecStart=pnpm start -H 127.0.0.1 -p 3000` and hardening (`ProtectSystem=strict`, `ReadWritePaths=/var/lib/dahan /var/backups/dahan`, `NoNewPrivileges`, `PrivateTmp`) | |
+| Data | `/var/lib/dahan/production.db`, dir mode 700, owner `dahan` | |
 
 ### 11. Backup pipeline (`scripts/backup.sh`, systemd timer)
-1. `sqlite3 production.db ".backup /var/backups/ngaji/tmp.db"`. This uses SQLite's online backup API, so the copy is consistent while the app keeps writing. `.backup` was chosen over `VACUUM INTO` because the `sqlite3` CLI is standard.
+1. `sqlite3 production.db ".backup /var/backups/dahan/tmp.db"`. This uses SQLite's online backup API, so the copy is consistent while the app keeps writing. `.backup` was chosen over `VACUUM INTO` because the `sqlite3` CLI is standard.
 2. `PRAGMA integrity_check` must return `ok`, or the run aborts.
-3. `gzip -9` → `age -r <public key>` → `ngaji-YYYY-MM-DD.db.gz.age`. The plaintext temp file is deleted (`trap`).
-4. `rclone copyto` to `idch:<bucket>/daily/`. If the current month has no object under `monthly/`, the run also writes `monthly/ngaji-YYYY-MM.db.gz.age`.
+3. `gzip -9` → `age -r <public key>` → `dahan-YYYY-MM-DD.db.gz.age`. The plaintext temp file is deleted (`trap`).
+4. `rclone copyto` to `idch:<bucket>/daily/`. If the current month has no object under `monthly/`, the run also writes `monthly/dahan-YYYY-MM.db.gz.age`.
 5. Prune: `rclone delete --min-age 30d idch:<bucket>/daily/` and `--min-age 365d .../monthly/`; local copies beyond the newest 7 are deleted.
 6. Ping the healthcheck URL: `/fail` on any error (via `trap ERR`), plain URL on success.
 
-- **Schedule:** a `ngaji-backup.timer` with `OnCalendar=*-*-* 02:00 Asia/Jakarta` and `Persistent=true`. It runs as `ngaji`, and its environment comes from `/etc/ngaji/backup.env` (mode 600): `BACKUP_BUCKET`, `AGE_RECIPIENT`, `HEALTHCHECK_URL`. The rclone config lives in `~ngaji/.config/rclone/rclone.conf` (mode 600), using `provider = Other` and the endpoint from the IDCloudHost console.
+- **Schedule:** a `dahan-backup.timer` with `OnCalendar=*-*-* 02:00 Asia/Jakarta` and `Persistent=true`. It runs as `dahan`, and its environment comes from `/etc/dahan/backup.env` (mode 600): `BACKUP_BUCKET`, `AGE_RECIPIENT`, `HEALTHCHECK_URL`. The rclone config lives in `~dahan/.config/rclone/rclone.conf` (mode 600), using `provider = Other` and the endpoint from the IDCloudHost console.
 - **Encryption:** `age` was chosen over gpg because it is simpler and has a public-key-only mode. The private key is generated on the owner's laptop and stored in their password manager, with a printed copy offline. Only the public recipient string goes to the server.
 - **Alerting:** healthchecks.io, free tier, with a 1-day period and a 2-hour grace. One check covers both "failed" and "missed" runs. The pings contain no PII. *Alternative:* msmtp email. Rejected because it can't alert on runs that never happened.
 
@@ -88,9 +88,9 @@ Add `base-uri 'none'; object-src 'none'; form-action 'self'` to `buildCsp`. HSTS
 - **Restore steps:** `restore.sh <object|file> <identity-file>`.
   1. Decrypt and gunzip to a temp file.
   2. Run the integrity check.
-  3. `systemctl stop ngaji`.
+  3. `systemctl stop dahan`.
   4. Move the current DB to `production.db.pre-restore-<ts>`, removing stale `-wal`/`-shm`.
-  5. Install the restored file with owner `ngaji` and mode 600.
+  5. Install the restored file with owner `dahan` and mode 600.
   6. Start the service and curl `/login`.
 - The identity file is copied to the server only for the duration of the restore and then shredded.
 - **Quarterly drill:** run the same steps on an hourly-billed scratch VPS, then delete that VPS. Record the date in DEPLOYMENT.md §Drills.

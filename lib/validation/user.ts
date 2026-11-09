@@ -1,13 +1,6 @@
 import { z } from "zod";
-import { ROLES } from "./enums";
-
-/** Shared by the user forms and Server Actions (DESIGN.md §2, user-management spec). */
-const usernameSchema = z
-  .string()
-  .trim()
-  .min(3, "Username minimal 3 karakter")
-  .max(50, "Username terlalu panjang")
-  .regex(/^[a-z0-9_.]+$/i, "Username hanya boleh huruf, angka, titik, dan garis bawah");
+import { EXTRA_ROLES, ROLES } from "./enums";
+import { usernameSchema } from "./username";
 
 const nameSchema = z.string().trim().min(1, "Nama wajib diisi").max(200, "Nama terlalu panjang");
 
@@ -46,3 +39,16 @@ export const resetUserPasswordSchema = z.object({
   userId: z.coerce.number().int().positive(),
 });
 export type ResetUserPasswordInput = z.infer<typeof resetUserPasswordSchema>;
+
+export const addExtraRoleSchema = z.object({
+  userId: z.coerce.number().int().positive(),
+  groupId: z.coerce.number().int().positive(),
+  role: z.enum(EXTRA_ROLES),
+});
+export type AddExtraRoleInput = z.infer<typeof addExtraRoleSchema>;
+
+export const removeExtraRoleSchema = z.object({
+  userId: z.coerce.number().int().positive(),
+  groupId: z.coerce.number().int().positive(),
+});
+export type RemoveExtraRoleInput = z.infer<typeof removeExtraRoleSchema>;

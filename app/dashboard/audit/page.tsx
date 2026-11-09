@@ -6,6 +6,7 @@ import { Pagination } from "@/components/pagination";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { FilterBar, SelectFilter } from "@/components/filters/filter-bar";
 import { GroupFilter } from "@/components/filters/group-filter";
+import { SortSelect } from "@/components/filters/sort-select";
 import { visibleGroupsWhere } from "@/lib/authz";
 import { AUDIT_ACTIONS, AUDIT_DATE_RANGE } from "@/lib/constants";
 import { db } from "@/lib/db";
@@ -14,17 +15,25 @@ import { NotFoundError } from "@/lib/errors";
 import { parseGroupIds, parsePage, resolveDateRange } from "@/lib/filters";
 import { AUDIT_SORT_KEYS, type AuditSortKey, DEFAULT_AUDIT_SORT, listAuditLog } from "@/lib/audit-log/queries";
 import { pageHref } from "@/lib/pagination";
-import { parseSort, sortHref, sortPreserve } from "@/lib/sort";
+import { parseSort, sortHref } from "@/lib/sort";
 import { listUsersInScope } from "@/lib/user/queries";
 import { cn } from "@/lib/utils";
 import { AuditDetailDialog } from "./audit-detail-dialog";
 
-function formatDateTime(date: Date): string {
+function formatDateTime(date: Date, timeZone: string): string {
   return new Intl.DateTimeFormat("id-ID", {
-    timeZone: "Asia/Jakarta",
+    timeZone,
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+// Below md the same table markup is laid out as one card per entry (no sideways scrolling); sort headers are table-only.
+const stackedCell =
+  "col-span-2 flex items-center justify-between gap-3 px-0 py-0 text-sm whitespace-normal md:table-cell md:px-4 md:py-2.5 md:whitespace-nowrap";
+
+function PhoneLabel({ children }: { children: React.ReactNode }) {
+  return <span className="shrink-0 text-xs text-muted-foreground md:hidden">{children}</span>;
 }
 
 export default async function AuditPage({
@@ -42,7 +51,7 @@ export default async function AuditPage({
       : undefined;
   const actorParam = typeof params.aktor === "string" ? Number(params.aktor) : NaN;
   const actorId = Number.isInteger(actorParam) && actorParam > 0 ? actorParam : undefined;
-  const now = today();
+  const now = today(session.user.timeZone);
   const dateRange = resolveDateRange(params, AUDIT_DATE_RANGE, now);
   const { from, to } = dateRange;
   const groupIds = parseGroupIds(params.grup);
@@ -90,31 +99,44 @@ export default async function AuditPage({
         toolbar={
           <FilterBar
             action="/dashboard/audit"
-            preserve={sortPreserve(sort, DEFAULT_AUDIT_SORT)}
             isFiltered={isFiltered}
             resetHref="/dashboard/audit"
-          >
-            <GroupFilter
-              groups={groups}
-              selected={groupIds ?? []}
-              hint="Termasuk semua grup di bawahnya. Entri login/logout tanpa grup tidak ikut."
-            />
-            <DateRangeFilter range={dateRange} {...AUDIT_DATE_RANGE} today={now} />
-            <SelectFilter
-              name="action"
-              value={action}
-              label="Aksi"
-              allLabel="Semua aksi"
-              options={AUDIT_ACTIONS.map((value) => ({ value, label: value }))}
-            />
-            <SelectFilter
-              name="aktor"
-              value={actorId ? String(actorId) : undefined}
-              label="Aktor"
-              allLabel="Semua aktor"
-              options={actors.map((role) => ({ value: String(role.user.id), label: role.user.name }))}
-            />
-          </FilterBar>
+            activeCount={[groupIds, dateRange.mode !== AUDIT_DATE_RANGE.defaultMode, action, actorId].filter(Boolean).length}
+            more={
+              <>
+                <GroupFilter
+                  groups={groups}
+                  selected={groupIds ?? []}
+                  hint="Termasuk semua grup di bawahnya. Entri login/logout tanpa grup tidak ikut."
+                />
+                <DateRangeFilter range={dateRange} {...AUDIT_DATE_RANGE} today={now} />
+                <SelectFilter
+                  name="action"
+                  value={action}
+                  label="Aksi"
+                  allLabel="Semua aksi"
+                  options={AUDIT_ACTIONS.map((value) => ({ value, label: value }))}
+                />
+                <SelectFilter
+                  name="aktor"
+                  value={actorId ? String(actorId) : undefined}
+                  label="Aktor"
+                  allLabel="Semua aktor"
+                  options={actors.map((role) => ({ value: String(role.user.id), label: role.user.name }))}
+                />
+                <SortSelect
+                  options={[
+                    { key: "waktu", label: "Waktu" },
+                    { key: "aksi", label: "Aksi" },
+                    { key: "aktor", label: "Aktor" },
+                    { key: "entitas", label: "Entitas" },
+                  ]}
+                  current={sort}
+                  fallback={DEFAULT_AUDIT_SORT}
+                />
+              </>
+            }
+          />
         }
         footer={
           total > pageSize ? (
@@ -128,9 +150,9 @@ export default async function AuditPage({
         }
       >
         {entries.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className={tableClass}>
-              <thead>
+          <div className="relative overflow-x-auto">
+            <table className={cn(tableClass, "block md:table")}>
+              <thead className="hidden md:table-header-group">
                 <tr className={theadRowClass}>
                   {th("waktu", "Waktu")}
                   {th("aksi", "Aksi")}
@@ -141,21 +163,31 @@ export default async function AuditPage({
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody data-records className="block md:table-row-group">
                 {entries.map((entry) => {
-                  const when = formatDateTime(entry.createdAt);
+                  const when = formatDateTime(entry.createdAt, session.user.timeZone);
                   const hasDetail = entry.before !== null || entry.after !== null || entry.meta !== null;
                   return (
-                    <tr key={entry.id} className={trClass}>
-                      <td className={cn(tdClass, "text-muted-foreground tabular-nums")}>{when}</td>
-                      <td className={tdClass}>
+                    <tr
+                      key={entry.id}
+                      className={cn(trClass, "grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1 px-4 py-2 md:table-row md:p-0")}
+                    >
+                      <td className={cn(tdClass, "block p-0 text-sm text-muted-foreground tabular-nums md:table-cell md:px-4 md:py-2.5")}>
+                        {when}
+                      </td>
+                      <td className={stackedCell}>
+                        <PhoneLabel>Aksi</PhoneLabel>
                         <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{entry.action}</code>
                       </td>
-                      <td className={tdClass}>{entry.actor?.name ?? <span className="text-muted-foreground">—</span>}</td>
-                      <td className={cn(tdClass, "text-muted-foreground")}>
-                        {entry.entity ? `${entry.entity}${entry.entityId ? ` #${entry.entityId}` : ""}` : "—"}
+                      <td className={stackedCell}>
+                        <PhoneLabel>Aktor</PhoneLabel>
+                        <span>{entry.actor?.name ?? <span className="text-muted-foreground">—</span>}</span>
                       </td>
-                      <td className="px-2 py-1 text-right">
+                      <td className={cn(stackedCell, "text-muted-foreground")}>
+                        <PhoneLabel>Entitas</PhoneLabel>
+                        <span>{entry.entity ? `${entry.entity}${entry.entityId ? ` #${entry.entityId}` : ""}` : "—"}</span>
+                      </td>
+                      <td className="col-start-2 row-start-1 p-0 text-right md:px-2 md:py-1">
                         {hasDetail && (
                           <AuditDetailDialog
                             title={entry.action}

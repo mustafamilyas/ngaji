@@ -29,13 +29,35 @@ datasource db {
 //                    | "SHORT_TEXT" | "LONG_TEXT"
 
 model Organization {
-  id        Int      @id @default(autoincrement())
-  name      String
-  timezone  String   @default("Asia/Jakarta")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  levels    Level[]
-  groups    Group[]
+  id               Int      @id @default(autoincrement())
+  name             String
+  timezone         String   @default("Asia/Jakarta")
+  logoUrl          String? // reserved; no upload or rendering yet
+  /// 2–4 letters A–Z, globally unique, immutable; prefix of every Member.code (DESIGN.md §14).
+  /// Nullable only until `pnpm member-codes:backfill` has run.
+  memberCodePrefix String?  @unique
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  levels           Level[]
+  groups           Group[]
+}
+
+/// Public sign-up interest from a prospective organization. Deliberately has
+/// no relation to Organization: it must never surface in any org's pages or
+/// audit viewer. Read only via `pnpm leads`.
+model InterestLead {
+  id               Int      @id @default(autoincrement())
+  name             String
+  phone            String
+  organizationName String
+  memberCount      Int?
+  message          String?
+  consentAt        DateTime
+  ip               String?
+  userAgent        String?
+  createdAt        DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 /// Level name, depth 0 = root. Renaming a level is a single-row update.
@@ -69,7 +91,9 @@ model Group {
   activities   Activity[]
   surveys      Survey[]
   memberViews  MemberView[]
+  tags         Tag[]
   userRoles    UserGroupRole[]
+  extraRoles   UserExtraRole[]
 
   @@index([path])
   @@index([parentId])
@@ -87,6 +111,7 @@ model User {
   updatedAt          DateTime @updatedAt
 
   role               UserGroupRole?
+  extraRoles         UserExtraRole[]
   createdMembers     Member[]         @relation("memberCreatedBy")
   createdActivities  Activity[]       @relation("activityCreatedBy")
   recordedAttendance Attendance[]     @relation("attendanceRecordedBy")
@@ -94,6 +119,10 @@ model User {
   ownedMemberViews   MemberView[]     @relation("memberViewOwner")
   createdMemberViews MemberView[]     @relation("memberViewCreatedBy")
   recordedSurveys    SurveyResponse[] @relation("surveyResponseRecordedBy")
+  createdTags        Tag[]            @relation("tagCreatedBy")
+  memberTags         MemberTag[]      @relation("memberTagCreatedBy")
+  memberRelations    MemberRelation[] @relation("memberRelationCreatedBy")
+  activityTags       ActivityTag[]    @relation("activityTagCreatedBy")
   auditLogs          AuditLog[]
 }
 
@@ -111,15 +140,34 @@ model UserGroupRole {
   @@index([groupId])
 }
 
+/// Additional ADMIN role at a group strictly below the user's primary `UserGroupRole` group (DESIGN.md §3.2a).
+/// Scope never comes from here: it stays the primary role's scope.
+model UserExtraRole {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  groupId   Int
+  role      String // Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+  group     Group    @relation(fields: [groupId], references: [id])
+
+  @@unique([userId, groupId])
+  @@index([groupId])
+}
+
 model Member {
   id            Int       @id @default(autoincrement())
   groupId       Int // must be a leaf group
   name          String
+  /// `<PREFIX>-XXXXXX`, server-assigned, never changes, globally unique (DESIGN.md §14).
+  /// Nullable only until `pnpm member-codes:backfill` has run.
+  code          String?   @unique
   birthPlace    String
   birthDate     String // YYYY-MM-DD
   sex           String // Sex
   address       String
-  phone         String // NOT unique (one phone can serve a whole family)
+  phone         String? // optional; NOT unique (one phone can serve a whole family)
   maritalStatus String // MaritalStatus
   workStatus    String // WorkStatus
   email         String?
@@ -135,6 +183,9 @@ model Member {
   createdBy       User             @relation("memberCreatedBy", fields: [createdById], references: [id])
   attendances     Attendance[]
   surveyResponses SurveyResponse[]
+  tags            MemberTag[]
+  relationsFrom   MemberRelation[] @relation("memberRelationFrom")
+  relationsTo     MemberRelation[] @relation("memberRelationTo")
 
   @@index([groupId, status])
   @@index([name])
@@ -166,6 +217,7 @@ model Activity {
   continuesFrom Activity?            @relation("split", fields: [continuesFromId], references: [id])
   continuedBy   Activity[]           @relation("split")
   occurrences   ActivityOccurrence[]
+  tags          ActivityTag[]
 
   @@index([groupId])
 }
@@ -197,6 +249,7 @@ model Attendance {
   occurrenceId Int
   memberId     Int
   status       String // AttendanceStatus
+  note         String? // reason, only for IZIN
   recordedById Int
   recordedAt   DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -319,6 +372,78 @@ model SurveyAnswer {
 
   @@index([responseId])
   @@index([questionId, optionId])
+}
+
+/// Group-owned tag (DESIGN.md §13). One row = one simple tag (value null) or one value of a key.
+/// A key is the set of rows sharing (groupId, key) with a value; it has no row of its own.
+/// Soft delete: every query needs `deletedAt: null`.
+model Tag {
+  id          Int       @id @default(autoincrement())
+  groupId     Int // owner = creator's group, never from the client
+  key         String // trimmed, lowercased
+  value       String? // null = simple tag
+  color       String // TagColor (TAG_COLORS in lib/constants.ts)
+  createdById Int
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  group      Group         @relation(fields: [groupId], references: [id])
+  createdBy  User          @relation("tagCreatedBy", fields: [createdById], references: [id])
+  members    MemberTag[]
+  activities ActivityTag[]
+
+  @@index([groupId, deletedAt])
+  @@index([key])
+}
+
+/// Tag ↔ member link. Hard-deleted (like Attendance); every attach/detach is audited.
+model MemberTag {
+  memberId    Int
+  tagId       Int
+  createdById Int
+  createdAt   DateTime @default(now())
+
+  member    Member @relation(fields: [memberId], references: [id])
+  tag       Tag    @relation(fields: [tagId], references: [id])
+  createdBy User   @relation("memberTagCreatedBy", fields: [createdById], references: [id])
+
+  @@id([memberId, tagId])
+  @@index([tagId])
+}
+
+// One row per related pair (DESIGN.md §14). Directed types (ORANG_TUA, WALI): from = parent/guardian.
+// Symmetric types (PASANGAN, SAUDARA): from = the smaller member id. The reverse direction of a pair
+// is rejected in the mutation, not by the unique index. Hard-deleted like MemberTag; every change audited.
+model MemberRelation {
+  id           Int      @id @default(autoincrement())
+  fromMemberId Int
+  toMemberId   Int
+  type         String // RelationType
+  createdById  Int
+  createdAt    DateTime @default(now())
+
+  fromMember Member @relation("memberRelationFrom", fields: [fromMemberId], references: [id])
+  toMember   Member @relation("memberRelationTo", fields: [toMemberId], references: [id])
+  createdBy  User   @relation("memberRelationCreatedBy", fields: [createdById], references: [id])
+
+  @@unique([fromMemberId, toMemberId])
+  @@index([toMemberId])
+}
+
+/// Tag ↔ activity link. Hard-deleted; every attach/detach is audited.
+model ActivityTag {
+  activityId  Int
+  tagId       Int
+  createdById Int
+  createdAt   DateTime @default(now())
+
+  activity  Activity @relation(fields: [activityId], references: [id])
+  tag       Tag      @relation(fields: [tagId], references: [id])
+  createdBy User     @relation("activityTagCreatedBy", fields: [createdById], references: [id])
+
+  @@id([activityId, tagId])
+  @@index([tagId])
 }
 
 /// Audit trail. Written in the same transaction as its mutation. Append-only (no update/delete).

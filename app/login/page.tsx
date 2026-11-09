@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Logo } from "@/components/brand/logo";
-import { getOrganizationName } from "@/lib/organization";
+import { getLoginBrand } from "@/lib/organization";
 import { LoginForm } from "./login-form";
 
 const MESSAGES: Record<string, string> = {
@@ -8,7 +8,7 @@ const MESSAGES: Record<string, string> = {
 };
 
 export async function generateMetadata(): Promise<Metadata> {
-  return { title: { absolute: `Masuk · ${await getOrganizationName()}` } };
+  return { title: { absolute: `Masuk · ${await getLoginBrand()}` } };
 }
 
 export default async function LoginPage({
@@ -18,7 +18,7 @@ export default async function LoginPage({
 }) {
   const { pesan } = await searchParams;
   const message = pesan ? MESSAGES[pesan] : undefined;
-  const organizationName = await getOrganizationName();
+  const organizationName = await getLoginBrand();
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-sm flex-col gap-6 px-4 py-16">

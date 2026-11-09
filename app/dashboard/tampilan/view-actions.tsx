@@ -9,12 +9,13 @@ import {
   updateMemberViewAction,
 } from "@/app/dashboard/tampilan/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { touchField } from "@/components/ui/touch";
+
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { ActionResult } from "@/lib/errors";
 import type { Definition } from "@/lib/validation/member-view";
 
-const inputClass =
-  "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+const inputClass = touchField;
 
 /** Dialog with one name field; `onSubmit` returns the server action's result so errors show inline. */
 function NameDialog({
@@ -81,12 +82,12 @@ function NameDialog({
               {error}
             </p>
           )}
-          <div className="flex justify-end gap-2">
+          <DialogFooter>
             <DialogClose className={buttonVariants({ variant: "ghost", size: "lg" })}>Batal</DialogClose>
             <Button type="submit" size="lg" disabled={pending}>
               {pending ? "Menyimpan…" : submitLabel}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

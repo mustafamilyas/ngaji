@@ -13,7 +13,12 @@ export default function setup() {
     if (existsSync(file)) rmSync(file);
   }
 
-  execSync("pnpm prisma db push --accept-data-loss", {
+  // The generated client is git-ignored and goes stale after a schema change.
+  execSync("pnpm prisma generate", { stdio: "inherit" });
+
+  // The test DB was just deleted, so applying the migrations is non-destructive
+  // (and tests the real migration history, unlike `db push`).
+  execSync("pnpm prisma migrate deploy", {
     env: { ...process.env, DATABASE_URL: databaseUrl },
     stdio: "inherit",
   });

@@ -27,7 +27,7 @@ export const DEFAULT_USER_SORT: SortState<UserSortKey> = { key: "nama", dir: "as
 export async function listUsersInScope(session: SessionUser) {
   const roles = await db.userGroupRole.findMany({
     where: { group: { path: { startsWith: session.groupPath }, deletedAt: null } },
-    include: { user: true, group: true },
+    include: { user: { include: { extraRoles: { include: { group: true } } } }, group: true },
     orderBy: [{ user: { name: "asc" } }],
   });
   return roles;
@@ -60,7 +60,7 @@ export async function listUsers(session: SessionUser, filter: ListUsersFilter = 
   const page = clampPage(filter.page ?? 1, total, PAGE_SIZE);
   const roles = await db.userGroupRole.findMany({
     where,
-    include: { user: true, group: true },
+    include: { user: { include: { extraRoles: { include: { group: true } } } }, group: true },
     orderBy: [
       USER_SORT_FIELDS[(filter.sort ?? DEFAULT_USER_SORT).key]((filter.sort ?? DEFAULT_USER_SORT).dir),
       { user: { name: "asc" as const } },

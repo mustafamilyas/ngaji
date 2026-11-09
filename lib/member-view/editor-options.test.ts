@@ -26,4 +26,26 @@ describe("loadEditorOptions", () => {
     expect(leaf.groups.map((g) => g.id)).toEqual([fx.leaf.id]);
     expect(leaf.levels.map((l) => l.name)).toEqual(["Leaf"]);
   });
+
+  it("offers only the tags the viewer can see, labelled key or key:value", async () => {
+    const fx = await buildPageFixture("view-editor-tags");
+    const newTag = (groupId: number, key: string, value: string | null = null, deletedAt: Date | null = null) =>
+      db.tag.create({ data: { groupId, key, value, color: "blue", createdById: fx.actorId, deletedAt } });
+    const inherited = await newTag(fx.branch.id, "binaan");
+    const own = await newTag(fx.leaf.id, "prioritas", "tinggi");
+    const below = await newTag(fx.leaf.id, "fokus");
+    const sibling = await newTag(fx.otherLeaf.id, "saudara");
+    const gone = await newTag(fx.leaf.id, "terhapus", null, new Date());
+
+    const leaf = await loadEditorOptions(sessionFor(fx.actorId, "ADMIN", fx.leaf));
+    const ids = leaf.tags.map((t) => t.id);
+    expect(ids).toEqual(expect.arrayContaining([inherited.id, own.id, below.id]));
+    expect(ids).not.toContain(sibling.id);
+    expect(ids).not.toContain(gone.id);
+    expect(leaf.tags.find((t) => t.id === own.id)?.label).toBe("prioritas:tinggi");
+    expect(leaf.tags.find((t) => t.id === below.id)?.label).toBe("fokus");
+
+    const branch = await loadEditorOptions(sessionFor(fx.actorId, "ADMIN", fx.branch));
+    expect(branch.tags.map((t) => t.id)).toEqual(expect.arrayContaining([inherited.id, own.id, below.id, sibling.id]));
+  });
 });
